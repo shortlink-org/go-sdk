@@ -15,7 +15,7 @@ type Config struct {
 }
 
 // New - read .env and ENV variables
-func New(log Logger) (*Config, error) {
+func New() (*Config, error) {
 	viper.SetConfigName(".env")
 	viper.SetConfigType("dotenv")
 	viper.AddConfigPath(".") // look for config in the working directory
@@ -26,8 +26,6 @@ func New(log Logger) (*Config, error) {
 		if !errors.As(err, &typeErr) {
 			return nil, err
 		}
-
-		log.Warn("The .env file has not been found in the current directory")
 	}
 
 	config := &Config{}
