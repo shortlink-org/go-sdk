@@ -1,5 +1,9 @@
 # go-sdk
 
-## Documentation
+Go SDK with common utilities and patterns.
 
-- [Specification Pattern](./specification/) - Implementation and usage guide for the specification pattern
+## Components
+
+- [Logger](./logger/) - Structured logging with OpenTelemetry
+- [Config](./config/) - Configuration management
+- [Specification Pattern](./specification/) - Query building pattern
