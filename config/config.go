@@ -5,16 +5,16 @@ package config
 
 import (
 	"errors"
+	"sync"
 
 	"github.com/spf13/viper"
 )
 
-// Logger is our contract for the logger
-type Logger interface {
-	Warn(msg string, fields ...Fields)
+type Config struct {
+	mu sync.RWMutex
 }
 
-// Init - read .env and ENV variables
+// New - read .env and ENV variables
 func New(log Logger) (*Config, error) {
 	viper.SetConfigName(".env")
 	viper.SetConfigType("dotenv")
