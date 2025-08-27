@@ -1,6 +1,8 @@
 package config
 
 import (
+	"fmt"
+
 	"github.com/Unleash/unleash-go-sdk/v5"
 	"github.com/spf13/viper"
 )
@@ -23,7 +25,7 @@ func (*Config) FeatureToogleRun() error {
 		unleash.WithRefreshInterval(REFRESH_INTERVAL),
 	)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to initialize feature toggle: %w", err)
 	}
 
 	return nil

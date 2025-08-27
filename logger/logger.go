@@ -23,16 +23,18 @@ func New(cfg Configuration) (*SlogLogger, error) {
 	handler := slog.NewJSONHandler(cfg.Writer, &slog.HandlerOptions{
 		Level:     convertLevel(cfg.Level),
 		AddSource: true, // Always include source location
-		ReplaceAttr: func(groups []string, a slog.Attr) slog.Attr {
+		ReplaceAttr: func(groups []string, attr slog.Attr) slog.Attr {
 			// Customize timestamp format
-			if a.Key == slog.TimeKey {
+			if attr.Key == slog.TimeKey {
 				return slog.String(slog.TimeKey, time.Now().Format(cfg.TimeFormat))
 			}
-			return a
+
+			return attr
 		},
 	})
 
 	logger := slog.New(handler)
+
 	return &SlogLogger{logger: logger}, nil
 }
 
@@ -41,7 +43,7 @@ func (log *SlogLogger) Close() error {
 	return nil
 }
 
-// convertLevel converts our log level to slog level
+// convertLevel converts our log level to slog level.
 func convertLevel(level int) slog.Level {
 	switch level {
 	case ERROR_LEVEL:
@@ -57,11 +59,12 @@ func convertLevel(level int) slog.Level {
 	}
 }
 
-// logWithContext is a helper function to reduce code duplication
+// logWithContext is a helper function to reduce code duplication.
 func (log *SlogLogger) logWithContext(ctx context.Context, level slog.Level, msg string, fields ...any) {
 	// Add tracing if context is provided
 	if ctx != nil && ctx != context.Background() {
 		var err error
+
 		fields, err = tracer.NewTraceFromContext(ctx, msg, nil, fields...)
 		if err != nil {
 			log.logger.ErrorContext(ctx, "Error sending span to OpenTelemetry: "+err.Error())

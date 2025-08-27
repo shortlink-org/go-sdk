@@ -20,7 +20,7 @@ const (
 	DEBUG_LEVEL
 )
 
-// Configuration - options for logger
+// Configuration - options for logger.
 type Configuration struct {
 	Writer     io.Writer
 	TimeFormat string
@@ -43,7 +43,7 @@ func (c *Configuration) Validate() error {
 	return nil
 }
 
-// Default returns a default configuration
+// Default returns a default configuration.
 func Default() Configuration {
 	return Configuration{
 		Writer:     os.Stdout,

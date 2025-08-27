@@ -13,6 +13,7 @@ import (
 func (c *Config) SetDefault(key string, value any) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
+
 	viper.SetDefault(key, value)
 }
 
@@ -20,6 +21,7 @@ func (c *Config) SetDefault(key string, value any) {
 func (c *Config) Set(key string, value any) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
+
 	viper.Set(key, value)
 }
 
@@ -29,6 +31,7 @@ func (c *Config) Set(key string, value any) {
 func (c *Config) GetString(key string) string {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
+
 	return viper.GetString(key)
 }
 
@@ -36,6 +39,7 @@ func (c *Config) GetString(key string) string {
 func (c *Config) GetBool(key string) bool {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
+
 	return viper.GetBool(key)
 }
 
@@ -43,6 +47,7 @@ func (c *Config) GetBool(key string) bool {
 func (c *Config) GetInt(key string) int {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
+
 	return viper.GetInt(key)
 }
 
@@ -50,6 +55,7 @@ func (c *Config) GetInt(key string) int {
 func (c *Config) GetInt64(key string) int64 {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
+
 	return viper.GetInt64(key)
 }
 
@@ -57,6 +63,7 @@ func (c *Config) GetInt64(key string) int64 {
 func (c *Config) GetFloat64(key string) float64 {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
+
 	return viper.GetFloat64(key)
 }
 
@@ -64,6 +71,7 @@ func (c *Config) GetFloat64(key string) float64 {
 func (c *Config) GetDuration(key string) time.Duration {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
+
 	return viper.GetDuration(key)
 }
 
@@ -71,6 +79,7 @@ func (c *Config) GetDuration(key string) time.Duration {
 func (c *Config) GetStringSlice(key string) []string {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
+
 	return viper.GetStringSlice(key)
 }
 
@@ -78,6 +87,7 @@ func (c *Config) GetStringSlice(key string) []string {
 func (c *Config) GetTime(key string) time.Time {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
+
 	return viper.GetTime(key)
 }
 
@@ -87,6 +97,7 @@ func (c *Config) GetTime(key string) time.Time {
 func (c *Config) IsSet(key string) bool {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
+
 	return viper.IsSet(key)
 }
 
@@ -94,5 +105,6 @@ func (c *Config) IsSet(key string) bool {
 func (c *Config) AllKeys() []string {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
+
 	return viper.AllKeys()
 }

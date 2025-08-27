@@ -6,13 +6,13 @@ import (
 
 // AndSpecification is a composite specification that represents the logical AND of two other specifications.
 type AndSpecification[T any] struct {
-	specs []Specification[T]
+	Specs []Specification[T]
 }
 
 func (a *AndSpecification[T]) IsSatisfiedBy(item *T) error {
 	var errs error
 
-	for _, spec := range a.specs {
+	for _, spec := range a.Specs {
 		err := spec.IsSatisfiedBy(item)
 		if err != nil {
 			errs = errors.Join(errs, err)
@@ -24,6 +24,6 @@ func (a *AndSpecification[T]) IsSatisfiedBy(item *T) error {
 
 func NewAndSpecification[T any](specs ...Specification[T]) *AndSpecification[T] {
 	return &AndSpecification[T]{
-		specs: specs,
+		Specs: specs,
 	}
 }

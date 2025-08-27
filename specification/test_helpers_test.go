@@ -1,11 +1,11 @@
-package specification
+package specification_test
 
 import (
 	"errors"
 	"fmt"
 )
 
-// TestUser represents a simple user for testing purposes
+// TestUser represents a simple user for testing purposes.
 type TestUser struct {
 	ID       int
 	Name     string
@@ -14,7 +14,7 @@ type TestUser struct {
 	IsActive bool
 }
 
-// Mock specifications for testing
+// Mock specifications for testing.
 type AlwaysPassSpec[T any] struct{}
 
 func (a *AlwaysPassSpec[T]) IsSatisfiedBy(item *T) error {
@@ -29,10 +29,11 @@ func (a *AlwaysFailSpec[T]) IsSatisfiedBy(item *T) error {
 	if a.Reason == "" {
 		a.Reason = "always fails"
 	}
+
 	return errors.New(a.Reason)
 }
 
-// UserSpecifications for more realistic testing
+// UserSpecifications for more realistic testing.
 type UserAgeMinSpec struct {
 	MinAge int
 }
@@ -41,6 +42,7 @@ func (u *UserAgeMinSpec) IsSatisfiedBy(user *TestUser) error {
 	if user.Age < u.MinAge {
 		return fmt.Errorf("user age %d is below minimum %d", user.Age, u.MinAge)
 	}
+
 	return nil
 }
 
@@ -52,6 +54,7 @@ func (u *UserAgeMaxSpec) IsSatisfiedBy(user *TestUser) error {
 	if user.Age > u.MaxAge {
 		return fmt.Errorf("user age %d is above maximum %d", user.Age, u.MaxAge)
 	}
+
 	return nil
 }
 
@@ -61,6 +64,7 @@ func (u *UserActiveSpec) IsSatisfiedBy(user *TestUser) error {
 	if !user.IsActive {
 		return errors.New("user is not active")
 	}
+
 	return nil
 }
 
@@ -74,22 +78,27 @@ func (u *UserEmailValidSpec) IsSatisfiedBy(user *TestUser) error {
 	if len(user.Email) < 3 || user.Email[0] == '@' || user.Email[len(user.Email)-1] == '@' {
 		return fmt.Errorf("user email %s is invalid", user.Email)
 	}
+
 	hasAt := false
+
 	for _, c := range user.Email {
 		if c == '@' {
 			if hasAt {
 				return fmt.Errorf("user email %s has multiple @ symbols", user.Email)
 			}
+
 			hasAt = true
 		}
 	}
+
 	if !hasAt {
 		return fmt.Errorf("user email %s is missing @ symbol", user.Email)
 	}
+
 	return nil
 }
 
-// Helper function to create test users
+// Helper function to create test users.
 func createTestUsers() []*TestUser {
 	return []*TestUser{
 		{ID: 1, Name: "Alice", Age: 25, Email: "alice@example.com", IsActive: true},
@@ -101,14 +110,4 @@ func createTestUsers() []*TestUser {
 		{ID: 7, Name: "Grace", Age: 28, Email: "grace@example.com", IsActive: false},
 		{ID: 8, Name: "Henry", Age: 45, Email: "henry@@example.com", IsActive: true},
 	}
-}
-
-// Helper function to get user by ID from a slice
-func getUserByID(users []*TestUser, id int) *TestUser {
-	for _, user := range users {
-		if user.ID == id {
-			return user
-		}
-	}
-	return nil
 }

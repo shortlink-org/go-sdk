@@ -5,7 +5,7 @@ import (
 	"io"
 )
 
-// Logger is our contract for the logger
+// Logger is our contract for the logger.
 type Logger interface {
 	Error(msg string, fields ...any)
 	ErrorWithContext(ctx context.Context, msg string, fields ...any)

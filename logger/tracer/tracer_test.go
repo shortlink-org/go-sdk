@@ -1,4 +1,4 @@
-package tracer
+package tracer_test
 
 import (
 	"testing"
@@ -6,6 +6,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/otel/attribute"
+
+	"github.com/shortlink-org/go-sdk/logger/tracer"
 )
 
 func TestZapFieldsToOpenTelemetry(t *testing.T) {
@@ -38,7 +40,7 @@ func TestZapFieldsToOpenTelemetry(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := FieldsToOpenTelemetry(tt.fields...)
+			got := tracer.FieldsToOpenTelemetry(tt.fields...)
 			require.Equal(t, tt.want, got)
 		})
 	}

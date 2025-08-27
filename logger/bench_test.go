@@ -1,4 +1,4 @@
-package logger
+package logger_test
 
 import (
 	"context"
@@ -6,17 +6,31 @@ import (
 	"io"
 	"testing"
 	"time"
+
+	"github.com/shortlink-org/go-sdk/logger"
+)
+
+// ErrBenchmark is an error used in benchmarks.
+var ErrBenchmark = errors.New("benchmark error")
+
+// benchContextKey is a type for context keys to avoid collisions.
+type benchContextKey string
+
+const (
+	benchRequestIDKey benchContextKey = "request_id"
 )
 
 func BenchmarkNew(b *testing.B) {
-	conf := Configuration{
-		Level:      INFO_LEVEL,
+	conf := logger.Configuration{
+		Level:      logger.INFO_LEVEL,
+		Writer:     io.Discard,
 		TimeFormat: time.RFC3339,
 	}
 
 	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		_, err := New(conf)
+
+	for range b.N {
+		_, err := logger.New(conf)
 		if err != nil {
 			b.Fatal(err)
 		}
@@ -24,91 +38,95 @@ func BenchmarkNew(b *testing.B) {
 }
 
 func BenchmarkInfo(b *testing.B) {
-	conf := Configuration{
-		Level:      INFO_LEVEL,
+	conf := logger.Configuration{
+		Level:      logger.INFO_LEVEL,
 		Writer:     io.Discard,
 		TimeFormat: time.RFC3339,
 	}
 
-	log, err := New(conf)
+	log, err := logger.New(conf)
 	if err != nil {
 		b.Fatal(err)
 	}
 
 	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		log.Info("Benchmark message", "iteration", i, "timestamp", time.Now())
+
+	for idx := range b.N {
+		log.Info("Benchmark message", "iteration", idx, "timestamp", time.Now())
 	}
 }
 
 func BenchmarkInfoWithContext(b *testing.B) {
-	conf := Configuration{
-		Level:      INFO_LEVEL,
+	conf := logger.Configuration{
+		Level:      logger.INFO_LEVEL,
 		Writer:     io.Discard,
 		TimeFormat: time.RFC3339,
 	}
 
-	log, err := New(conf)
+	log, err := logger.New(conf)
 	if err != nil {
 		b.Fatal(err)
 	}
 
-	ctx := context.WithValue(context.Background(), "request_id", "bench-123")
+	ctx := context.WithValue(context.Background(), benchRequestIDKey, "bench-123")
 
 	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		log.InfoWithContext(ctx, "Benchmark message", "iteration", i, "timestamp", time.Now())
+
+	for idx := range b.N {
+		log.InfoWithContext(ctx, "Benchmark message", "iteration", idx, "timestamp", time.Now())
 	}
 }
 
 func BenchmarkWithFields(b *testing.B) {
-	conf := Configuration{
-		Level:      INFO_LEVEL,
+	conf := logger.Configuration{
+		Level:      logger.INFO_LEVEL,
 		Writer:     io.Discard,
 		TimeFormat: time.RFC3339,
 	}
 
-	log, err := New(conf)
+	log, err := logger.New(conf)
 	if err != nil {
 		b.Fatal(err)
 	}
 
 	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+
+	for idx := range b.N {
 		userLogger := log.WithFields("user_id", "123", "component", "benchmark")
-		userLogger.Info("Message", "iteration", i)
+		userLogger.Info("Message", "iteration", idx)
 	}
 }
 
 func BenchmarkWithError(b *testing.B) {
-	conf := Configuration{
-		Level:      ERROR_LEVEL,
+	conf := logger.Configuration{
+		Level:      logger.ERROR_LEVEL,
 		Writer:     io.Discard,
 		TimeFormat: time.RFC3339,
 	}
 
-	log, err := New(conf)
+	log, err := logger.New(conf)
 	if err != nil {
 		b.Fatal(err)
 	}
 
-	testErr := errors.New("benchmark error")
+	testErr := ErrBenchmark
 
 	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+
+	for idx := range b.N {
 		errorLogger := log.WithError(testErr)
-		errorLogger.Error("Error message", "iteration", i)
+		errorLogger.Error("Error message", "iteration", idx)
 	}
 }
 
 func BenchmarkWithTags(b *testing.B) {
-	conf := Configuration{
-		Level:      INFO_LEVEL,
+	conf := logger.Configuration{
+		Level:      logger.INFO_LEVEL,
 		Writer:     io.Discard,
 		TimeFormat: time.RFC3339,
 	}
 
-	log, err := New(conf)
+	log, err := logger.New(conf)
 	if err != nil {
 		b.Fatal(err)
 	}
@@ -120,62 +138,66 @@ func BenchmarkWithTags(b *testing.B) {
 	}
 
 	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+
+	for idx := range b.N {
 		taggedLogger := log.WithTags(tags)
-		taggedLogger.Info("Message", "iteration", i)
+		taggedLogger.Info("Message", "iteration", idx)
 	}
 }
 
 func BenchmarkError(b *testing.B) {
-	conf := Configuration{
-		Level:      ERROR_LEVEL,
+	conf := logger.Configuration{
+		Level:      logger.ERROR_LEVEL,
 		Writer:     io.Discard,
 		TimeFormat: time.RFC3339,
 	}
 
-	log, err := New(conf)
+	log, err := logger.New(conf)
 	if err != nil {
 		b.Fatal(err)
 	}
 
 	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		log.Error("Error message", "iteration", i, "error_code", 500)
+
+	for idx := range b.N {
+		log.Error("Error message", "iteration", idx, "error_code", 500)
 	}
 }
 
 func BenchmarkWarn(b *testing.B) {
-	conf := Configuration{
-		Level:      WARN_LEVEL,
+	conf := logger.Configuration{
+		Level:      logger.WARN_LEVEL,
 		Writer:     io.Discard,
 		TimeFormat: time.RFC3339,
 	}
 
-	log, err := New(conf)
+	log, err := logger.New(conf)
 	if err != nil {
 		b.Fatal(err)
 	}
 
 	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		log.Warn("Warning message", "iteration", i, "memory_usage", "85%")
+
+	for idx := range b.N {
+		log.Warn("Warning message", "iteration", idx, "memory_usage", "85%")
 	}
 }
 
 func BenchmarkDebug(b *testing.B) {
-	conf := Configuration{
-		Level:      DEBUG_LEVEL,
+	conf := logger.Configuration{
+		Level:      logger.DEBUG_LEVEL,
 		Writer:     io.Discard,
 		TimeFormat: time.RFC3339,
 	}
 
-	log, err := New(conf)
+	log, err := logger.New(conf)
 	if err != nil {
 		b.Fatal(err)
 	}
 
 	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		log.Debug("Debug message", "iteration", i, "debug_info", "processing step")
+
+	for idx := range b.N {
+		log.Debug("Debug message", "iteration", idx, "debug_info", "processing step")
 	}
 }

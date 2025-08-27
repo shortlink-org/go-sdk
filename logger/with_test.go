@@ -1,4 +1,4 @@
-package logger
+package logger_test
 
 import (
 	"bytes"
@@ -7,17 +7,23 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/require"
+
+	"github.com/shortlink-org/go-sdk/logger"
 )
 
+// ErrTest is an error used in tests.
+var ErrTest = errors.New("test error")
+
 func TestWithFields(t *testing.T) {
-	var b bytes.Buffer
-	conf := Configuration{
-		Level:      INFO_LEVEL,
-		Writer:     &b,
+	var buffer bytes.Buffer
+
+	conf := logger.Configuration{
+		Level:      logger.INFO_LEVEL,
+		Writer:     &buffer,
 		TimeFormat: time.RFC822,
 	}
 
-	log, err := New(conf)
+	log, err := logger.New(conf)
 	require.NoError(t, err)
 
 	// Test WithFields
@@ -25,41 +31,42 @@ func TestWithFields(t *testing.T) {
 	userLogger.Info("User action", "action", "login")
 
 	// Check that fields were added
-	require.Contains(t, b.String(), `"user_id":"123"`)
-	require.Contains(t, b.String(), `"component":"auth"`)
-	require.Contains(t, b.String(), `"action":"login"`)
+	require.Contains(t, buffer.String(), `"user_id":"123"`)
+	require.Contains(t, buffer.String(), `"component":"auth"`)
+	require.Contains(t, buffer.String(), `"action":"login"`)
 }
 
 func TestWithError(t *testing.T) {
-	var b bytes.Buffer
-	conf := Configuration{
-		Level:      ERROR_LEVEL,
-		Writer:     &b,
+	var buffer bytes.Buffer
+
+	conf := logger.Configuration{
+		Level:      logger.ERROR_LEVEL,
+		Writer:     &buffer,
 		TimeFormat: time.RFC822,
 	}
 
-	log, err := New(conf)
+	log, err := logger.New(conf)
 	require.NoError(t, err)
 
 	// Test WithError
-	testErr := errors.New("test error")
-	errorLogger := log.WithError(testErr)
+	errorLogger := log.WithError(ErrTest)
 	errorLogger.Error("Operation failed", "operation", "query")
 
 	// Check that error was added
-	require.Contains(t, b.String(), `"error":"test error"`)
-	require.Contains(t, b.String(), `"operation":"query"`)
+	require.Contains(t, buffer.String(), `"error":"test error"`)
+	require.Contains(t, buffer.String(), `"operation":"query"`)
 }
 
 func TestWithTags(t *testing.T) {
-	var b bytes.Buffer
-	conf := Configuration{
-		Level:      INFO_LEVEL,
-		Writer:     &b,
+	var buffer bytes.Buffer
+
+	conf := logger.Configuration{
+		Level:      logger.INFO_LEVEL,
+		Writer:     &buffer,
 		TimeFormat: time.RFC822,
 	}
 
-	log, err := New(conf)
+	log, err := logger.New(conf)
 	require.NoError(t, err)
 
 	// Test WithTags
@@ -72,21 +79,22 @@ func TestWithTags(t *testing.T) {
 	taggedLogger.Info("Service started", "port", 8080)
 
 	// Check that tags were added
-	require.Contains(t, b.String(), `"service":"api"`)
-	require.Contains(t, b.String(), `"version":"1.0"`)
-	require.Contains(t, b.String(), `"env":"production"`)
-	require.Contains(t, b.String(), `"port":8080`)
+	require.Contains(t, buffer.String(), `"service":"api"`)
+	require.Contains(t, buffer.String(), `"version":"1.0"`)
+	require.Contains(t, buffer.String(), `"env":"production"`)
+	require.Contains(t, buffer.String(), `"port":8080`)
 }
 
 func TestWithErrorNil(t *testing.T) {
-	var b bytes.Buffer
-	conf := Configuration{
-		Level:      INFO_LEVEL,
-		Writer:     &b,
+	var buffer bytes.Buffer
+
+	conf := logger.Configuration{
+		Level:      logger.INFO_LEVEL,
+		Writer:     &buffer,
 		TimeFormat: time.RFC822,
 	}
 
-	log, err := New(conf)
+	log, err := logger.New(conf)
 	require.NoError(t, err)
 
 	// Test WithError with nil error
@@ -94,18 +102,19 @@ func TestWithErrorNil(t *testing.T) {
 	errorLogger.Info("Message")
 
 	// Should not add error field
-	require.NotContains(t, b.String(), `"error"`)
+	require.NotContains(t, buffer.String(), `"error"`)
 }
 
 func TestWithTagsEmpty(t *testing.T) {
-	var b bytes.Buffer
-	conf := Configuration{
-		Level:      INFO_LEVEL,
-		Writer:     &b,
+	var buffer bytes.Buffer
+
+	conf := logger.Configuration{
+		Level:      logger.INFO_LEVEL,
+		Writer:     &buffer,
 		TimeFormat: time.RFC822,
 	}
 
-	log, err := New(conf)
+	log, err := logger.New(conf)
 	require.NoError(t, err)
 
 	// Test WithTags with empty map
@@ -113,18 +122,19 @@ func TestWithTagsEmpty(t *testing.T) {
 	emptyLogger.Info("Message")
 
 	// Should work without adding fields
-	require.Contains(t, b.String(), `"Message"`)
+	require.Contains(t, buffer.String(), `"Message"`)
 }
 
 func TestWithFieldsEmpty(t *testing.T) {
-	var b bytes.Buffer
-	conf := Configuration{
-		Level:      INFO_LEVEL,
-		Writer:     &b,
+	var buffer bytes.Buffer
+
+	conf := logger.Configuration{
+		Level:      logger.INFO_LEVEL,
+		Writer:     &buffer,
 		TimeFormat: time.RFC822,
 	}
 
-	log, err := New(conf)
+	log, err := logger.New(conf)
 	require.NoError(t, err)
 
 	// Test WithFields with no fields
@@ -132,5 +142,5 @@ func TestWithFieldsEmpty(t *testing.T) {
 	emptyLogger.Info("Message")
 
 	// Should work without adding fields
-	require.Contains(t, b.String(), `"Message"`)
+	require.Contains(t, buffer.String(), `"Message"`)
 }

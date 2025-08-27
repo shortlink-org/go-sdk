@@ -1,4 +1,4 @@
-package specification
+package specification_test
 
 import (
 	"errors"
@@ -7,11 +7,14 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
+
+	"github.com/shortlink-org/go-sdk/specification"
 )
 
-// FilterTestSuite groups related filter tests
+// FilterTestSuite groups related filter tests.
 type FilterTestSuite struct {
 	suite.Suite
+
 	users []*TestUser
 }
 
@@ -29,12 +32,12 @@ func (suite *FilterTestSuite) TestFilter_EmptySlice() {
 	spec := &AlwaysPassSpec[TestUser]{}
 
 	// Act
-	result, err := Filter(emptyUsers, spec)
+	result, err := specification.Filter(emptyUsers, spec)
 
 	// Assert
-	assert.NoError(suite.T(), err)
-	assert.Empty(suite.T(), result)
-	assert.NotNil(suite.T(), result) // Should return empty slice, not nil
+	suite.Require().NoError(err)
+	suite.Require().Empty(result)
+	suite.Require().NotNil(result) // Should return empty slice, not nil
 }
 
 func (suite *FilterTestSuite) TestFilter_AllPass() {
@@ -42,12 +45,12 @@ func (suite *FilterTestSuite) TestFilter_AllPass() {
 	spec := &AlwaysPassSpec[TestUser]{}
 
 	// Act
-	result, err := Filter(suite.users, spec)
+	result, err := specification.Filter(suite.users, spec)
 
 	// Assert
-	assert.NoError(suite.T(), err)
-	assert.Len(suite.T(), result, len(suite.users))
-	assert.Equal(suite.T(), suite.users, result)
+	suite.Require().NoError(err)
+	suite.Require().Len(result, len(suite.users))
+	suite.Require().Equal(suite.users, result)
 }
 
 func (suite *FilterTestSuite) TestFilter_AllFail() {
@@ -55,26 +58,30 @@ func (suite *FilterTestSuite) TestFilter_AllFail() {
 	spec := &AlwaysFailSpec[TestUser]{Reason: "test failure"}
 
 	// Act
-	result, err := Filter(suite.users, spec)
+	result, err := specification.Filter(suite.users, spec)
 
 	// Assert
-	assert.Error(suite.T(), err)
-	assert.Empty(suite.T(), result)
-	assert.Contains(suite.T(), err.Error(), "test failure")
+	suite.Require().Error(err)
+	suite.Require().Empty(result)
+	suite.Require().Contains(err.Error(), "test failure")
 
 	// Check that all users generated errors
 	errorCount := 0
+
 	currentErr := err
+
 	for currentErr != nil {
 		errorCount++
-		if ue := errors.Unwrap(currentErr); ue != nil {
+
+		ue := errors.Unwrap(currentErr)
+		if ue != nil {
 			currentErr = ue
 		} else {
 			break
 		}
 	}
 	// The exact count may vary due to errors.Join implementation
-	assert.Greater(suite.T(), errorCount, 0)
+	suite.Positive(errorCount)
 }
 
 func (suite *FilterTestSuite) TestFilter_MixedResults() {
@@ -82,25 +89,27 @@ func (suite *FilterTestSuite) TestFilter_MixedResults() {
 	spec := &UserActiveSpec{}
 
 	// Act
-	result, err := Filter(suite.users, spec)
+	result, err := specification.Filter(suite.users, spec)
 
 	// Assert
-	assert.Error(suite.T(), err) // Should have errors for inactive users
-	assert.NotEmpty(suite.T(), result) // Should have some active users
+	suite.Require().Error(err)       // Should have errors for inactive users
+	suite.Require().NotEmpty(result) // Should have some active users
 
 	// Check that all returned users are active
 	for _, user := range result {
-		assert.True(suite.T(), user.IsActive, "Expected user %s to be active", user.Name)
+		suite.Require().True(user.IsActive, "Expected user %s to be active", user.Name)
 	}
 
 	// Check that inactive users are not in result
 	expectedActiveUsers := 0
+
 	for _, user := range suite.users {
 		if user.IsActive {
 			expectedActiveUsers++
 		}
 	}
-	assert.Len(suite.T(), result, expectedActiveUsers)
+
+	suite.Len(result, expectedActiveUsers)
 }
 
 func (suite *FilterTestSuite) TestFilter_AgeFilter() {
@@ -108,30 +117,33 @@ func (suite *FilterTestSuite) TestFilter_AgeFilter() {
 	spec := &UserAgeMinSpec{MinAge: 18}
 
 	// Act
-	result, err := Filter(suite.users, spec)
+	result, err := specification.Filter(suite.users, spec)
 
 	// Assert
-	assert.Error(suite.T(), err) // Should have errors for underage users
-	assert.NotEmpty(suite.T(), result)
+	suite.Require().Error(err) // Should have errors for underage users
+	suite.Require().NotEmpty(result)
 
 	// Check that all returned users are 18 or older
 	for _, user := range result {
-		assert.GreaterOrEqual(suite.T(), user.Age, 18, "Expected user %s to be 18 or older", user.Name)
+		suite.Require().GreaterOrEqual(user.Age, 18, "Expected user %s to be 18 or older", user.Name)
 	}
 
 	// Verify specific users
 	aliceInResult := false
 	bobInResult := false
+
 	for _, user := range result {
 		if user.Name == "Alice" {
 			aliceInResult = true
 		}
+
 		if user.Name == "Bob" {
 			bobInResult = true
 		}
 	}
-	assert.True(suite.T(), aliceInResult, "Alice (25) should be in result")
-	assert.False(suite.T(), bobInResult, "Bob (17) should not be in result")
+
+	suite.True(aliceInResult, "Alice (25) should be in result")
+	suite.False(bobInResult, "Bob (17) should not be in result")
 }
 
 func (suite *FilterTestSuite) TestFilter_EmailValidation() {
@@ -139,16 +151,16 @@ func (suite *FilterTestSuite) TestFilter_EmailValidation() {
 	spec := &UserEmailValidSpec{}
 
 	// Act
-	result, err := Filter(suite.users, spec)
+	result, err := specification.Filter(suite.users, spec)
 
 	// Assert
-	assert.Error(suite.T(), err) // Should have errors for invalid emails
-	assert.NotEmpty(suite.T(), result)
+	suite.Require().Error(err) // Should have errors for invalid emails
+	suite.Require().NotEmpty(result)
 
 	// Check that all returned users have valid emails
 	for _, user := range result {
-		assert.NotEmpty(suite.T(), user.Email, "Expected user %s to have non-empty email", user.Name)
-		assert.Contains(suite.T(), user.Email, "@", "Expected user %s to have valid email", user.Name)
+		suite.Require().NotEmpty(user.Email, "Expected user %s to have non-empty email", user.Name)
+		suite.Require().Contains(user.Email, "@", "Expected user %s to have valid email", user.Name)
 	}
 }
 
@@ -162,8 +174,8 @@ func (suite *FilterTestSuite) TestFilter_NilSpecification() {
 	}()
 
 	// Act & Assert
-	assert.Panics(suite.T(), func() {
-		Filter(suite.users, nil)
+	suite.Panics(func() {
+		_, _ = specification.Filter(suite.users, nil)
 	})
 }
 
@@ -172,12 +184,12 @@ func (suite *FilterTestSuite) TestFilter_NilSlice() {
 	spec := &AlwaysPassSpec[TestUser]{}
 
 	// Act
-	result, err := Filter(nil, spec)
+	result, err := specification.Filter(nil, spec)
 
 	// Assert
-	assert.NoError(suite.T(), err)
-	assert.Empty(suite.T(), result)
-	assert.NotNil(suite.T(), result) // Should return empty slice, not nil
+	suite.Require().NoError(err)
+	suite.Require().Empty(result)
+	suite.Require().NotNil(result) // Should return empty slice, not nil
 }
 
 func (suite *FilterTestSuite) TestFilter_SliceWithNilElements() {
@@ -192,12 +204,12 @@ func (suite *FilterTestSuite) TestFilter_SliceWithNilElements() {
 
 	// Act & Assert
 	// This should panic when spec.IsSatisfiedBy is called with nil
-	assert.Panics(suite.T(), func() {
-		Filter(usersWithNil, spec)
+	suite.Panics(func() {
+		_, _ = specification.Filter(usersWithNil, spec)
 	})
 }
 
-// Standalone tests for additional coverage
+// Standalone tests for additional coverage.
 func TestFilter_BasicFunctionality(t *testing.T) {
 	// Arrange
 	users := []*TestUser{
@@ -207,7 +219,7 @@ func TestFilter_BasicFunctionality(t *testing.T) {
 	spec := &UserAgeMinSpec{MinAge: 18}
 
 	// Act
-	result, err := Filter(users, spec)
+	result, err := specification.Filter(users, spec)
 
 	// Assert
 	require.Error(t, err) // One user fails age requirement
@@ -225,12 +237,12 @@ func TestFilter_PreservesOrder(t *testing.T) {
 	spec := &AlwaysPassSpec[TestUser]{}
 
 	// Act
-	result, err := Filter(users, spec)
+	result, err := specification.Filter(users, spec)
 
 	// Assert
 	require.NoError(t, err)
 	require.Len(t, result, 3)
-	
+
 	// Check that order is preserved
 	expectedOrder := []string{"Charlie", "Alice", "Eve"}
 	for i, user := range result {
@@ -245,11 +257,11 @@ func TestFilter_CapacityOptimization(t *testing.T) {
 	spec := &AlwaysPassSpec[TestUser]{}
 
 	// Act
-	result, err := Filter(users, spec)
+	result, err := specification.Filter(users, spec)
 
 	// Assert
 	require.NoError(t, err)
-	assert.Equal(t, len(users), len(result))
+	assert.Len(t, result, len(users))
 	// The capacity should be at least len(users) due to make([]T, 0, len(list))
 	assert.GreaterOrEqual(t, cap(result), len(users))
 }
