@@ -6,53 +6,83 @@ on:
   pull_request:
     branches: [ main, master ]
 
+# Cancel previous runs of the same branch/PR
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+# Minimal permissions (Codecov v4 uses OIDC, no token required)
+permissions:
+  contents: read
+  pull-requests: write
+  id-token: write
+
 jobs:
   test:
-    name: Test and Lint
-    runs-on: ubuntu-latest
+    name: Test & Lint (${{ matrix.module }})
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+
     strategy:
+      fail-fast: false
       matrix:
         module: [config, logger, specification]
-    
+
+    env:
+      GOFLAGS: "-count=1" # Disable caching test results, helps find flaky tests
+      CGO_ENABLED: 1      # Needed for `-race`
+
     steps:
-    - name: Check out code
-      uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
 
-    - name: Set up Go
-      uses: actions/setup-go@v5
-      with:
-        go-version: '1.25.0'
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.25.0'
+          cache: true
+          # Each module has its own go.sum, cache per module
+          cache-dependency-path: |
+            ${{ matrix.module }}/go.sum
 
-    - name: Cache Go modules
-      uses: actions/cache@v4
-      with:
-        path: |
-          ~/.cache/go-build
-          ~/go/pkg/mod
-        key: ${{ runner.os }}-go-${{ matrix.module }}-${{ hashFiles(format('{0}/go.sum', matrix.module)) }}
-        restore-keys: |
-          ${{ runner.os }}-go-${{ matrix.module }}-
-          ${{ runner.os }}-go-
+      - name: Show Go environment
+        run: |
+          go version
+          go env
 
-    - name: Download dependencies
-      working-directory: ./${{ matrix.module }}
-      run: go mod download
-
-    - name: Run golangci-lint
-      uses: golangci/golangci-lint-action@v6
-      with:
-        version: latest
+      - name: Prime build cache
         working-directory: ./${{ matrix.module }}
-        args: --config=.golangci.yml
+        run: |
+          go mod download
+          # Warm up compile cache for faster lint/tests
+          go list -deps ./... >/dev/null
 
-    - name: Run tests
-      working-directory: ./${{ matrix.module }}
-      run: go test -race -coverprofile=coverage.out -covermode=atomic ./...
+      - name: Run golangci-lint
+        uses: golangci/golangci-lint-action@v6
+        with:
+          version: latest
+          working-directory: ./${{ matrix.module }}
+          args: --config=.golangci.yml
 
-    - name: Upload coverage to Codecov
-      uses: codecov/codecov-action@v4
-      with:
-        file: ./${{ matrix.module }}/coverage.out
-        flags: ${{ matrix.module }}
-        name: codecov-${{ matrix.module }}
-        fail_ci_if_error: false
+      - name: Run tests (race + coverage)
+        working-directory: ./${{ matrix.module }}
+        run: |
+          go test -race -shuffle=on -coverprofile=coverage.out -covermode=atomic ./...
+
+      - name: Upload coverage artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-${{ matrix.module }}
+          path: ./${{ matrix.module }}/coverage.out
+          if-no-files-found: warn
+          retention-days: 7
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v4
+        with:
+          files: ./${{ matrix.module }}/coverage.out
+          flags: ${{ matrix.module }}
+          name: codecov-${{ matrix.module }}
+          fail_ci_if_error: false
+          verbose: true
