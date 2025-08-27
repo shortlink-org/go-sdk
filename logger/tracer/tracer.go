@@ -2,51 +2,86 @@ package tracer
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"runtime"
+	"strings"
 
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/codes"
+	"go.opentelemetry.io/otel/trace"
 )
 
-const (
-	// callersSkip is the number of callers to skip when getting function name.
-	callersSkip = 3
+const callersSkip = 3
 
-	// fieldsDivisor is used to calculate initial capacity for OpenTelemetry fields.
-	fieldsDivisor = 2
-)
+// ErrLogField is a sentinel used to wrap error messages extracted from log fields.
+var ErrLogField = errors.New("log field error")
 
+// NewTraceFromContext
+// - If an active span exists: add an Event ("log.<LEVEL>") with attributes.
+// - If there is no active span: create a short span only for WARN/ERROR.
+// - Always return fields augmented with traceID/spanID when a span exists.
 func NewTraceFromContext(
-	ctx context.Context, //nolint:contextcheck // contextcheck: ctx is not nil
+	ctx context.Context,
+	level string, // "INFO"|"WARN"|"ERROR"|...
 	msg string,
-	tags []attribute.KeyValue,
-	fields ...any,
+	tags []attribute.KeyValue, // extra attributes
+	fields ...any, // pairs key,value for logs
 ) ([]any, error) {
 	if ctx == nil {
 		ctx = context.Background()
 	}
 
+	levelUpper := strings.ToUpper(level)
+
+	// 1) Normalize fields → attributes with a consistent schema
+	attrs, capturedErr := normalizeToAttrs(msg, levelUpper, tags, fields...)
+
+	// 2) If an active span exists — write an Event
+	if span := trace.SpanFromContext(ctx); span != nil && span.SpanContext().IsValid() {
+		span.AddEvent("log."+levelUpper, trace.WithAttributes(attrs...))
+		annotateByLevel(span, levelUpper, msg, capturedErr)
+
+		out := append(append([]any{}, fields...),
+			"traceID", span.SpanContext().TraceID().String(),
+			"spanID", span.SpanContext().SpanID().String(),
+		)
+
+		return out, nil
+	}
+
+	// 3) No active span — create only for important levels
+	if isSmallLevel(levelUpper) {
+		// Small levels (INFO/DEBUG/TRACE): do not create a span; just return fields
+		return fields, nil
+	}
+
+	// Short correlation span for WARN/ERROR
 	_, span := otel.Tracer("logger").Start(ctx, getNameFunc())
 	defer span.End()
 
-	span.SetAttributes(FieldsToOpenTelemetry(fields...)...)
-	span.SetAttributes(attribute.String("log", msg))
-	span.SetAttributes(tags...)
+	span.SetAttributes(attrs...)
+	annotateByLevel(span, levelUpper, msg, capturedErr)
 
-	// Get span ID and add traceID to fields
-	traceFields := []any{"traceID", span.SpanContext().TraceID().String()}
+	out := append(append([]any{}, fields...),
+		"traceID", span.SpanContext().TraceID().String(),
+		"spanID", span.SpanContext().SpanID().String(),
+	)
 
-	// Combine original fields with traceID
-	result := make([]any, 0, len(fields)+len(traceFields))
-	result = append(result, fields...)
-	result = append(result, traceFields...)
-
-	return result, nil
+	return out, nil
 }
 
-// getNameFunc returns the name of the function calling this package
-// for set name of span.
+func isSmallLevel(levelUpper string) bool {
+	switch levelUpper {
+	case "DEBUG", "INFO", "TRACE":
+		return true
+	default:
+		return false
+	}
+}
+
+// getNameFunc returns the caller function name to use as a span name.
 func getNameFunc() string {
 	pc := make([]uintptr, 1)
 	if n := runtime.Callers(callersSkip, pc); n > 0 {
@@ -58,53 +93,110 @@ func getNameFunc() string {
 	return "log"
 }
 
-// FieldsToOpenTelemetry converts fields to OpenTelemetry attributes.
-func FieldsToOpenTelemetry(fields ...any) []attribute.KeyValue {
-	if len(fields) == 0 {
-		return nil
+// annotateByLevel sets ERROR status and exception.* if error/level indicates failure.
+func annotateByLevel(span trace.Span, level, msg string, err error) {
+	if err != nil {
+		span.SetAttributes(
+			attribute.String("exception.type", fmt.Sprintf("%T", err)),
+			attribute.String("exception.message", err.Error()),
+		)
 	}
 
-	openTelemetryFields := make([]attribute.KeyValue, 0, len(fields)/fieldsDivisor)
-
-	// Process fields in pairs (key, value)
-	for idx := 0; idx < len(fields); idx += 2 {
-		if idx+1 >= len(fields) {
-			break // Skip incomplete pairs
-		}
-
-		key, ok := fields[idx].(string)
-		if !ok {
-			continue // Skip non-string keys
-		}
-
-		value := fields[idx+1]
-		switch val := value.(type) {
-		case string:
-			openTelemetryFields = append(openTelemetryFields, attribute.String(key, val))
-		case bool:
-			openTelemetryFields = append(openTelemetryFields, attribute.Bool(key, val))
-		case int:
-			openTelemetryFields = append(openTelemetryFields, attribute.Int(key, val))
-		case int32:
-			openTelemetryFields = append(openTelemetryFields, attribute.Int(key, int(val)))
-		case int64:
-			openTelemetryFields = append(openTelemetryFields, attribute.Int64(key, val))
-		case error:
-			openTelemetryFields = append(openTelemetryFields, attribute.String(key, val.Error()))
-		default:
-			// For other types, convert to string
-			openTelemetryFields = append(openTelemetryFields, attribute.String(key, toString(val)))
-		}
+	switch level {
+	case "ERROR", "FATAL":
+		span.SetStatus(codes.Error, msg)
 	}
-
-	return openTelemetryFields
 }
 
-// toString converts any value to string.
-func toString(v any) string {
-	if v == nil {
-		return ""
+// normalizeToAttrs:
+//   - adds log.severity, log.message
+//   - normalizes err/error → exception.message + exception.type
+//   - maps is_error → log.is_error
+//   - converts the rest of key/value pairs to attributes
+func normalizeToAttrs(msg, level string, tags []attribute.KeyValue, fields ...any) ([]attribute.KeyValue, error) {
+	attrs := make([]attribute.KeyValue, 0, len(fields)/2+4+len(tags))
+	attrs = append(attrs,
+		attribute.String("log.severity", level),
+		attribute.String("log.message", msg),
+	)
+	attrs = append(attrs, tags...)
+
+	var capturedErr error
+
+	for i := 0; i+1 < len(fields); i += 2 {
+		key, ok := fields[i].(string)
+		if !ok || key == "" {
+			continue
+		}
+
+		val := fields[i+1]
+
+		switch strings.ToLower(key) {
+		case "err", "error":
+			switch typedVal := val.(type) {
+			case error:
+				capturedErr = typedVal
+				attrs = append(attrs, attribute.String("exception.message", typedVal.Error()))
+				attrs = append(attrs, attribute.String("exception.type", fmt.Sprintf("%T", typedVal)))
+			case string:
+				if typedVal != "" {
+					capturedErr = fmt.Errorf("%w: %s", ErrLogField, typedVal) // wrap sentinel (err113)
+					attrs = append(attrs, attribute.String("exception.message", typedVal))
+				}
+			default:
+				asStr := fmt.Sprintf("%v", typedVal)
+				if asStr != "" {
+					capturedErr = fmt.Errorf("%w: %s", ErrLogField, asStr) // wrap sentinel (err113)
+					attrs = append(attrs, attribute.String("exception.message", asStr))
+				}
+			}
+		case "is_error", "iserror", "error_flag":
+			attrs = append(attrs, attribute.Bool("log.is_error", toBool(val)))
+		default:
+			attrs = append(attrs, kv(key, val))
+		}
 	}
 
-	return fmt.Sprintf("%v", v)
+	return attrs, capturedErr
+}
+
+// kv converts most common Go types to OTel attributes.
+func kv(key string, v any) attribute.KeyValue {
+	switch typed := v.(type) {
+	case string:
+		return attribute.String(key, typed)
+	case bool:
+		return attribute.Bool(key, typed)
+	case int:
+		return attribute.Int(key, typed)
+	case int32:
+		return attribute.Int(key, int(typed))
+	case int64:
+		return attribute.Int64(key, typed)
+	case float32:
+		return attribute.Float64(key, float64(typed))
+	case float64:
+		return attribute.Float64(key, typed)
+	case error:
+		return attribute.String(key, typed.Error())
+	default:
+		return attribute.String(key, fmt.Sprintf("%v", typed))
+	}
+}
+
+func toBool(v any) bool {
+	switch raw := v.(type) {
+	case bool:
+		return raw
+	case string:
+		return strings.EqualFold(raw, "true") || raw == "1" || strings.EqualFold(raw, "yes")
+	case int:
+		return raw == 1
+	case int32:
+		return raw == 1
+	case int64:
+		return raw == 1
+	default:
+		return false
+	}
 }

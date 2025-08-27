@@ -3,7 +3,6 @@ package logger
 import (
 	"context"
 	"log/slog"
-	"time"
 
 	"github.com/shortlink-org/go-sdk/logger/tracer"
 )
@@ -13,37 +12,34 @@ type SlogLogger struct {
 }
 
 func New(cfg Configuration) (*SlogLogger, error) {
-	// Check config and set default values if needed
+	// Validate config and set defaults
 	err := cfg.Validate()
 	if err != nil {
 		return nil, err
 	}
 
-	// Create slog handler with JSON format
+	// JSON handler with source and formatted timestamp (from record, not time.Now)
 	handler := slog.NewJSONHandler(cfg.Writer, &slog.HandlerOptions{
 		Level:     convertLevel(cfg.Level),
-		AddSource: true, // Always include source location
-		ReplaceAttr: func(groups []string, attr slog.Attr) slog.Attr {
-			// Customize timestamp format
-			if attr.Key == slog.TimeKey {
-				return slog.String(slog.TimeKey, time.Now().Format(cfg.TimeFormat))
+		AddSource: true,
+		ReplaceAttr: func(_ []string, attr slog.Attr) slog.Attr {
+			if attr.Key == slog.TimeKey && attr.Value.Kind() == slog.KindTime {
+				return slog.String(slog.TimeKey, attr.Value.Time().Format(cfg.TimeFormat))
 			}
 
 			return attr
 		},
 	})
 
-	logger := slog.New(handler)
-
-	return &SlogLogger{logger: logger}, nil
+	return &SlogLogger{logger: slog.New(handler)}, nil
 }
 
 func (log *SlogLogger) Close() error {
-	// slog.Logger doesn't have a Close method, so we just return nil
+	// slog has nothing to close
 	return nil
 }
 
-// convertLevel converts our log level to slog level.
+// convertLevel converts our int level to slog.Level.
 func convertLevel(level int) slog.Level {
 	switch level {
 	case ERROR_LEVEL:
@@ -59,15 +55,33 @@ func convertLevel(level int) slog.Level {
 	}
 }
 
-// logWithContext is a helper function to reduce code duplication.
-func (log *SlogLogger) logWithContext(ctx context.Context, level slog.Level, msg string, fields ...any) {
-	// Add tracing if context is provided
-	if ctx != nil && ctx != context.Background() {
-		var err error
+// levelString maps slog.Level to a severity string for tracer.
+func levelString(level slog.Level) string {
+	switch {
+	case level <= slog.LevelError:
+		return "ERROR"
+	case level == slog.LevelWarn:
+		return "WARN"
+	case level == slog.LevelInfo:
+		return "INFO"
+	default:
+		return "DEBUG"
+	}
+}
 
-		fields, err = tracer.NewTraceFromContext(ctx, msg, nil, fields...)
-		if err != nil {
-			log.logger.ErrorContext(ctx, "Error sending span to OpenTelemetry: "+err.Error())
+// logWithContext enriches fields with trace correlation (if ctx carries a span) and logs.
+func (log *SlogLogger) logWithContext(ctx context.Context, level slog.Level, msg string, fields ...any) {
+	// Enrich with OTel span event + traceID/spanID if a span exists.
+	if ctx != nil && ctx != context.Background() {
+		enriched, err := tracer.NewTraceFromContext(ctx, levelString(level), msg, nil, fields...)
+		if err == nil {
+			fields = enriched
+		} else {
+			// Log enrichment failure once; avoid recursion (log directly).
+			log.logger.Log(ctx, slog.LevelError,
+				"OpenTelemetry trace enrichment failed",
+				"err", err.Error(),
+			)
 		}
 	}
 

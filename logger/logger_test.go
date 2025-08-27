@@ -54,7 +54,7 @@ func TestOutputInfoWithContextSlog(t *testing.T) {
 		"source": map[string]any{
 			"file":     "/Users/user/myprojects/shortlink/go-sdk/logger/logger.go",
 			"function": "github.com/shortlink-org/go-sdk/logger.(*SlogLogger).logWithContext",
-			"line":     float64(74),
+			"line":     float64(82),
 		},
 		"msg": "Hello World",
 	}
@@ -106,7 +106,7 @@ func TestFieldsSlog(t *testing.T) {
 		"source": map[string]any{
 			"file":     "/Users/user/myprojects/shortlink/go-sdk/logger/logger.go",
 			"function": "github.com/shortlink-org/go-sdk/logger.(*SlogLogger).logWithContext",
-			"line":     float64(74),
+			"line":     float64(82),
 		},
 		"first": float64(1),
 		"hello": "world",

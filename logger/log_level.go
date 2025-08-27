@@ -5,19 +5,6 @@ import (
 	"log/slog"
 )
 
-// Fatal ===============================================================================================================
-
-func (log *SlogLogger) Fatal(msg string, fields ...any) {
-	log.logger.Error(msg, fields...)
-	// slog doesn't have fatal, so we log as error
-	// In production, you might want to call os.Exit(1) here
-}
-
-func (log *SlogLogger) FatalWithContext(ctx context.Context, msg string, fields ...any) {
-	log.logWithContext(ctx, slog.LevelError, msg, fields...)
-	// In production, you might want to call os.Exit(1) here
-}
-
 // Warn ================================================================================================================
 
 func (log *SlogLogger) Warn(msg string, fields ...any) {

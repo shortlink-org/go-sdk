@@ -18,10 +18,6 @@ log.Error("Connection failed", "error", err)
 // With context
 ctx := context.Background()
 log.InfoWithContext(ctx, "Request processed", "method", "GET")
-
-// With methods
-userLogger := log.WithFields("user_id", "123")
-userLogger.Info("User action", "action", "login")
 ```
 
 ## API
@@ -41,11 +37,6 @@ log.ErrorWithContext(ctx, msg, fields...)
 log.WarnWithContext(ctx, msg, fields...)
 log.InfoWithContext(ctx, msg, fields...)
 log.DebugWithContext(ctx, msg, fields...)
-
-// With
-log.WithFields(fields...) -> *SlogLogger
-log.WithError(err) -> *SlogLogger
-log.WithTags(map[string]string) -> *SlogLogger
 ```
 
 ## Configuration
