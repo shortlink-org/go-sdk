@@ -54,7 +54,6 @@ jobs:
         working-directory: ./${{ matrix.module }}
         run: |
           go mod download
-          # Warm up compile cache for faster lint/tests
           go list -deps ./... >/dev/null
 
       - name: Run golangci-lint
@@ -62,7 +61,7 @@ jobs:
         with:
           version: latest
           working-directory: ./${{ matrix.module }}
-          args: --config=.golangci.yml
+          args: --config=./.golangci.yml
 
       - name: Run tests (race + coverage)
         working-directory: ./${{ matrix.module }}
