@@ -1,0 +1,58 @@
+name: CI
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  test:
+    name: Test and Lint
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        module: [config, logger, specification]
+    
+    steps:
+    - name: Check out code
+      uses: actions/checkout@v4
+
+    - name: Set up Go
+      uses: actions/setup-go@v5
+      with:
+        go-version: '1.25.0'
+
+    - name: Cache Go modules
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/.cache/go-build
+          ~/go/pkg/mod
+        key: ${{ runner.os }}-go-${{ matrix.module }}-${{ hashFiles(format('{0}/go.sum', matrix.module)) }}
+        restore-keys: |
+          ${{ runner.os }}-go-${{ matrix.module }}-
+          ${{ runner.os }}-go-
+
+    - name: Download dependencies
+      working-directory: ./${{ matrix.module }}
+      run: go mod download
+
+    - name: Run golangci-lint
+      uses: golangci/golangci-lint-action@v6
+      with:
+        version: latest
+        working-directory: ./${{ matrix.module }}
+        args: --config=.golangci.yml
+
+    - name: Run tests
+      working-directory: ./${{ matrix.module }}
+      run: go test -race -coverprofile=coverage.out -covermode=atomic ./...
+
+    - name: Upload coverage to Codecov
+      uses: codecov/codecov-action@v4
+      with:
+        file: ./${{ matrix.module }}/coverage.out
+        flags: ${{ matrix.module }}
+        name: codecov-${{ matrix.module }}
+        fail_ci_if_error: false
