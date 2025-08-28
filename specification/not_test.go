@@ -274,7 +274,6 @@ func TestNotSpecification_ErrNotSatisfiedConstant(t *testing.T) {
 	// Test that ErrNotSatisfied is properly defined
 	require.Error(t, specification.ErrNotSatisfied)
 	require.Equal(t, "specification not satisfied", specification.ErrNotSatisfied.Error())
-	// removed: assert.ErrorIs(t, specification.ErrNotSatisfied, specification.ErrNotSatisfied)
 }
 
 func TestNotSpecification_DirectStructUsage(t *testing.T) {

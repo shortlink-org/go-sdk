@@ -5,7 +5,7 @@ import (
 	"context"
 	"io"
 	"os"
-	"reflect"
+	"strings"
 	"testing"
 	"time"
 
@@ -28,7 +28,6 @@ const (
 
 func TestMain(m *testing.M) {
 	goleak.VerifyTestMain(m)
-
 	os.Exit(m.Run())
 }
 
@@ -48,23 +47,29 @@ func TestOutputInfoWithContextSlog(t *testing.T) {
 	log.InfoWithContext(context.Background(), "Hello World")
 
 	expectedTime := time.Now().Format(time.RFC822)
-	expected := map[string]any{
-		"level": "INFO",
-		"time":  expectedTime,
-		"source": map[string]any{
-			"file":     "/Users/user/myprojects/shortlink/go-sdk/logger/logger.go",
-			"function": "github.com/shortlink-org/go-sdk/logger.(*SlogLogger).logWithContext",
-			"line":     float64(88),
-		},
-		"msg": "Hello World",
-	}
 
 	var response map[string]any
-
 	require.NoError(t, json.Unmarshal(buffer.Bytes(), &response), "Error unmarshalling")
 
-	if !reflect.DeepEqual(expected, response) {
-		assert.Equal(t, expected, response)
+	require.Equal(t, "INFO", response["level"])
+	require.Equal(t, expectedTime, response["time"])
+	require.Equal(t, "Hello World", response["msg"])
+
+	// Flexible source assertions
+	src, ok := response["source"].(map[string]any)
+	require.True(t, ok, "source should be an object")
+
+	file, ok := src["file"].(string)
+	require.True(t, ok, "source.file should be a string")
+	assert.True(t, strings.HasSuffix(file, "logger/logger.go"),
+		"unexpected source.file suffix: %s", file)
+
+	fun, _ := src["function"].(string)
+	assert.Contains(t, fun, "SlogLogger")
+	assert.Contains(t, fun, "logWithContext")
+
+	if ln, ok := src["line"].(float64); ok {
+		assert.Greater(t, ln, float64(0))
 	}
 }
 
@@ -99,25 +104,31 @@ func TestFieldsSlog(t *testing.T) {
 	log.InfoWithContext(context.Background(), "Hello World", "hello", "world", "first", 1)
 
 	expectedTime := time.Now().Format(time.RFC822)
-	expected := map[string]any{
-		"level": "INFO",
-		"time":  expectedTime,
-		"msg":   "Hello World",
-		"source": map[string]any{
-			"file":     "/Users/user/myprojects/shortlink/go-sdk/logger/logger.go",
-			"function": "github.com/shortlink-org/go-sdk/logger.(*SlogLogger).logWithContext",
-			"line":     float64(88),
-		},
-		"first": float64(1),
-		"hello": "world",
-	}
 
 	var response map[string]any
-
 	require.NoError(t, json.Unmarshal(buffer.Bytes(), &response), "Error unmarshalling")
 
-	if !reflect.DeepEqual(expected, response) {
-		assert.Equal(t, expected, response)
+	require.Equal(t, "INFO", response["level"])
+	require.Equal(t, expectedTime, response["time"])
+	require.Equal(t, "Hello World", response["msg"])
+	require.Equal(t, "world", response["hello"])
+	require.Equal(t, float64(1), response["first"])
+
+	// Flexible source assertions
+	src, ok := response["source"].(map[string]any)
+	require.True(t, ok, "source should be an object")
+
+	file, ok := src["file"].(string)
+	require.True(t, ok, "source.file should be a string")
+	assert.True(t, strings.HasSuffix(file, "logger/logger.go"),
+		"unexpected source.file suffix: %s", file)
+
+	fun, _ := src["function"].(string)
+	assert.Contains(t, fun, "SlogLogger")
+	assert.Contains(t, fun, "logWithContext")
+
+	if ln, ok := src["line"].(float64); ok {
+		assert.Greater(t, ln, float64(0))
 	}
 }
 
@@ -137,25 +148,20 @@ func TestSetLevel(t *testing.T) {
 	log.Info("Hello World")
 
 	expectedStr := ``
-
-	if buffer.String() != expectedStr {
-		assert.Errorf(t, err, "Expected: %sgot: %s", expectedStr, buffer.String())
-	}
+	assert.Equal(t, expectedStr, buffer.String())
 }
 
 func TestDefaultConfig(t *testing.T) {
 	conf := logger.Default()
 
-	// Test default values
 	assert.Equal(t, os.Stdout, conf.Writer)
 	assert.Equal(t, time.RFC3339Nano, conf.TimeFormat)
 	assert.Equal(t, logger.INFO_LEVEL, conf.Level)
 }
 
 func TestConfigValidation(t *testing.T) {
-	// Test invalid level
 	conf := logger.Configuration{
-		Level:      999, // Invalid level
+		Level:      999,
 		Writer:     io.Discard,
 		TimeFormat: time.RFC3339,
 	}
@@ -164,7 +170,6 @@ func TestConfigValidation(t *testing.T) {
 	require.Error(t, err)
 	require.ErrorIs(t, err, logger.ErrInvalidLogLevel)
 
-	// Test valid level
 	conf.Level = logger.DEBUG_LEVEL
 	err = conf.Validate()
 	assert.NoError(t, err)
@@ -184,7 +189,6 @@ func TestError(t *testing.T) {
 
 	log.Error("Database error", "operation", "query", "table", "users")
 
-	// Check that error was logged
 	require.Contains(t, buffer.String(), `"level":"ERROR"`)
 	require.Contains(t, buffer.String(), `"msg":"Database error"`)
 	require.Contains(t, buffer.String(), `"operation":"query"`)
@@ -205,7 +209,6 @@ func TestWarn(t *testing.T) {
 
 	log.Warn("High memory usage", "usage", "85%", "threshold", "80%")
 
-	// Check that warning was logged
 	require.Contains(t, buffer.String(), `"level":"WARN"`)
 	require.Contains(t, buffer.String(), `"msg":"High memory usage"`)
 	require.Contains(t, buffer.String(), `"usage":"85%"`)
@@ -226,7 +229,6 @@ func TestDebug(t *testing.T) {
 
 	log.Debug("Processing request", "headers", "content-type: application/json", "method", "POST")
 
-	// Check that debug was logged
 	require.Contains(t, buffer.String(), `"level":"DEBUG"`)
 	require.Contains(t, buffer.String(), `"msg":"Processing request"`)
 	require.Contains(t, buffer.String(), `"headers":"content-type: application/json"`)
@@ -248,7 +250,6 @@ func TestErrorWithContext(t *testing.T) {
 	ctx := context.WithValue(context.Background(), requestIDKey, "req-123")
 	log.ErrorWithContext(ctx, "Request failed", "status", 500, "path", "/api/users")
 
-	// Check that error with context was logged
 	require.Contains(t, buffer.String(), `"level":"ERROR"`)
 	require.Contains(t, buffer.String(), `"msg":"Request failed"`)
 	require.Contains(t, buffer.String(), `"status":500`)
@@ -272,7 +273,6 @@ func TestWarnWithContext(t *testing.T) {
 	ctx := context.WithValue(context.Background(), userIDKey, "user-456")
 	log.WarnWithContext(ctx, "Slow query detected", "duration", "2.5s", "query", "SELECT * FROM users")
 
-	// Check that warning with context was logged
 	require.Contains(t, buffer.String(), `"level":"WARN"`)
 	require.Contains(t, buffer.String(), `"msg":"Slow query detected"`)
 	require.Contains(t, buffer.String(), `"duration":"2.5s"`)
@@ -295,7 +295,6 @@ func TestDebugWithContext(t *testing.T) {
 	ctx := context.WithValue(context.Background(), sessionIDKey, "sess-789")
 	log.DebugWithContext(ctx, "Processing step", "step", "validation", "data_size", 1024)
 
-	// Check that debug with context was logged
 	require.Contains(t, buffer.String(), `"level":"DEBUG"`)
 	require.Contains(t, buffer.String(), `"msg":"Processing step"`)
 	require.Contains(t, buffer.String(), `"step":"validation"`)

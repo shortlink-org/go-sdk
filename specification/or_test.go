@@ -261,7 +261,6 @@ func (suite *OrSpecificationTestSuite) TestIsSatisfiedBy_ShortCircuit() {
 
 	// Assert
 	suite.NoError(err)
-	// If short-circuiting works, we shouldn't see the "should not be reached" error
 }
 
 // Standalone tests for additional scenarios.
