@@ -2,6 +2,7 @@ package grpc_logger
 
 import (
 	"context"
+	"log/slog"
 	"path"
 	"time"
 
@@ -19,15 +20,15 @@ func UnaryServerInterceptor(log logger.Logger) grpc.UnaryServerInterceptor {
 		resp, err := handler(ctx, req)
 		duration := time.Since(startTime)
 
-		fields := field.Fields{
-			"grpc.service":   path.Dir(info.FullMethod)[1:],
-			"grpc.method":    path.Base(info.FullMethod),
-			"code":           status.Code(err).String(),
-			"duration (mks)": duration.Microseconds(),
+		fields := []slog.Attr{
+			slog.String("grpc.service", path.Dir(info.FullMethod)[1:]),
+			slog.String("grpc.method", path.Base(info.FullMethod)),
+			slog.String("code", status.Code(err).String()),
+			slog.Int64("duration (mks)", duration.Microseconds()),
 		}
 
 		if err != nil {
-			printLog(ctx, log, err, fields)
+			printLog(ctx, log, err, fields...)
 		}
 
 		return resp, err

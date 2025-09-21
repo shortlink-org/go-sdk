@@ -6,7 +6,7 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"
 
-	"github.com/shortlink-org/shortlink/pkg/auth/session"
+	"github.com/shortlink-org/go-sdk/auth/session"
 )
 
 // SessionUnaryServerInterceptor - extracts user-id from gRPC metadata and adds it to context

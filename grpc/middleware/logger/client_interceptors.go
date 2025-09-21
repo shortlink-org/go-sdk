@@ -2,6 +2,7 @@ package grpc_logger
 
 import (
 	"context"
+	"log/slog"
 	"path"
 	"time"
 
@@ -18,15 +19,15 @@ func UnaryClientInterceptor(log logger.Logger) grpc.UnaryClientInterceptor {
 		err := invoker(ctx, method, req, reply, cc, opts...)
 		duration := time.Since(startTime)
 
-		fields := field.Fields{
-			"grpc.service":   path.Dir(method)[1:],
-			"grpc.method":    path.Base(method),
-			"code":           status.Code(err).String(),
-			"duration (mks)": duration.Microseconds(),
+		fields := []slog.Attr{
+			slog.String("grpc.service", path.Dir(method)[1:]),
+			slog.String("grpc.method", path.Base(method)),
+			slog.String("code", status.Code(err).String()),
+			slog.Int64("duration (mks)", duration.Microseconds()),
 		}
 
 		if err != nil {
-			printLog(ctx, log, err, fields)
+			printLog(ctx, log, err, fields...)
 		}
 
 		return err
@@ -44,14 +45,15 @@ func StreamClientInterceptor(log logger.Logger) grpc.StreamClientInterceptor {
 		opts ...grpc.CallOption,
 	) (grpc.ClientStream, error) {
 		clientStream, err := streamer(ctx, desc, cc, method, opts...)
-		fields := field.Fields{
-			"grpc.service": path.Dir(method)[1:],
-			"grpc.method":  path.Base(method),
-			"code":         status.Code(err).String(),
+
+		fields := []slog.Attr{
+			slog.String("grpc.service", path.Dir(method)[1:]),
+			slog.String("grpc.method", path.Base(method)),
+			slog.String("code", status.Code(err).String()),
 		}
 
 		if err != nil {
-			printLog(ctx, log, err, fields)
+			printLog(ctx, log, err, fields...)
 		}
 
 		return clientStream, err

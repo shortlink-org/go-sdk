@@ -2,6 +2,7 @@ package grpc_logger
 
 import (
 	"context"
+	"log/slog"
 
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -9,7 +10,7 @@ import (
 	"github.com/shortlink-org/go-sdk/logger"
 )
 
-func printLog(ctx context.Context, log logger.Logger, err error, fields field.Fields) {
+func printLog(ctx context.Context, log logger.Logger, err error, fields ...slog.Attr) {
 	switch status.Code(err) {
 	//nolint:lll // TODO: refactor
 	case
@@ -22,12 +23,12 @@ func printLog(ctx context.Context, log logger.Logger, err error, fields field.Fi
 		codes.FailedPrecondition,
 		codes.Aborted,
 		codes.OutOfRange:
-		log.DebugWithContext(ctx, err.Error(), fields)
+		log.DebugWithContext(ctx, err.Error(), fields...)
 	case codes.Unknown, codes.DeadlineExceeded, codes.PermissionDenied, codes.Unauthenticated:
-		log.InfoWithContext(ctx, err.Error(), fields)
+		log.InfoWithContext(ctx, err.Error(), fields...)
 	case codes.Unimplemented, codes.Internal, codes.Unavailable, codes.DataLoss:
-		log.WarnWithContext(ctx, err.Error(), fields)
+		log.WarnWithContext(ctx, err.Error(), fields...)
 	default:
-		log.InfoWithContext(ctx, err.Error(), fields)
+		log.InfoWithContext(ctx, err.Error(), fields...)
 	}
 }
