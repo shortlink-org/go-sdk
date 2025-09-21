@@ -3,6 +3,7 @@ package grpc
 import (
 	"context"
 	"fmt"
+	"log/slog"
 
 	"github.com/spf13/viper"
 	"google.golang.org/grpc"
@@ -41,7 +42,10 @@ func InitClient(_ context.Context, log logger.Logger, options ...Option) (*grpc.
 		return nil, nil, fmt.Errorf("failed to connect to gRPC server: %w", err)
 	}
 
-	log.Info("Run gRPC Client", field.Fields{"port": config.port, "host": config.host})
+	log.Info("Run gRPC Client",
+		slog.Int("port", config.port),
+		slog.String("host", config.host),
+	)
 
 	cleanup := func() {
 		_ = conn.Close()
