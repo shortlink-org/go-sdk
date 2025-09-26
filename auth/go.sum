@@ -53,6 +53,8 @@ github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 h1:C3w9PqII01/Oq
 github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822/go.mod h1:+n7T8mK8HuQTcFwEeznm/DIxMOiR9yIdICNftLE1DvQ=
 github.com/ory/client-go v1.22.2 h1:qXrWAycckVfs0MtC4DgU4ty+C8Rf6YkhWYCc2glO7gU=
 github.com/ory/client-go v1.22.2/go.mod h1:su2VvmoLLprWfIQg+CvVWrCMUDRXvpLef5k4raV1Fd0=
+github.com/ory/client-go v1.22.3 h1:ys5amOhTgABFAhTu+70IWUVGDqTYk3Pt9zwh15tfmF4=
+github.com/ory/client-go v1.22.3/go.mod h1:su2VvmoLLprWfIQg+CvVWrCMUDRXvpLef5k4raV1Fd0=
 github.com/pelletier/go-toml/v2 v2.2.4 h1:mye9XuhQ6gvn5h28+VilKrrPoQVanw5PMw/TB0t5Ec4=
 github.com/pelletier/go-toml/v2 v2.2.4/go.mod h1:2gIqNv+qfxSVS7cM2xJQKtLSTLUE9V8t9Stt+h56mCY=
 github.com/planetscale/vtprotobuf v0.6.1-0.20241121165744-79df5c4772f2 h1:1sLMdKq4gNANTj0dUibycTLzpIEKVnLnbaEkxws78nw=
