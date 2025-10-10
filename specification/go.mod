@@ -1,6 +1,6 @@
 module github.com/shortlink-org/go-sdk/specification
 
-go 1.25.0
+go 1.25.2
 
 require github.com/stretchr/testify v1.11.1
 

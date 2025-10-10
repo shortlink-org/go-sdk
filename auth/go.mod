@@ -1,6 +1,6 @@
 module github.com/shortlink-org/go-sdk/auth
 
-go 1.25.1
+go 1.25.2
 
 require (
 	github.com/authzed/authzed-go v1.5.0
@@ -35,7 +35,6 @@ require (
 	github.com/sagikazarmark/locafero v0.11.0 // indirect
 	github.com/samber/lo v1.51.0 // indirect
 	github.com/shortlink-org/go-sdk/logger v0.0.0-20250912225626-772d88913fba // indirect
-	github.com/shortlink-org/shortlink v0.0.0-20250917223100-9578c5d6d178 // indirect
 	github.com/sourcegraph/conc v0.3.1-0.20240121214520-5f936abd7ae8 // indirect
 	github.com/spf13/afero v1.15.0 // indirect
 	github.com/spf13/cast v1.10.0 // indirect

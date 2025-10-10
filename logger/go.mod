@@ -1,6 +1,6 @@
 module github.com/shortlink-org/go-sdk/logger
 
-go 1.25.0
+go 1.25.2
 
 require (
 	github.com/segmentio/encoding v0.5.3
