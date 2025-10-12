@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"io"
+	"log/slog"
 	"os"
 	"strings"
 	"testing"
@@ -101,7 +102,7 @@ func TestFieldsSlog(t *testing.T) {
 	log, err := logger.New(conf)
 	require.NoError(t, err, "Error init a logger")
 
-	log.InfoWithContext(context.Background(), "Hello World", "hello", "world", "first", 1)
+	log.InfoWithContext(context.Background(), "Hello World", slog.String("hello", "world"), slog.Int("first", 1))
 
 	expectedTime := time.Now().Format(time.RFC822)
 
@@ -187,7 +188,7 @@ func TestError(t *testing.T) {
 	log, err := logger.New(conf)
 	require.NoError(t, err)
 
-	log.Error("Database error", "operation", "query", "table", "users")
+	log.Error("Database error", slog.String("operation", "query"), slog.String("table", "users"))
 
 	require.Contains(t, buffer.String(), `"level":"ERROR"`)
 	require.Contains(t, buffer.String(), `"msg":"Database error"`)
@@ -207,7 +208,7 @@ func TestWarn(t *testing.T) {
 	log, err := logger.New(conf)
 	require.NoError(t, err)
 
-	log.Warn("High memory usage", "usage", "85%", "threshold", "80%")
+	log.Warn("High memory usage", slog.String("usage", "85%"), slog.String("threshold", "80%"))
 
 	require.Contains(t, buffer.String(), `"level":"WARN"`)
 	require.Contains(t, buffer.String(), `"msg":"High memory usage"`)
@@ -227,7 +228,7 @@ func TestDebug(t *testing.T) {
 	log, err := logger.New(conf)
 	require.NoError(t, err)
 
-	log.Debug("Processing request", "headers", "content-type: application/json", "method", "POST")
+	log.Debug("Processing request", slog.String("headers", "content-type: application/json"), slog.String("method", "POST"))
 
 	require.Contains(t, buffer.String(), `"level":"DEBUG"`)
 	require.Contains(t, buffer.String(), `"msg":"Processing request"`)
@@ -248,7 +249,7 @@ func TestErrorWithContext(t *testing.T) {
 	require.NoError(t, err)
 
 	ctx := context.WithValue(context.Background(), requestIDKey, "req-123")
-	log.ErrorWithContext(ctx, "Request failed", "status", 500, "path", "/api/users")
+	log.ErrorWithContext(ctx, "Request failed", slog.Int("status", 500), slog.String("path", "/api/users"))
 
 	require.Contains(t, buffer.String(), `"level":"ERROR"`)
 	require.Contains(t, buffer.String(), `"msg":"Request failed"`)
@@ -271,7 +272,7 @@ func TestWarnWithContext(t *testing.T) {
 	require.NoError(t, err)
 
 	ctx := context.WithValue(context.Background(), userIDKey, "user-456")
-	log.WarnWithContext(ctx, "Slow query detected", "duration", "2.5s", "query", "SELECT * FROM users")
+	log.WarnWithContext(ctx, "Slow query detected", slog.String("duration", "2.5s"), slog.String("query", "SELECT * FROM users"))
 
 	require.Contains(t, buffer.String(), `"level":"WARN"`)
 	require.Contains(t, buffer.String(), `"msg":"Slow query detected"`)
@@ -293,7 +294,7 @@ func TestDebugWithContext(t *testing.T) {
 	require.NoError(t, err)
 
 	ctx := context.WithValue(context.Background(), sessionIDKey, "sess-789")
-	log.DebugWithContext(ctx, "Processing step", "step", "validation", "data_size", 1024)
+	log.DebugWithContext(ctx, "Processing step", slog.String("step", "validation"), slog.Int("data_size", 1024))
 
 	require.Contains(t, buffer.String(), `"level":"DEBUG"`)
 	require.Contains(t, buffer.String(), `"msg":"Processing step"`)

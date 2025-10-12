@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"runtime"
 	"strings"
 
@@ -27,8 +28,8 @@ func NewTraceFromContext(
 	level string, // "INFO"|"WARN"|"ERROR"|...
 	msg string,
 	tags []attribute.KeyValue, // extra attributes
-	fields ...any, // pairs key,value for logs
-) ([]any, error) {
+	fields ...slog.Attr, // log attributes
+) ([]slog.Attr, error) {
 	if ctx == nil {
 		ctx = context.Background()
 	}
@@ -43,9 +44,9 @@ func NewTraceFromContext(
 		span.AddEvent("log."+levelUpper, trace.WithAttributes(attrs...))
 		annotateByLevel(span, levelUpper, msg, capturedErr)
 
-		out := append(append([]any{}, fields...),
-			"traceID", span.SpanContext().TraceID().String(),
-			"spanID", span.SpanContext().SpanID().String(),
+		out := append(append([]slog.Attr{}, fields...),
+			slog.String("traceID", span.SpanContext().TraceID().String()),
+			slog.String("spanID", span.SpanContext().SpanID().String()),
 		)
 
 		return out, nil
@@ -64,9 +65,9 @@ func NewTraceFromContext(
 	span.SetAttributes(attrs...)
 	annotateByLevel(span, levelUpper, msg, capturedErr)
 
-	out := append(append([]any{}, fields...),
-		"traceID", span.SpanContext().TraceID().String(),
-		"spanID", span.SpanContext().SpanID().String(),
+	out := append(append([]slog.Attr{}, fields...),
+		slog.String("traceID", span.SpanContext().TraceID().String()),
+		slog.String("spanID", span.SpanContext().SpanID().String()),
 	)
 
 	return out, nil
@@ -112,9 +113,9 @@ func annotateByLevel(span trace.Span, level, msg string, err error) {
 //   - adds log.severity, log.message
 //   - normalizes err/error → exception.message + exception.type
 //   - maps is_error → log.is_error
-//   - converts the rest of key/value pairs to attributes
-func normalizeToAttrs(msg, level string, tags []attribute.KeyValue, fields ...any) ([]attribute.KeyValue, error) {
-	attrs := make([]attribute.KeyValue, 0, len(fields)/2+4+len(tags))
+//   - converts the rest of slog.Attr to attributes
+func normalizeToAttrs(msg, level string, tags []attribute.KeyValue, fields ...slog.Attr) ([]attribute.KeyValue, error) {
+	attrs := make([]attribute.KeyValue, 0, len(fields)+4+len(tags))
 	attrs = append(attrs,
 		attribute.String("log.severity", level),
 		attribute.String("log.message", msg),
@@ -123,13 +124,9 @@ func normalizeToAttrs(msg, level string, tags []attribute.KeyValue, fields ...an
 
 	var capturedErr error
 
-	for i := 0; i+1 < len(fields); i += 2 {
-		key, ok := fields[i].(string)
-		if !ok || key == "" {
-			continue
-		}
-
-		val := fields[i+1]
+	for _, field := range fields {
+		key := field.Key
+		val := field.Value.Any()
 
 		switch strings.ToLower(key) {
 		case "err", "error":

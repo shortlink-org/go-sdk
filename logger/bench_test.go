@@ -3,6 +3,7 @@ package logger_test
 import (
 	"context"
 	"io"
+	"log/slog"
 	"testing"
 	"time"
 
@@ -47,9 +48,9 @@ func BenchmarkInfo(b *testing.B) {
 
 	for i := range b.N {
 		log.Info("Benchmark message",
-			"iteration", i,
-			"timestamp", time.Now(),
-			"request_id", "bench-123",
+			slog.Int("iteration", i),
+			slog.Time("timestamp", time.Now()),
+			slog.String("request_id", "bench-123"),
 		)
 	}
 }
@@ -73,9 +74,9 @@ func BenchmarkInfoContext(b *testing.B) {
 
 	for i := range b.N {
 		log.InfoWithContext(ctx, "Benchmark message (ctx)",
-			"iteration", i,
-			"timestamp", time.Now(),
-			"request_id", "bench-ctx-123",
+			slog.Int("iteration", i),
+			slog.Time("timestamp", time.Now()),
+			slog.String("request_id", "bench-ctx-123"),
 		)
 	}
 }
@@ -96,9 +97,9 @@ func BenchmarkError(b *testing.B) {
 
 	for i := range b.N {
 		log.Error("Error message",
-			"iteration", i,
-			"error_code", 500,
-			"request_id", "bench-err-123",
+			slog.Int("iteration", i),
+			slog.Int("error_code", 500),
+			slog.String("request_id", "bench-err-123"),
 		)
 	}
 }
@@ -119,9 +120,9 @@ func BenchmarkWarn(b *testing.B) {
 
 	for i := range b.N {
 		log.Warn("Warning message",
-			"iteration", i,
-			"memory_usage", "85%",
-			"request_id", "bench-warn-123",
+			slog.Int("iteration", i),
+			slog.String("memory_usage", "85%"),
+			slog.String("request_id", "bench-warn-123"),
 		)
 	}
 }
@@ -142,9 +143,9 @@ func BenchmarkDebug(b *testing.B) {
 
 	for i := range b.N {
 		log.Debug("Debug message",
-			"iteration", i,
-			"debug_info", "processing step",
-			"request_id", "bench-debug-123",
+			slog.Int("iteration", i),
+			slog.String("debug_info", "processing step"),
+			slog.String("request_id", "bench-debug-123"),
 		)
 	}
 }

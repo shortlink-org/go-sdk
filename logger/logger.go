@@ -70,7 +70,7 @@ func levelString(level slog.Level) string {
 }
 
 // logWithContext enriches fields with trace correlation (if ctx carries a span) and logs.
-func (log *SlogLogger) logWithContext(ctx context.Context, level slog.Level, msg string, fields ...any) {
+func (log *SlogLogger) logWithContext(ctx context.Context, level slog.Level, msg string, fields ...slog.Attr) {
 	// Enrich with OTel span event + traceID/spanID if a span exists.
 	if ctx != nil && ctx != context.Background() {
 		enriched, err := tracer.NewTraceFromContext(ctx, levelString(level), msg, nil, fields...)
@@ -78,12 +78,12 @@ func (log *SlogLogger) logWithContext(ctx context.Context, level slog.Level, msg
 			fields = enriched
 		} else {
 			// Log enrichment failure once; avoid recursion (log directly).
-			log.logger.Log(ctx, slog.LevelError,
+			log.logger.LogAttrs(ctx, slog.LevelError,
 				"OpenTelemetry trace enrichment failed",
-				"err", err.Error(),
+				slog.String("err", err.Error()),
 			)
 		}
 	}
 
-	log.logger.Log(ctx, level, msg, fields...)
+	log.logger.LogAttrs(ctx, level, msg, fields...)
 }

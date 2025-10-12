@@ -2,6 +2,7 @@ package tracer_test
 
 import (
 	"context"
+	"log/slog"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -48,17 +49,16 @@ func findAttr[T any](attrs []attribute.KeyValue, key string) (T, bool) {
 	return zero, false
 }
 
-// valueOf fetches a value from returned fields (key,value,...).
-func valueOf[T any](fields []any, key string) (T, bool) {
+// valueOf fetches a value from returned fields (slog.Attr).
+func valueOf[T any](fields []slog.Attr, key string) (T, bool) {
 	var zero T
 
-	for i := 0; i+1 < len(fields); i += 2 {
-		k, ok := fields[i].(string)
-		if !ok || k != key {
+	for _, field := range fields {
+		if field.Key != key {
 			continue
 		}
 
-		if v, ok := fields[i+1].(T); ok {
+		if v, ok := field.Value.Any().(T); ok {
 			return v, true
 		}
 	}
@@ -77,11 +77,15 @@ func Test_NewTraceFromContext_EventOnActiveSpan_ERROR(t *testing.T) {
 	fields, err := tracer.NewTraceFromContext(
 		ctx, "ERROR", "boom",
 		nil, // tags
-		"k", "v", "err", assert.AnError, "is_error", true,
+		slog.String("k", "v"), slog.Any("err", assert.AnError), slog.Bool("is_error", true),
 	)
 	require.NoError(t, err)
-	require.Contains(t, fields, "traceID")
-	require.Contains(t, fields, "spanID")
+
+	// Check if traceID and spanID are present in fields
+	_, hasTraceID := valueOf[string](fields, "traceID")
+	_, hasSpanID := valueOf[string](fields, "spanID")
+	require.True(t, hasTraceID)
+	require.True(t, hasSpanID)
 
 	root.End()
 
@@ -134,20 +138,20 @@ func Test_NewTraceFromContext_NoActiveSpan_Info_NoSpan(t *testing.T) {
 	rec, cleanup := setupTracer(t)
 	defer cleanup()
 
-	out, err := tracer.NewTraceFromContext(context.Background(), "INFO", "hello", nil, "a", "b")
+	out, err := tracer.NewTraceFromContext(context.Background(), "INFO", "hello", nil, slog.String("a", "b"))
 	require.NoError(t, err)
 
 	// INFO without active span must NOT create a span
 	require.Empty(t, rec.Ended())
 	// and returns original fields without correlation ids
-	assert.Equal(t, []any{"a", "b"}, out)
+	assert.Equal(t, []slog.Attr{slog.String("a", "b")}, out)
 }
 
 func Test_NewTraceFromContext_NoActiveSpan_Warn_CreatesShortSpan(t *testing.T) {
 	rec, cleanup := setupTracer(t)
 	defer cleanup()
 
-	out, err := tracer.NewTraceFromContext(context.Background(), "WARN", "heads-up", nil, "x", 1)
+	out, err := tracer.NewTraceFromContext(context.Background(), "WARN", "heads-up", nil, slog.Int("x", 1))
 	require.NoError(t, err)
 
 	// creates exactly one short span
@@ -182,8 +186,8 @@ func Test_NewTraceFromContext_Normalization_IsErrorAndStringErr_OnActiveSpan(t *
 	_, err := tracer.NewTraceFromContext(
 		ctx, "INFO", "msg",
 		nil,
-		"is_error", "true",
-		"err", "oops",
+		slog.String("is_error", "true"),
+		slog.String("err", "oops"),
 	)
 	require.NoError(t, err)
 	root.End()
