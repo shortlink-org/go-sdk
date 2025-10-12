@@ -46,7 +46,7 @@ type server struct {
 }
 
 // InitServer - initialize gRPC server
-func InitServer(ctx context.Context, log logger.Logger, tracer trace.TracerProvider, monitor *prometheus.Registry) (*Server, error) {
+func InitServer(ctx context.Context, log logger.Logger, tracer trace.TracerProvider, prom *prometheus.Registry) (*Server, error) {
 	viper.SetDefault("GRPC_SERVER_ENABLED", true) // gRPC grpServer enable
 
 	if !viper.GetBool("GRPC_SERVER_ENABLED") {
@@ -54,7 +54,7 @@ func InitServer(ctx context.Context, log logger.Logger, tracer trace.TracerProvi
 		return nil, nil
 	}
 
-	config, err := setServerConfig(log, tracer, monitor) //nolint:contextcheck // false positive
+	config, err := setServerConfig(log, tracer, prom) //nolint:contextcheck // false positive
 	if err != nil {
 		return nil, err
 	}
