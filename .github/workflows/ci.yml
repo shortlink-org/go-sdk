@@ -39,7 +39,7 @@ jobs:
       - name: Setup Go
         uses: actions/setup-go@v6
         with:
-          go-version: '1.25.2'
+          go-version: '1.25.3'
           cache: true
           # Each module has its own go.sum, cache per module
           cache-dependency-path: |
