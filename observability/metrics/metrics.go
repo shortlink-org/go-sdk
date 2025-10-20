@@ -19,8 +19,6 @@ import (
 
 	"github.com/shortlink-org/go-sdk/http/server"
 	"github.com/shortlink-org/go-sdk/logger"
-
-	"github.com/shortlink-org/go-sdk/observability/common"
 )
 
 type Monitoring struct {
@@ -82,7 +80,7 @@ func (m *Monitoring) SetMetrics(ctx context.Context) (*api.MeterProvider, error)
 	// See the go.opentelemetry.io/otel/sdk/resource package for more
 	// information about how to create and use Resources.
 	// Setup resource.
-	res, err := common.NewResource(ctx, viper.GetString("SERVICE_NAME"), viper.GetString("SERVICE_VERSION"))
+	res, err := NewResource(ctx, viper.GetString("SERVICE_NAME"), viper.GetString("SERVICE_VERSION"))
 	if err != nil {
 		return nil, err
 	}
