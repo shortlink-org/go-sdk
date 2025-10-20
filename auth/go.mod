@@ -58,6 +58,7 @@ require (
 	google.golang.org/protobuf v1.36.9 // indirect
 )
 
-replace github.com/shortlink-org/go-sdk/grpc => ../grpc
-
-replace github.com/shortlink-org/go-sdk/logger => ../logger
+replace (
+	github.com/shortlink-org/go-sdk/grpc => ../grpc
+	github.com/shortlink-org/go-sdk/logger => ../logger
+)
