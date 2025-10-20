@@ -5,7 +5,7 @@ go 1.25.2
 require (
 	github.com/authzed/authzed-go v1.6.0
 	github.com/ory/client-go v1.22.6
-	github.com/shortlink-org/go-sdk/grpc v0.0.0-00010101000000-000000000000
+	github.com/shortlink-org/go-sdk/grpc v0.0.0-20251013080359-ba916664d78d
 	github.com/spf13/viper v1.21.0
 	google.golang.org/grpc v1.76.0
 )
