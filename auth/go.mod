@@ -4,7 +4,7 @@ go 1.25.2
 
 require (
 	github.com/authzed/authzed-go v1.6.0
-	github.com/ory/client-go v1.22.5
+	github.com/ory/client-go v1.22.6
 	github.com/shortlink-org/go-sdk/grpc v0.0.0-00010101000000-000000000000
 	github.com/spf13/viper v1.21.0
 	google.golang.org/grpc v1.76.0
@@ -34,7 +34,7 @@ require (
 	github.com/prometheus/procfs v0.17.0 // indirect
 	github.com/sagikazarmark/locafero v0.11.0 // indirect
 	github.com/samber/lo v1.51.0 // indirect
-	github.com/shortlink-org/go-sdk/logger v0.0.0-20250912225626-772d88913fba // indirect
+	github.com/shortlink-org/go-sdk/logger v0.0.0-20251012205922-87f230fd779a // indirect
 	github.com/sourcegraph/conc v0.3.1-0.20240121214520-5f936abd7ae8 // indirect
 	github.com/spf13/afero v1.15.0 // indirect
 	github.com/spf13/cast v1.10.0 // indirect
@@ -50,7 +50,7 @@ require (
 	go.yaml.in/yaml/v2 v2.4.2 // indirect
 	go.yaml.in/yaml/v3 v3.0.4 // indirect
 	golang.org/x/net v0.44.0 // indirect
-	golang.org/x/oauth2 v0.31.0 // indirect
+	golang.org/x/oauth2 v0.32.0 // indirect
 	golang.org/x/sys v0.36.0 // indirect
 	golang.org/x/text v0.29.0 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20250825161204-c5933d9347a5 // indirect
