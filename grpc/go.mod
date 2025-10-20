@@ -1,6 +1,6 @@
 module github.com/shortlink-org/go-sdk/grpc
 
-go 1.25.2
+go 1.25.3
 
 require (
 	github.com/grpc-ecosystem/go-grpc-middleware/providers/prometheus v1.1.0
