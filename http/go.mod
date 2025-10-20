@@ -8,7 +8,7 @@ require (
 	github.com/prometheus/client_golang v1.23.2
 	github.com/prometheus/client_model v0.6.2
 	github.com/shortlink-org/go-sdk/auth v0.0.0-20251013080359-ba916664d78d
-	github.com/shortlink-org/go-sdk/logger v0.0.0-20251020184915-37726c1b58ed
+	github.com/shortlink-org/go-sdk/logger v0.0.0-20251020185847-0813d0c3cdf6
 	github.com/spf13/viper v1.21.0
 	github.com/stretchr/testify v1.11.1
 	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.63.0
