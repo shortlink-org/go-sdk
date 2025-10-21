@@ -7,7 +7,6 @@ require (
 	github.com/prometheus/client_golang v1.23.2
 	github.com/shortlink-org/go-sdk/http v0.0.0-20251020193241-87e94558595e
 	github.com/shortlink-org/go-sdk/logger v0.0.0-20251020185847-0813d0c3cdf6
-	github.com/shortlink-org/shortlink v0.0.0-20251014200117-559da2c2e232
 	github.com/spf13/viper v1.21.0
 	go.opentelemetry.io/otel v1.38.0
 	go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetricgrpc v1.38.0
@@ -57,6 +56,7 @@ require (
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20250929231259-57b25ae835d4 // indirect
 	google.golang.org/grpc v1.76.0 // indirect
 	google.golang.org/protobuf v1.36.10 // indirect
+	gopkg.in/DATA-DOG/go-sqlmock.v1 v1.3.0 // indirect
 )
 
 replace (

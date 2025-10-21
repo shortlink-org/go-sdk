@@ -15,7 +15,7 @@ import (
 	"go.opentelemetry.io/otel/sdk/trace"
 
 	"github.com/shortlink-org/go-sdk/logger"
-	"github.com/shortlink-org/shortlink/pkg/observability/common"
+	"github.com/shortlink-org/go-sdk/observability/common"
 )
 
 // Init returns an instance of Tracer Provider that samples 100% of traces and logs all spans to stdout.
