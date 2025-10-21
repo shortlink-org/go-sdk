@@ -1,4 +1,4 @@
-package traicing
+package tracing
 
 // Config - config
 type Config struct {

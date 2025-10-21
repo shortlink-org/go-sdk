@@ -1,7 +1,7 @@
 /*
 Tracing wrapping
 */
-package traicing
+package tracing
 
 import (
 	"context"
