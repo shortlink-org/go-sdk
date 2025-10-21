@@ -10,12 +10,34 @@ import (
 	"github.com/spf13/viper"
 
 	"github.com/shortlink-org/go-sdk/logger"
+
 	"github.com/shortlink-org/go-sdk/mq/kafka"
 	"github.com/shortlink-org/go-sdk/mq/nats"
 	"github.com/shortlink-org/go-sdk/mq/query"
 	"github.com/shortlink-org/go-sdk/mq/rabbit"
 	"github.com/shortlink-org/go-sdk/mq/redis"
 )
+
+// New creates a new MQ instance
+//
+//nolint:ireturn // It's made by design
+func New(ctx context.Context, log logger.Logger) (MQ, error) {
+	viper.SetDefault("MQ_ENABLED", "false") // Enabled MQ
+
+	if !viper.GetBool("MQ_ENABLED") {
+		//nolint:nilnil // It's made by design
+		return nil, nil
+	}
+
+	var service DataBus
+
+	dataBus, err := service.Use(ctx, log)
+	if err != nil {
+		return nil, err
+	}
+
+	return dataBus, nil
+}
 
 // Use return implementation of MQ
 func (mq *DataBus) Use(ctx context.Context, log logger.Logger) (*DataBus, error) {
