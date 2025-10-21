@@ -6,7 +6,7 @@ require (
 	github.com/grpc-ecosystem/go-grpc-middleware/providers/prometheus v1.1.0
 	github.com/grpc-ecosystem/go-grpc-middleware/v2 v2.3.2
 	github.com/prometheus/client_golang v1.23.2
-	github.com/shortlink-org/go-sdk/auth v0.0.0-20250921105413-6ee4ef9f264a
+	github.com/shortlink-org/go-sdk/auth v0.0.0-20251020193241-87e94558595e
 	github.com/shortlink-org/go-sdk/logger v0.0.0-20251013080359-ba916664d78d
 	github.com/spf13/viper v1.21.0
 	go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc v0.63.0
