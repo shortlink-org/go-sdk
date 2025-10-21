@@ -40,7 +40,7 @@ export MY_TRUSTED_ORIGINS="https://shortlink.best,https://www.shortlink.best"
 ### Basic Usage
 
 ```go
-import csrf_middleware "github.com/shortlink-org/shortlink/pkg/http/middleware/csrf"
+import csrf_middleware "github.com/shortlink-org/go-sdk/http/middleware/csrf"
 
 // Add to your router
 r.Use(csrf_middleware.Middleware())
@@ -49,7 +49,7 @@ r.Use(csrf_middleware.Middleware())
 ### Custom Configuration
 
 ```go
-import csrf_middleware "github.com/shortlink-org/shortlink/pkg/http/middleware/csrf"
+import csrf_middleware "github.com/shortlink-org/go-sdk/http/middleware/csrf"
 
 // Create middleware with custom config
 csrfMiddleware := csrf_middleware.New(csrf_middleware.Config{
