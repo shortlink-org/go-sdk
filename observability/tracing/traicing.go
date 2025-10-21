@@ -13,6 +13,7 @@ import (
 	"go.opentelemetry.io/otel/propagation"
 	"go.opentelemetry.io/otel/sdk/resource"
 	"go.opentelemetry.io/otel/sdk/trace"
+	traceProvider "go.opentelemetry.io/otel/trace"
 
 	"github.com/shortlink-org/go-sdk/logger"
 
@@ -22,7 +23,7 @@ import (
 // New returns a new instance of the TracerProvider.
 //
 //nolint:ireturn // It's make by specification
-func New(ctx context.Context, log logger.Logger) (*trace.TracerProvider, func(), error) {
+func New(ctx context.Context, log logger.Logger) (traceProvider.TracerProvider, func(), error) {
 	viper.SetDefault("TRACER_URI", "localhost:4317")                     // Tracing addr:host
 	viper.SetDefault("PYROSCOPE_URI", "http://pyroscope.pyroscope:4040") // Pyroscope addr:host
 
