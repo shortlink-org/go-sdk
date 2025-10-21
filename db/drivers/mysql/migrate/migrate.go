@@ -10,7 +10,7 @@ import (
 	"github.com/golang-migrate/migrate/v4/database/mysql"
 	"github.com/johejo/golang-migrate-extra/source/iofs"
 
-	"github.com/shortlink-org/shortlink/pkg/db"
+	"github.com/shortlink-org/go-sdk/db"
 )
 
 // Migration - apply migration to db

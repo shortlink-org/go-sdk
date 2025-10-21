@@ -10,7 +10,7 @@ import (
 	"go.mongodb.org/mongo-driver/v2/mongo/options"
 	"go.mongodb.org/mongo-driver/v2/mongo/readpref"
 
-	storeOptions "github.com/shortlink-org/shortlink/pkg/db/options"
+	storeOptions "github.com/shortlink-org/go-sdk/db/options"
 )
 
 // Init - initialize

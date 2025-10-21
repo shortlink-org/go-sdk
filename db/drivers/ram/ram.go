@@ -5,7 +5,7 @@ import (
 
 	"github.com/spf13/viper"
 
-	"github.com/shortlink-org/shortlink/pkg/db/options"
+	"github.com/shortlink-org/go-sdk/db/options"
 )
 
 // Config - config

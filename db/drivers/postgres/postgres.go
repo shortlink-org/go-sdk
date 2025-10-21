@@ -12,7 +12,7 @@ import (
 	"go.opentelemetry.io/otel/sdk/metric"
 	"go.opentelemetry.io/otel/trace"
 
-	"github.com/shortlink-org/shortlink/pkg/db/options"
+	"github.com/shortlink-org/go-sdk/db/options"
 )
 
 // New return new instance of Store

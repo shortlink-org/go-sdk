@@ -454,8 +454,6 @@ github.com/segmentio/encoding v0.5.3/go.mod h1:HS1ZKa3kSN32ZHVZ7ZLPLXWvOVIiZtyJn
 github.com/shopspring/decimal v0.0.0-20180709203117-cd690d0c9e24/go.mod h1:M+9NzErvs504Cn4c5DxATwIqPbtswREoFCre64PpcG4=
 github.com/shortlink-org/go-sdk/logger v0.0.0-20251021155345-15d6cb691b95 h1:JZCExWu9XiWZCHe+wDMiBa3ugkwdrDFiFTV2a4iOrf8=
 github.com/shortlink-org/go-sdk/logger v0.0.0-20251021155345-15d6cb691b95/go.mod h1:J0AiV/vKBIXenExM+ioBW6iqlg/h8gnb7/hC17011fk=
-github.com/shortlink-org/shortlink v0.0.0-20251021155541-3b33a9981a8e h1:4cTb7tpAaspeeq+A7RchVCGRaB6B1WHArZCN46kLft8=
-github.com/shortlink-org/shortlink v0.0.0-20251021155541-3b33a9981a8e/go.mod h1:QpMQwHhJAI6C5O348bWro2x/a0b06JHB2c9I/Z5coDg=
 github.com/sigurn/crc16 v0.0.0-20240131213347-83fcde1e29d1 h1:NVK+OqnavpyFmUiKfUMHrpvbCi2VFoWTrcpI7aDaJ2I=
 github.com/sigurn/crc16 v0.0.0-20240131213347-83fcde1e29d1/go.mod h1:9/etS5gpQq9BJsJMWg1wpLbfuSnkm8dPF6FdW2JXVhA=
 github.com/sirupsen/logrus v1.4.1/go.mod h1:ni0Sbl8bgC9z8RoU9G6nDWqqs/fq4eDPysMBDgk/93Q=

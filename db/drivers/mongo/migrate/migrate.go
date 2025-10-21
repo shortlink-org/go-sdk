@@ -4,7 +4,7 @@ import (
 	"context"
 	"embed"
 
-	"github.com/shortlink-org/shortlink/pkg/db"
+	"github.com/shortlink-org/go-sdk/db"
 )
 
 // Migration - apply migration to db

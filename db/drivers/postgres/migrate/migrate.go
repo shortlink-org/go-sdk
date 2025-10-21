@@ -11,7 +11,7 @@ import (
 	"github.com/jackc/pgx/v5/stdlib"
 	"github.com/johejo/golang-migrate-extra/source/iofs"
 
-	"github.com/shortlink-org/shortlink/pkg/db"
+	"github.com/shortlink-org/go-sdk/db"
 )
 
 // Migration - apply migration to db
