@@ -11,6 +11,8 @@ import (
 	"go.opentelemetry.io/otel/sdk/metric"
 	"go.opentelemetry.io/otel/trace"
 
+	"github.com/shortlink-org/go-sdk/logger"
+
 	"github.com/shortlink-org/go-sdk/db/drivers/badger"
 	"github.com/shortlink-org/go-sdk/db/drivers/cockroachdb"
 	"github.com/shortlink-org/go-sdk/db/drivers/dgraph"
@@ -22,11 +24,10 @@ import (
 	"github.com/shortlink-org/go-sdk/db/drivers/ram"
 	"github.com/shortlink-org/go-sdk/db/drivers/redis"
 	"github.com/shortlink-org/go-sdk/db/drivers/sqlite"
-	"github.com/shortlink-org/go-sdk/logger"
 )
 
 // New - return implementation of db
-func New(ctx context.Context, log logger.Logger, tracer trace.TracerProvider, metrics *metric.MeterProvider) (*Store, error) {
+func New(ctx context.Context, log logger.Logger, tracer trace.TracerProvider, metrics *metric.MeterProvider) (DB, error) {
 	//nolint:exhaustruct // fix later, use constructor
 	store := &Store{}
 
