@@ -12,7 +12,7 @@ This package is designed to be imported and used in other Go applications.
 import (
 	"github.com/go-redis/cache/v9"
 
-	"github.com/shortlink-org/shortlink/pkg/cache"
+	"github.com/shortlink-org/go-sdk/cache"
 )
 ```
 

@@ -24,7 +24,7 @@ import (
 	"fmt"
 	"time"
 
-  "github.com/shortlink-org/shortlink/pkg/batch"
+  "github.com/shortlink-org/go-sdk/batch"
 )
 
 func main() {
