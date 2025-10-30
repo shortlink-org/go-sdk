@@ -1,7 +1,6 @@
 package worker_pool_test
 
 import (
-	"context"
 	"os"
 	"sync"
 	"sync/atomic"
