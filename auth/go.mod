@@ -7,7 +7,7 @@ require (
 	github.com/ory/client-go v1.22.7
 	github.com/shortlink-org/go-sdk/grpc v0.0.0-20251020193241-87e94558595e
 	github.com/shortlink-org/go-sdk/logger v0.0.0-20251020185847-0813d0c3cdf6
-	github.com/shortlink-org/go-sdk/observability v0.0.0-20251021172021-f38879dace30
+	github.com/shortlink-org/go-sdk/observability v0.0.0-20251030220300-1e2beabd19b6
 	github.com/spf13/viper v1.21.0
 	go.opentelemetry.io/otel/trace v1.38.0
 	google.golang.org/grpc v1.76.0
