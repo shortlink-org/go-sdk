@@ -4,7 +4,7 @@ go 1.25.3
 
 require (
 	github.com/go-chi/chi/v5 v5.2.3
-	github.com/ory/client-go v1.22.7
+	github.com/ory/client-go v1.22.8
 	github.com/prometheus/client_golang v1.23.2
 	github.com/prometheus/client_model v0.6.2
 	github.com/shortlink-org/go-sdk/auth v0.0.0-20251020193241-87e94558595e
