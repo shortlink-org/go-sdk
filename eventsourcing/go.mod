@@ -7,7 +7,7 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/jackc/pgx/v5 v5.7.6
 	github.com/ory/dockertest/v3 v3.12.0
-	github.com/shortlink-org/go-sdk/db v0.0.0-20251021202009-dcc19c352b8b
+	github.com/shortlink-org/go-sdk/db v0.0.0-20251030220300-1e2beabd19b6
 	github.com/shortlink-org/go-sdk/logger v0.0.0-20251021202009-dcc19c352b8b
 	github.com/spf13/viper v1.21.0
 	github.com/stretchr/testify v1.11.1
