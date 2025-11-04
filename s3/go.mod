@@ -3,7 +3,7 @@ module github.com/shortlink-org/go-sdk/s3
 go 1.25.3
 
 require (
-	github.com/minio/minio-go/v7 v7.0.95
+	github.com/minio/minio-go/v7 v7.0.97
 	github.com/ory/dockertest/v3 v3.12.0
 	github.com/shortlink-org/go-sdk/logger v0.0.0-20251021180704-1b5969f32d91
 	github.com/spf13/viper v1.21.0
@@ -35,7 +35,8 @@ require (
 	github.com/google/uuid v1.6.0 // indirect
 	github.com/klauspost/compress v1.18.0 // indirect
 	github.com/klauspost/cpuid/v2 v2.2.11 // indirect
-	github.com/minio/crc64nvme v1.0.2 // indirect
+	github.com/klauspost/crc32 v1.3.0 // indirect
+	github.com/minio/crc64nvme v1.1.0 // indirect
 	github.com/minio/md5-simd v1.1.2 // indirect
 	github.com/moby/docker-image-spec v1.3.1 // indirect
 	github.com/moby/sys/user v0.3.0 // indirect
