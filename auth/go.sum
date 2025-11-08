@@ -93,6 +93,8 @@ github.com/segmentio/encoding v0.5.3 h1:OjMgICtcSFuNvQCdwqMCv9Tg7lEOXGwm1J5RPQcc
 github.com/segmentio/encoding v0.5.3/go.mod h1:HS1ZKa3kSN32ZHVZ7ZLPLXWvOVIiZtyJnO1gPH1sKt0=
 github.com/shortlink-org/go-sdk/http v0.0.0-20251020193241-87e94558595e h1:/J6SmQGoujLFx99qr18Uf0vUZBfxjnpe7lf8wYnw0rU=
 github.com/shortlink-org/go-sdk/http v0.0.0-20251020193241-87e94558595e/go.mod h1:rVOmL5WA6atejRGolmjzhGHEvmcPCFC9szfAD995CtM=
+github.com/shortlink-org/go-sdk/http v0.0.0-20251108115131-18dc85978c3b h1:w9Tj+8XSc4/JV9KmqpbfyK1Y7z2H8/1t63KWyfBMYZs=
+github.com/shortlink-org/go-sdk/http v0.0.0-20251108115131-18dc85978c3b/go.mod h1:1jXMoxmc5NpXeIFNJwS6O0MRFcRTzIoqveXRgpockLo=
 github.com/sourcegraph/conc v0.3.1-0.20240121214520-5f936abd7ae8 h1:+jumHNA0Wrelhe64i8F6HNlS8pkoyMv5sreGx2Ry5Rw=
 github.com/sourcegraph/conc v0.3.1-0.20240121214520-5f936abd7ae8/go.mod h1:3n1Cwaq1E1/1lhQhtRK2ts/ZwZEhjcQeJQ1RuC6Q/8U=
 github.com/spf13/afero v1.15.0 h1:b/YBCLWAJdFWJTN9cLhiXXcD7mzKn9Dm86dNnfyQw1I=
