@@ -7,7 +7,7 @@ require (
 	github.com/grafana/pyroscope-go/godeltaprof v0.1.9
 	github.com/heptiolabs/healthcheck v0.0.0-20211123025425-613501dd5deb
 	github.com/prometheus/client_golang v1.23.2
-	github.com/shortlink-org/go-sdk/http v0.0.0-20251108115131-18dc85978c3b
+	github.com/shortlink-org/go-sdk/http v0.0.0-20251108145352-f59577605d0a
 	github.com/shortlink-org/go-sdk/logger v0.0.0-20251108103956-0a3cbbf03637
 	github.com/spf13/viper v1.21.0
 	go.opentelemetry.io/otel v1.38.0
