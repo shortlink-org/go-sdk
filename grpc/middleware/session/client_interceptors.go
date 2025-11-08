@@ -2,6 +2,7 @@ package session_interceptor
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"google.golang.org/grpc"
@@ -10,56 +11,81 @@ import (
 	"github.com/shortlink-org/go-sdk/auth/session"
 )
 
-// SessionUnaryClientInterceptor - set user-id to gRPC metadata for each request
+const userIDKey = "user-id"
+
+// predefined static errors (required by goerr113)
+var (
+	ErrEmptyUserID        = errors.New("attachUserMetadata: empty user id")
+	ErrMissingUserID      = errors.New("attachUserMetadata: failed to get user id")
+	ErrFailedToGetSession = errors.New("attachUserMetadata: failed to get session")
+)
+
+// attachUserMetadata resolves the user identifier and attaches it to outgoing gRPC metadata.
+//
+// Algorithm:
+//  1. Try to get the full Ory session from context via session.GetSession.
+//     - If an error occurs other than ErrSessionNotFound, it bubbles up.
+//  2. If the session exists, attach its ID to metadata under "user-id".
+//  3. If the session is missing, fall back to user-id stored separately in context.
+//     - If user-id is also missing or empty, return an error.
+//  4. Return a new context containing metadata with the resolved user identifier.
+func attachUserMetadata(ctx context.Context) (context.Context, error) {
+	sess, err := session.GetSession(ctx)
+	if err != nil && !errors.Is(err, session.ErrSessionNotFound) {
+		return nil, fmt.Errorf("%w: %w", ErrFailedToGetSession, err)
+	}
+
+	if sess != nil && sess.GetId() != "" {
+		return metadata.AppendToOutgoingContext(ctx, userIDKey, sess.GetId()), nil
+	}
+
+	userID, err := session.GetUserID(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("%w: %w", ErrMissingUserID, err)
+	}
+
+	if userID == "" {
+		return nil, ErrEmptyUserID
+	}
+
+	return metadata.AppendToOutgoingContext(ctx, userIDKey, userID), nil
+}
+
+// SessionUnaryClientInterceptor adds user-id metadata to each unary gRPC call.
 func SessionUnaryClientInterceptor() grpc.UnaryClientInterceptor {
 	return func(
 		ctx context.Context,
 		method string,
 		req any,
 		resp any,
-		clientConn *grpc.ClientConn,
+		cc *grpc.ClientConn,
 		invoker grpc.UnaryInvoker,
 		opts ...grpc.CallOption,
 	) error {
-		sess, err := session.GetSession(ctx)
+		ctx, err := attachUserMetadata(ctx)
 		if err != nil {
-			return fmt.Errorf("failed to get session: %w", err)
+			return err
 		}
 
-		if sess != nil {
-			ctx = metadata.AppendToOutgoingContext(ctx, "user-id", sess.GetId())
-		} else {
-			userId, err := session.GetUserID(ctx)
-			if err != nil {
-				return fmt.Errorf("failed to get user id: %w", err)
-			}
-
-			ctx = metadata.AppendToOutgoingContext(ctx, "user-id", userId)
-		}
-
-		return invoker(ctx, method, req, resp, clientConn, opts...)
+		return invoker(ctx, method, req, resp, cc, opts...)
 	}
 }
 
-// SessionStreamClientInterceptor - set user-id to gRPC metadata for each request
+// SessionStreamClientInterceptor adds user-id metadata to each streaming gRPC call.
 func SessionStreamClientInterceptor() grpc.StreamClientInterceptor {
 	return func(
 		ctx context.Context,
 		desc *grpc.StreamDesc,
-		clientConnect *grpc.ClientConn,
+		cc *grpc.ClientConn,
 		method string,
 		streamer grpc.Streamer,
 		opts ...grpc.CallOption,
 	) (grpc.ClientStream, error) {
-		sess, err := session.GetSession(ctx)
+		ctx, err := attachUserMetadata(ctx)
 		if err != nil {
-			return nil, fmt.Errorf("failed to get session: %w", err)
+			return nil, err
 		}
 
-		if sess != nil {
-			ctx = metadata.AppendToOutgoingContext(ctx, "user-id", sess.GetId())
-		}
-
-		return streamer(ctx, desc, clientConnect, method, opts...)
+		return streamer(ctx, desc, cc, method, opts...)
 	}
 }
