@@ -5,7 +5,7 @@ go 1.25.3
 require (
 	github.com/authzed/authzed-go v1.6.0
 	github.com/ory/client-go v1.22.8
-	github.com/shortlink-org/go-sdk/grpc v0.0.0-20251020193241-87e94558595e
+	github.com/shortlink-org/go-sdk/grpc v0.0.0-20251108145352-f59577605d0a
 	github.com/shortlink-org/go-sdk/logger v0.0.0-20251108103956-0a3cbbf03637
 	github.com/shortlink-org/go-sdk/observability v0.0.0-20251108145352-f59577605d0a
 	github.com/spf13/viper v1.21.0
