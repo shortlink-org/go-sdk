@@ -81,6 +81,12 @@ func (a auth) middleware(next http.Handler) http.Handler {
 		ctx = context.WithValue(ctx, contextCookieKey, cookies)
 		ctx = session.WithSession(ctx, sess)
 
+		if identity, ok := sess.GetIdentityOk(); ok && identity != nil {
+			if id := identity.GetId(); id != "" {
+				ctx = session.WithUserID(ctx, id)
+			}
+		}
+
 		// set the new context
 		r = r.WithContext(ctx)
 

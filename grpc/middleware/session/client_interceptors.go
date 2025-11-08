@@ -25,8 +25,9 @@ var (
 // Algorithm:
 //  1. Try to get the full Ory session from context via session.GetSession.
 //     - If an error occurs other than ErrSessionNotFound, it bubbles up.
-//  2. If the session exists, attach its ID to metadata under "user-id".
-//  3. If the session is missing, fall back to user-id stored separately in context.
+//  2. If the session exists and carries an identity, attach that identity ID under "user-id".
+//  3. If the session is missing (or does not include identity information), fall back to the user-id
+//     stored separately in context.
 //     - If user-id is also missing or empty, return an error.
 //  4. Return a new context containing metadata with the resolved user identifier.
 func attachUserMetadata(ctx context.Context) (context.Context, error) {
@@ -35,8 +36,12 @@ func attachUserMetadata(ctx context.Context) (context.Context, error) {
 		return nil, fmt.Errorf("%w: %w", ErrFailedToGetSession, err)
 	}
 
-	if sess != nil && sess.GetId() != "" {
-		return metadata.AppendToOutgoingContext(ctx, userIDKey, sess.GetId()), nil
+	if sess != nil {
+		if identity, ok := sess.GetIdentityOk(); ok && identity != nil {
+			if identityID := identity.GetId(); identityID != "" {
+				return metadata.AppendToOutgoingContext(ctx, userIDKey, identityID), nil
+			}
+		}
 	}
 
 	userID, err := session.GetUserID(ctx)
