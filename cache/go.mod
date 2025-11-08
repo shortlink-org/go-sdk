@@ -5,11 +5,11 @@ go 1.25.3
 require (
 	github.com/go-redis/cache/v9 v9.0.0
 	github.com/ory/dockertest/v3 v3.12.0
-	github.com/redis/go-redis/v9 v9.14.1
+	github.com/redis/go-redis/v9 v9.16.0
 	github.com/redis/rueidis v1.0.67
 	github.com/redis/rueidis/rueidiscompat v1.0.67
 	github.com/shortlink-org/go-sdk/db v0.0.0-20251021172021-f38879dace30
-	github.com/shortlink-org/go-sdk/observability v0.0.0-20251021172021-f38879dace30
+	github.com/shortlink-org/go-sdk/observability v0.0.0-20251030220300-1e2beabd19b6
 	github.com/spf13/viper v1.21.0
 	github.com/stretchr/testify v1.11.1
 	go.opentelemetry.io/otel/trace v1.38.0
