@@ -64,6 +64,7 @@ github.com/shortlink-org/go-sdk/auth v0.0.0-20251020193241-87e94558595e/go.mod h
 github.com/shortlink-org/go-sdk/auth v0.0.0-20251108103956-0a3cbbf03637/go.mod h1:ECvwzi7O5dsGw4JlRj8hbyr+P7OrHqbOaUcBFiHFYmY=
 github.com/shortlink-org/go-sdk/auth v0.0.0-20251108123242-22e2ef4e6b01 h1:BWTbK/PIYXgWDnMnXLNCHaZYoLRO6TXvvGuJo6aI6go=
 github.com/shortlink-org/go-sdk/auth v0.0.0-20251108123242-22e2ef4e6b01/go.mod h1:ECvwzi7O5dsGw4JlRj8hbyr+P7OrHqbOaUcBFiHFYmY=
+github.com/shortlink-org/go-sdk/auth v0.0.0-20251108145352-f59577605d0a/go.mod h1:6LQpx6YJL7k8qMQDf789xQPzmALgJhcIeckhK15zT7w=
 github.com/sourcegraph/conc v0.3.1-0.20240121214520-5f936abd7ae8 h1:+jumHNA0Wrelhe64i8F6HNlS8pkoyMv5sreGx2Ry5Rw=
 github.com/sourcegraph/conc v0.3.1-0.20240121214520-5f936abd7ae8/go.mod h1:3n1Cwaq1E1/1lhQhtRK2ts/ZwZEhjcQeJQ1RuC6Q/8U=
 github.com/spf13/afero v1.15.0 h1:b/YBCLWAJdFWJTN9cLhiXXcD7mzKn9Dm86dNnfyQw1I=
