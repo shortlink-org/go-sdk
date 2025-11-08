@@ -7,7 +7,7 @@ require (
 	github.com/ory/client-go v1.22.8
 	github.com/shortlink-org/go-sdk/grpc v0.0.0-20251020193241-87e94558595e
 	github.com/shortlink-org/go-sdk/logger v0.0.0-20251108103956-0a3cbbf03637
-	github.com/shortlink-org/go-sdk/observability v0.0.0-20251108115131-18dc85978c3b
+	github.com/shortlink-org/go-sdk/observability v0.0.0-20251108145352-f59577605d0a
 	github.com/spf13/viper v1.21.0
 	go.opentelemetry.io/otel/trace v1.38.0
 	google.golang.org/grpc v1.76.0
@@ -42,7 +42,7 @@ require (
 	github.com/prometheus/procfs v0.17.0 // indirect
 	github.com/sagikazarmark/locafero v0.11.0 // indirect
 	github.com/samber/lo v1.51.0 // indirect
-	github.com/shortlink-org/go-sdk/http v0.0.0-20251020193241-87e94558595e // indirect
+	github.com/shortlink-org/go-sdk/http v0.0.0-20251108115131-18dc85978c3b // indirect
 	github.com/sourcegraph/conc v0.3.1-0.20240121214520-5f936abd7ae8 // indirect
 	github.com/spf13/afero v1.15.0 // indirect
 	github.com/spf13/cast v1.10.0 // indirect
