@@ -6,8 +6,8 @@ require (
 	github.com/authzed/authzed-go v1.6.0
 	github.com/ory/client-go v1.22.8
 	github.com/shortlink-org/go-sdk/grpc v0.0.0-20251020193241-87e94558595e
-	github.com/shortlink-org/go-sdk/logger v0.0.0-20251020185847-0813d0c3cdf6
-	github.com/shortlink-org/go-sdk/observability v0.0.0-20251030220300-1e2beabd19b6
+	github.com/shortlink-org/go-sdk/logger v0.0.0-20251108103956-0a3cbbf03637
+	github.com/shortlink-org/go-sdk/observability v0.0.0-20251108115131-18dc85978c3b
 	github.com/spf13/viper v1.21.0
 	go.opentelemetry.io/otel/trace v1.38.0
 	google.golang.org/grpc v1.76.0
@@ -28,7 +28,7 @@ require (
 	github.com/google/uuid v1.6.0 // indirect
 	github.com/grafana/regexp v0.0.0-20240518133315-a468a5bfb3bc // indirect
 	github.com/grpc-ecosystem/go-grpc-middleware/providers/prometheus v1.1.0 // indirect
-	github.com/grpc-ecosystem/go-grpc-middleware/v2 v2.3.2 // indirect
+	github.com/grpc-ecosystem/go-grpc-middleware/v2 v2.3.3 // indirect
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.27.3 // indirect
 	github.com/heptiolabs/healthcheck v0.0.0-20211123025425-613501dd5deb // indirect
 	github.com/jzelinskie/stringz v0.0.3 // indirect

@@ -466,10 +466,14 @@ github.com/shortlink-org/go-sdk/http v0.0.0-20251020193241-87e94558595e h1:/J6Sm
 github.com/shortlink-org/go-sdk/http v0.0.0-20251020193241-87e94558595e/go.mod h1:rVOmL5WA6atejRGolmjzhGHEvmcPCFC9szfAD995CtM=
 github.com/shortlink-org/go-sdk/logger v0.0.0-20251021155345-15d6cb691b95 h1:JZCExWu9XiWZCHe+wDMiBa3ugkwdrDFiFTV2a4iOrf8=
 github.com/shortlink-org/go-sdk/logger v0.0.0-20251021155345-15d6cb691b95/go.mod h1:J0AiV/vKBIXenExM+ioBW6iqlg/h8gnb7/hC17011fk=
+github.com/shortlink-org/go-sdk/logger v0.0.0-20251108103956-0a3cbbf03637 h1:YNn+K4p2pIR/5NeuOOLjRn3oecB7RtdYapDp0a4rmGI=
+github.com/shortlink-org/go-sdk/logger v0.0.0-20251108103956-0a3cbbf03637/go.mod h1:6iQv5CA8MeXDxWXhj5jMPhyEFdlIoSkhb+NZl8flBGI=
 github.com/shortlink-org/go-sdk/observability v0.0.0-20251021172021-f38879dace30 h1:ZwR5DFL3U9gf2tes8LKZ/lc7BxLpgbrxQsUOmlcMKrE=
 github.com/shortlink-org/go-sdk/observability v0.0.0-20251021172021-f38879dace30/go.mod h1:H6eARNe11kRzbYq89SKhi9RY73tu6F00EHXRhzCe4H8=
 github.com/shortlink-org/go-sdk/observability v0.0.0-20251030220300-1e2beabd19b6 h1:zAcdu3jvoJwYQl/z+TsRHWFYY9bdDEaWy/7CT5LAy4w=
 github.com/shortlink-org/go-sdk/observability v0.0.0-20251030220300-1e2beabd19b6/go.mod h1:kqwu5fNBArAwodVtkGSnd2tI4mtjnrXcRw2TVK+JZOA=
+github.com/shortlink-org/go-sdk/observability v0.0.0-20251108115131-18dc85978c3b h1:T/Xb6YcrY3T2os+u2mDs0ChscWEEfdeIxPqhaEuc9/E=
+github.com/shortlink-org/go-sdk/observability v0.0.0-20251108115131-18dc85978c3b/go.mod h1:dPd+rnpraOcre8n/Z8fUhqCI6HjdqDEi9b1IJMo1fig=
 github.com/sirupsen/logrus v1.4.1/go.mod h1:ni0Sbl8bgC9z8RoU9G6nDWqqs/fq4eDPysMBDgk/93Q=
 github.com/sirupsen/logrus v1.4.2/go.mod h1:tLMulIdttU9McNUspp0xgXVQah82FyeX6MwdIuYE2rE=
 github.com/sirupsen/logrus v1.6.0/go.mod h1:7uNnSEd1DgxDLC74fIahvMZmmYsHGZGEOFrfsX/uA88=
