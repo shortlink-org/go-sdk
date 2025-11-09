@@ -6,8 +6,11 @@ import (
 	"path"
 	"time"
 
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/proto"
 
 	"github.com/shortlink-org/go-sdk/logger"
 )
@@ -18,6 +21,15 @@ func UnaryClientInterceptor(log logger.Logger) grpc.UnaryClientInterceptor {
 		startTime := time.Now()
 		err := invoker(ctx, method, req, reply, cc, opts...)
 		duration := time.Since(startTime)
+
+		if span := trace.SpanFromContext(ctx); span.IsRecording() {
+			if msg, ok := req.(proto.Message); ok {
+				span.SetAttributes(attribute.String("rpc.request", string(proto.MessageName(msg))))
+			}
+			if msg, ok := reply.(proto.Message); ok {
+				span.SetAttributes(attribute.String("rpc.response", string(proto.MessageName(msg))))
+			}
+		}
 
 		fields := []slog.Attr{
 			slog.String("grpc.service", path.Dir(method)[1:]),

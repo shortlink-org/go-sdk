@@ -15,6 +15,7 @@ import (
 	"go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetricgrpc"
 	promExporter "go.opentelemetry.io/otel/exporters/prometheus"
 	api "go.opentelemetry.io/otel/sdk/metric"
+	"go.opentelemetry.io/otel/sdk/metric/exemplar"
 	"go.opentelemetry.io/otel/trace"
 
 	"github.com/shortlink-org/go-sdk/http/server"
@@ -105,6 +106,7 @@ func (m *Monitoring) SetMetrics(ctx context.Context) (*api.MeterProvider, error)
 	provider := api.NewMeterProvider(
 		api.WithResource(res),
 		api.WithReader(registry),
+		api.WithExemplarFilter(exemplar.TraceBasedFilter),
 	)
 
 	otel.SetMeterProvider(provider)
@@ -123,16 +125,14 @@ func (m *Monitoring) SetHandler() (*http.ServeMux, error) {
 		promhttp.HandlerOpts{
 			// Opt into OpenMetrics to support exemplars.
 			EnableOpenMetrics: true,
+
+			ErrorHandling: promhttp.ContinueOnError,
 		},
 	))
 
 	// Create a metrics-exposing Handler for the Prometheus registry
-	// The healthcheck related metrics will be prefixed with the provided namespace
+	// The health check related metrics will be prefixed with the provided namespace
 	health := healthcheck.NewMetricsHandler(m.Prometheus, "common")
-
-	// Our app is not happy if we've got more than 100 goroutines running.
-	// TODO: research problem with prometheus
-	// health.AddLivenessCheck("goroutine-threshold", healthcheck.GoroutineCountCheck(100)) //nolint:mnd
 
 	// Expose a liveness check on /live
 	handler.HandleFunc("/live", health.LiveEndpoint)

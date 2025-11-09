@@ -2,8 +2,13 @@ package auth_middleware
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
+	"errors"
 	"net/http"
+	"time"
 
+	redisCache "github.com/go-redis/cache/v9"
 	ory "github.com/ory/client-go"
 	"github.com/spf13/viper"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
@@ -13,6 +18,7 @@ import (
 	"go.opentelemetry.io/otel/trace"
 
 	"github.com/shortlink-org/go-sdk/auth/session"
+	"github.com/shortlink-org/go-sdk/cache"
 )
 
 const tracerName = "github.com/shortlink-org/go-sdk/http/middleware/auth"
@@ -45,6 +51,7 @@ func (a auth) middleware(next http.Handler) http.Handler {
 	fn := func(w http.ResponseWriter, r *http.Request) {
 		ctx, span := a.tracer.Start(r.Context(), "ory.kratos.session",
 			trace.WithAttributes(attribute.String("component", "auth_middleware")),
+			trace.WithSpanKind(trace.SpanKindClient),
 		)
 		defer span.End()
 
@@ -78,6 +85,7 @@ func (a auth) middleware(next http.Handler) http.Handler {
 			return
 		}
 
+		// Enrich context
 		ctx = context.WithValue(ctx, contextCookieKey, cookies)
 		ctx = session.WithSession(ctx, sess)
 

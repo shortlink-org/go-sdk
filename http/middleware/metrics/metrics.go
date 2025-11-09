@@ -9,6 +9,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/prometheus/client_golang/prometheus"
+	"go.opentelemetry.io/otel/trace"
 )
 
 type metrics struct {
@@ -60,5 +61,17 @@ func (m *metrics) writeMetrics(r *http.Request, start time.Time, code string) {
 	routePattern = strings.ReplaceAll(routePattern, "/*/", "/")
 
 	m.reqs.WithLabelValues(code, r.Method, routePattern).Inc()
-	m.latency.WithLabelValues(code, r.Method, routePattern).Observe(time.Since(start).Seconds())
+	observer := m.latency.WithLabelValues(code, r.Method, routePattern)
+	latencySeconds := time.Since(start).Seconds()
+
+	spanCtx := trace.SpanContextFromContext(r.Context())
+	if spanCtx.HasTraceID() && spanCtx.IsSampled() {
+		if exemplarObserver, ok := observer.(prometheus.ExemplarObserver); ok {
+			exemplarObserver.ObserveWithExemplar(latencySeconds, prometheus.Labels{"trace_id": spanCtx.TraceID().String()})
+
+			return
+		}
+	}
+
+	observer.Observe(latencySeconds)
 }

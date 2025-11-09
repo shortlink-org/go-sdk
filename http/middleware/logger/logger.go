@@ -29,13 +29,22 @@ func (c chilogger) middleware(next http.Handler) http.Handler {
 		defer func() {
 			latency := time.Since(start)
 
-			c.log.InfoWithContext(r.Context(), "request completed",
+			fields := []slog.Attr{
 				slog.Int("status", ww.Status()),
 				slog.Duration("took", latency),
 				slog.String("remote", r.RemoteAddr),
 				slog.String("request", r.RequestURI),
 				slog.String("method", r.Method),
-			)
+			}
+
+			switch {
+			case ww.Status() >= http.StatusInternalServerError:
+				c.log.ErrorWithContext(r.Context(), "request completed", fields...)
+			case ww.Status() >= http.StatusBadRequest:
+				c.log.WarnWithContext(r.Context(), "request completed", fields...)
+			default:
+				c.log.InfoWithContext(r.Context(), "request completed", fields...)
+			}
 		}()
 
 		next.ServeHTTP(ww, r)

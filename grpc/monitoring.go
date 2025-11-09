@@ -8,8 +8,9 @@ import (
 )
 
 func exemplarFromContext(ctx context.Context) prometheus.Labels {
-	if span := trace.SpanContextFromContext(ctx); span.IsSampled() {
-		return prometheus.Labels{"traceID": span.TraceID().String()}
+	span := trace.SpanContextFromContext(ctx)
+	if span.IsSampled() && span.HasTraceID() {
+		return prometheus.Labels{"trace_id": span.TraceID().String()}
 	}
 
 	return nil
