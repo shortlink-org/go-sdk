@@ -20,7 +20,7 @@ require (
 	github.com/ory/dockertest/v3 v3.12.0
 	github.com/redis/rueidis v1.0.67
 	github.com/redis/rueidis/rueidisotel v1.0.67
-	github.com/shortlink-org/go-sdk/logger v0.0.0-20251021155345-15d6cb691b95
+	github.com/shortlink-org/go-sdk/logger v0.0.0-20251108203914-f363e5ad1155
 	github.com/spf13/viper v1.21.0
 	github.com/stretchr/testify v1.11.1
 	github.com/syndtr/goleveldb v1.0.1-0.20220721030215-126854af5e6d
