@@ -10,7 +10,7 @@ require (
 	github.com/prometheus/client_model v0.6.2
 	github.com/shortlink-org/go-sdk/auth v0.0.0-20251108145352-f59577605d0a
 	github.com/shortlink-org/go-sdk/cache v0.0.0-20251109062829-3e4d690eb1d1
-	github.com/shortlink-org/go-sdk/logger v0.0.0-20251108103956-0a3cbbf03637
+	github.com/shortlink-org/go-sdk/logger v0.0.0-20251108203914-f363e5ad1155
 	github.com/spf13/viper v1.21.0
 	github.com/stretchr/testify v1.11.1
 	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.63.0
