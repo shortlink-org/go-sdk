@@ -11,7 +11,7 @@ require (
 	github.com/rabbitmq/amqp091-go v1.10.0
 	github.com/redis/rueidis v1.0.67
 	github.com/shortlink-org/go-sdk/db v0.0.0-20251021180704-1b5969f32d91
-	github.com/shortlink-org/go-sdk/logger v0.0.0-20251021180704-1b5969f32d91
+	github.com/shortlink-org/go-sdk/logger v0.0.0-20251108203914-f363e5ad1155
 	github.com/spf13/viper v1.21.0
 	github.com/stretchr/testify v1.11.1
 	go.opentelemetry.io/otel v1.38.0

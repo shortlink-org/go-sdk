@@ -8,7 +8,7 @@ require (
 	github.com/prometheus/client_golang v1.23.2
 	github.com/prometheus/client_model v0.6.2
 	github.com/shortlink-org/go-sdk/auth v0.0.0-20251108145352-f59577605d0a
-	github.com/shortlink-org/go-sdk/logger v0.0.0-20251108103956-0a3cbbf03637
+	github.com/shortlink-org/go-sdk/logger v0.0.0-20251108203914-f363e5ad1155
 	github.com/spf13/viper v1.21.0
 	github.com/stretchr/testify v1.11.1
 	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.63.0
@@ -43,7 +43,7 @@ require (
 	github.com/prometheus/procfs v0.17.0 // indirect
 	github.com/sagikazarmark/locafero v0.11.0 // indirect
 	github.com/samber/lo v1.51.0 // indirect
-	github.com/shortlink-org/go-sdk/grpc v0.0.0-20251020193241-87e94558595e // indirect
+	github.com/shortlink-org/go-sdk/grpc v0.0.0-20251108145352-f59577605d0a // indirect
 	github.com/sourcegraph/conc v0.3.1-0.20240121214520-5f936abd7ae8 // indirect
 	github.com/spf13/afero v1.15.0 // indirect
 	github.com/spf13/cast v1.10.0 // indirect
