@@ -109,7 +109,7 @@ require (
 	github.com/xeipuuv/gojsonschema v1.2.0 // indirect
 	github.com/youmark/pkcs8 v0.0.0-20240726163527-a2c0da244d78 // indirect
 	go.mongodb.org/mongo-driver v1.17.2 // indirect
-	go.mongodb.org/mongo-driver/v2 v2.3.1 // indirect
+	go.mongodb.org/mongo-driver/v2 v2.4.0 // indirect
 	go.opentelemetry.io/auto/sdk v1.1.0 // indirect
 	go.opentelemetry.io/otel/metric v1.38.0 // indirect
 	go.opentelemetry.io/otel/sdk v1.38.0 // indirect

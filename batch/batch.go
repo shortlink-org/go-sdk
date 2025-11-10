@@ -1,5 +1,5 @@
 /*
-Package for work in batch mode
+Package batch for work in batch mode
 */
 package batch
 
@@ -144,7 +144,8 @@ func (batch *Batch[T]) flushItems() {
 				close(item.CallbackChannel)
 			}
 		default:
-			if err := batch.callback(items); err != nil {
+			err := batch.callback(items)
+			if err != nil {
 				select {
 				case batch.errChan <- err:
 				default:

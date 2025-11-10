@@ -448,8 +448,6 @@ github.com/segmentio/encoding v0.5.3/go.mod h1:HS1ZKa3kSN32ZHVZ7ZLPLXWvOVIiZtyJn
 github.com/shopspring/decimal v0.0.0-20180709203117-cd690d0c9e24/go.mod h1:M+9NzErvs504Cn4c5DxATwIqPbtswREoFCre64PpcG4=
 github.com/shortlink-org/go-sdk/db v0.0.0-20251021180704-1b5969f32d91 h1:w2yflMqtNmITzmIRlIC1f5x91Th5tlurNLJ/aH3EY+o=
 github.com/shortlink-org/go-sdk/db v0.0.0-20251021180704-1b5969f32d91/go.mod h1:7DrSVkxjleWAZgeSf/wIMAW9hPTbIhaZ0lEqQg0U7bs=
-github.com/shortlink-org/go-sdk/logger v0.0.0-20251021180704-1b5969f32d91 h1:WCbv6WZvPG6ugMuj9v/HmwbyYqVHBBoEyTpZ2mrReXY=
-github.com/shortlink-org/go-sdk/logger v0.0.0-20251021180704-1b5969f32d91/go.mod h1:J0AiV/vKBIXenExM+ioBW6iqlg/h8gnb7/hC17011fk=
 github.com/shortlink-org/go-sdk/logger v0.0.0-20251108203914-f363e5ad1155 h1:ljnHpZLlTltuwN6geDhvm3DjytfGIy7StV+9e4L0LXk=
 github.com/shortlink-org/go-sdk/logger v0.0.0-20251108203914-f363e5ad1155/go.mod h1:6iQv5CA8MeXDxWXhj5jMPhyEFdlIoSkhb+NZl8flBGI=
 github.com/sirupsen/logrus v1.4.1/go.mod h1:ni0Sbl8bgC9z8RoU9G6nDWqqs/fq4eDPysMBDgk/93Q=
@@ -522,8 +520,7 @@ gitlab.com/nyarla/go-crypt v0.0.0-20160106005555-d9a5dc2b789b/go.mod h1:T3BPAOm2
 go.mongodb.org/mongo-driver v1.1.0/go.mod h1:u7ryQJ+DOzQmeO7zB6MHyr8jkEQvC8vH7qLUO4lqsUM=
 go.mongodb.org/mongo-driver v1.17.2 h1:gvZyk8352qSfzyZ2UMWcpDpMSGEr1eqE4T793SqyhzM=
 go.mongodb.org/mongo-driver v1.17.2/go.mod h1:Hy04i7O2kC4RS06ZrhPRqj/u4DTYkFDAAccj+rVKqgQ=
-go.mongodb.org/mongo-driver/v2 v2.3.1 h1:WrCgSzO7dh1/FrePud9dK5fKNZOE97q5EQimGkos7Wo=
-go.mongodb.org/mongo-driver/v2 v2.3.1/go.mod h1:jHeEDJHJq7tm6ZF45Issun9dbogjfnPySb1vXA7EeAI=
+go.mongodb.org/mongo-driver/v2 v2.4.0 h1:Oq6BmUAAFTzMeh6AonuDlgZMuAuEiUxoAD1koK5MuFo=
 go.opencensus.io v0.21.0/go.mod h1:mSImk1erAIZhrmZN+AvHh14ztQfjbGwt4TtuofqLduU=
 go.opencensus.io v0.22.0/go.mod h1:+kGneAE2xo2IficOXnaByMWTGM9T73dGwxeWcUqIpI8=
 go.opencensus.io v0.22.2/go.mod h1:yxeiOL68Rb0Xd1ddK5vPZ/oVn4vY4Ynel7k9FzqtOIw=
@@ -660,8 +657,6 @@ golang.org/x/sync v0.0.0-20200317015054-43a5402ce75a/go.mod h1:RxMgew5VJxzue5/jJ
 golang.org/x/sync v0.0.0-20200625203802-6e8e738ad208/go.mod h1:RxMgew5VJxzue5/jJTE5uejpjVlOe/izrB70Jof72aM=
 golang.org/x/sync v0.0.0-20201020160332-67f06af15bc9/go.mod h1:RxMgew5VJxzue5/jJTE5uejpjVlOe/izrB70Jof72aM=
 golang.org/x/sync v0.0.0-20220722155255-886fb9371eb4/go.mod h1:RxMgew5VJxzue5/jJTE5uejpjVlOe/izrB70Jof72aM=
-golang.org/x/sync v0.17.0 h1:l60nONMj9l5drqw6jlhIELNv9I0A4OFgRsG9k2oT9Ug=
-golang.org/x/sync v0.17.0/go.mod h1:9KTHXmSnoGruLpwFjVSX0lNNA75CykiMECbovNTZqGI=
 golang.org/x/sync v0.18.0 h1:kr88TuHDroi+UVf+0hZnirlk8o8T+4MrK6mr60WkH/I=
 golang.org/x/sync v0.18.0/go.mod h1:9KTHXmSnoGruLpwFjVSX0lNNA75CykiMECbovNTZqGI=
 golang.org/x/sys v0.0.0-20180224232135-f6cff0780e54/go.mod h1:STP8DvDyc/dI5b8T5hshtkjS+E42TnysNCUPdjciGhY=

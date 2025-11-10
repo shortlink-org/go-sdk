@@ -49,7 +49,3 @@ require (
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20250929231259-57b25ae835d4 // indirect
 )
 
-replace (
-	github.com/shortlink-org/go-sdk/auth => ../auth
-	github.com/shortlink-org/go-sdk/logger => ../logger
-)

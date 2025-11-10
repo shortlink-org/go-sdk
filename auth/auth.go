@@ -2,10 +2,9 @@ package auth
 
 import (
 	"github.com/authzed/authzed-go/v1"
+	rpc "github.com/shortlink-org/go-sdk/grpc"
 	"github.com/spf13/viper"
 	"google.golang.org/grpc"
-
-	rpc "github.com/shortlink-org/go-sdk/grpc"
 )
 
 func New(options ...rpc.Option) (*authzed.Client, error) {

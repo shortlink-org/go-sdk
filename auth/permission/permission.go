@@ -4,13 +4,11 @@ import (
 	"context"
 
 	"github.com/authzed/authzed-go/v1"
-	"go.opentelemetry.io/otel/trace"
-
 	"github.com/shortlink-org/go-sdk/auth"
 	rpc "github.com/shortlink-org/go-sdk/grpc"
 	"github.com/shortlink-org/go-sdk/logger"
-
 	"github.com/shortlink-org/go-sdk/observability/metrics"
+	"go.opentelemetry.io/otel/trace"
 )
 
 func New(_ context.Context, log logger.Logger, tracer trace.TracerProvider, monitor *metrics.Monitoring) (*authzed.Client, error) {

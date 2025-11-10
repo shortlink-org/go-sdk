@@ -32,7 +32,7 @@ require (
 	github.com/google/uuid v1.6.0 // indirect
 	github.com/grafana/regexp v0.0.0-20240518133315-a468a5bfb3bc // indirect
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.27.3 // indirect
-	github.com/klauspost/compress v1.18.0 // indirect
+	github.com/klauspost/compress v1.18.1 // indirect
 	github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 // indirect
 	github.com/pelletier/go-toml/v2 v2.2.4 // indirect
 	github.com/prometheus/client_model v0.6.2 // indirect
@@ -60,9 +60,4 @@ require (
 	google.golang.org/grpc v1.76.0 // indirect
 	google.golang.org/protobuf v1.36.10 // indirect
 	gopkg.in/DATA-DOG/go-sqlmock.v1 v1.3.0 // indirect
-)
-
-replace (
-	github.com/shortlink-org/go-sdk/http => ../http
-	github.com/shortlink-org/go-sdk/logger => ../logger
 )

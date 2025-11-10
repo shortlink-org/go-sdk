@@ -54,7 +54,3 @@ require (
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
 
-replace (
-	github.com/shortlink-org/go-sdk/grpc => ../grpc
-	github.com/shortlink-org/go-sdk/logger => ../logger
-)

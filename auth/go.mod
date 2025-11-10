@@ -32,6 +32,7 @@ require (
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.27.3 // indirect
 	github.com/heptiolabs/healthcheck v0.0.0-20211123025425-613501dd5deb // indirect
 	github.com/jzelinskie/stringz v0.0.3 // indirect
+	github.com/klauspost/compress v1.18.1 // indirect
 	github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 // indirect
 	github.com/pelletier/go-toml/v2 v2.2.4 // indirect
 	github.com/planetscale/vtprotobuf v0.6.1-0.20241121165744-79df5c4772f2 // indirect
@@ -67,10 +68,4 @@ require (
 	google.golang.org/genproto/googleapis/api v0.0.0-20250929231259-57b25ae835d4 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20250929231259-57b25ae835d4 // indirect
 	google.golang.org/protobuf v1.36.10 // indirect
-)
-
-replace (
-	github.com/shortlink-org/go-sdk/grpc => ../grpc
-	github.com/shortlink-org/go-sdk/logger => ../logger
-	github.com/shortlink-org/go-sdk/observability => ../observability
 )

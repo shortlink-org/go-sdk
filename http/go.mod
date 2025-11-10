@@ -54,12 +54,13 @@ require (
 	github.com/jackc/pgx/v5 v5.7.6 // indirect
 	github.com/jackc/puddle/v2 v2.2.2 // indirect
 	github.com/johejo/golang-migrate-extra v0.0.0-20211005021153-c17dd75f8b4a // indirect
-	github.com/klauspost/compress v1.18.0 // indirect
+	github.com/klauspost/compress v1.18.1 // indirect
 	github.com/lib/pq v1.10.9 // indirect
 	github.com/mattn/go-sqlite3 v1.14.32 // indirect
 	github.com/montanaflynn/stats v0.7.1 // indirect
 	github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 // indirect
 	github.com/neo4j/neo4j-go-driver/v5 v5.28.4 // indirect
+	github.com/opencontainers/runc v1.2.8 // indirect
 	github.com/pelletier/go-toml/v2 v2.2.4 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
@@ -88,7 +89,7 @@ require (
 	github.com/xdg-go/stringprep v1.0.4 // indirect
 	github.com/youmark/pkcs8 v0.0.0-20240726163527-a2c0da244d78 // indirect
 	go.mongodb.org/mongo-driver v1.17.2 // indirect
-	go.mongodb.org/mongo-driver/v2 v2.3.1 // indirect
+	go.mongodb.org/mongo-driver/v2 v2.4.0 // indirect
 	go.opentelemetry.io/auto/sdk v1.1.0 // indirect
 	go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetricgrpc v1.38.0 // indirect
 	go.opentelemetry.io/otel/exporters/prometheus v0.60.0 // indirect
@@ -108,10 +109,4 @@ require (
 	google.golang.org/grpc v1.76.0 // indirect
 	google.golang.org/protobuf v1.36.10 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
-)
-
-replace (
-	github.com/shortlink-org/go-sdk/auth => ../auth
-	github.com/shortlink-org/go-sdk/cache => ../cache
-	github.com/shortlink-org/go-sdk/logger => ../logger
 )

@@ -5,7 +5,7 @@ import (
 )
 
 // NewSync creates a batch that runs in the background like New,
-// but it blocks until the passed context is cancelled and all
+// but it blocks until the passed context is canceled and all
 // pending items have been processed. The first error returned
 // by the user-supplied callback (if any) is propagated as the
 // returned error.

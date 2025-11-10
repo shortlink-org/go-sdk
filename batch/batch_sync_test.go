@@ -17,19 +17,24 @@ func TestNewSync(t *testing.T) {
 		aggrCB := func(args []*Item[string]) error {
 			for _, item := range args {
 				item.CallbackChannel <- item.Item
+
 				close(item.CallbackChannel)
 			}
+
 			return nil
 		}
 
 		// Call NewSync in a goroutine because it blocks until ctx is done.
 		done := make(chan struct{})
+
 		var (
 			b   *Batch[string]
 			err error
 		)
+
 		go func() {
 			b, err = NewSync(ctx, aggrCB)
+
 			close(done)
 		}()
 
@@ -54,16 +59,21 @@ func TestBatchProcessingWithSynctest(t *testing.T) {
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
 
-		var processedItems []string
-		var callbackCount int64
+		var (
+			processedItems []string
+			callbackCount  int64
+		)
 
 		aggrCB := func(items []*Item[string]) error {
 			atomic.AddInt64(&callbackCount, 1)
+
 			for _, item := range items {
 				processedItems = append(processedItems, item.Item)
 				item.CallbackChannel <- item.Item
+
 				close(item.CallbackChannel)
 			}
+
 			return nil
 		}
 
@@ -108,29 +118,35 @@ func TestBatchProcessingWithSynctest(t *testing.T) {
 
 		// Wait for error channel to close and check no errors occurred
 		var errors []error
+
 		for err := range errChan {
 			if err != nil {
 				errors = append(errors, err)
 			}
 		}
+
 		require.Empty(t, errors)
 	})
 }
 
 // TestBatchCancellationWithSynctest verifies proper resource cleanup and graceful shutdown
-// when the batch context is cancelled. Ensures that pending items are handled correctly
+// when the batch context is canceled. Ensures that pending items are handled correctly
 // and no goroutines are leaked during cancellation scenarios.
 func TestBatchCancellationWithSynctest(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
 		ctx, cancel := context.WithCancel(context.Background())
+
 		var processedCount int64
 
 		aggrCB := func(items []*Item[string]) error {
 			atomic.AddInt64(&processedCount, int64(len(items)))
+
 			for _, item := range items {
 				item.CallbackChannel <- item.Item
+
 				close(item.CallbackChannel)
 			}
+
 			return nil
 		}
 
@@ -150,11 +166,13 @@ func TestBatchCancellationWithSynctest(t *testing.T) {
 		// Verify channels are closed (items should be dropped on cancellation)
 		_, ok1 := <-ch1
 		_, ok2 := <-ch2
+
 		require.False(t, ok1, "channel should be closed")
 		require.False(t, ok2, "channel should be closed")
 
 		// Wait for error channel to close
 		var errors []error
+
 		for err := range errChan {
 			if err != nil {
 				errors = append(errors, err)
@@ -178,10 +196,13 @@ func TestBatchTimeBasedFlushWithSynctest(t *testing.T) {
 
 		aggrCB := func(items []*Item[string]) error {
 			atomic.AddInt64(&flushCount, 1)
+
 			for _, item := range items {
 				item.CallbackChannel <- item.Item
+
 				close(item.CallbackChannel)
 			}
+
 			return nil
 		}
 
@@ -208,6 +229,7 @@ func TestBatchTimeBasedFlushWithSynctest(t *testing.T) {
 
 		// Clean up
 		cancel()
+
 		for range errChan {
 			// Drain error channel
 		}
