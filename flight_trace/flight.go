@@ -3,7 +3,6 @@ package flight_trace
 import (
 	"context"
 	"errors"
-	"fmt"
 	"os"
 	"path/filepath"
 	"runtime/trace"
@@ -71,40 +70,35 @@ func New(ctx context.Context) (*Recorder, error) {
 	return rec, nil
 }
 
-// DumpSnapshot writes a trace snapshot to a file.
-func (wr *Recorder) DumpSnapshot(fileNameSuffix string) (string, error) {
+// DumpToFile writes the flight recorder buffer into a file under dumpPath.
+func (wr *Recorder) DumpToFile(fileName string) error {
 	if wr == nil {
-		return "", ErrRecorderNotInitialized
+		return ErrRecorderNotInitialized
 	}
 
 	if wr.fr == nil || !wr.fr.Enabled() {
-		return "", ErrRecorderNotStarted
+		return ErrRecorderNotStarted
 	}
 
-	filePath := filepath.Join(
-		wr.dumpPath,
-		fmt.Sprintf("flight-%s-%d.out", fileNameSuffix, time.Now().UnixNano()),
-	)
-
-	f, err := os.Create(filePath)
+	f, err := os.Create(filepath.Join(wr.dumpPath, fileName))
 	if err != nil {
-		return "", ErrCreateDumpFile
+		return ErrCreateDumpFile
 	}
 	defer f.Close()
 
 	if _, err = wr.fr.WriteTo(f); err != nil {
-		return "", ErrWriteDump
+		return ErrWriteDump
 	}
 
 	go wr.cleanupOldDumps()
 
-	return filePath, nil
+	return nil
 }
 
-// DumpSnapshotAsync creates a dump in background.
-func (wr *Recorder) DumpSnapshotAsync(suffix string) {
+// DumpToFileAsync runs DumpToFile asynchronously.
+func (wr *Recorder) DumpToFileAsync(fileName string) {
 	go func() {
-		_, _ = wr.DumpSnapshot(suffix)
+		_ = wr.DumpToFile(fileName)
 	}()
 }
 
