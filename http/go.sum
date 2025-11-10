@@ -319,6 +319,7 @@ github.com/kisielk/errcheck v1.2.0/go.mod h1:/BMXB+zMLi60iA8Vv6Ksmxu/1UDYcXs4uQL
 github.com/kisielk/gotool v1.0.0/go.mod h1:XhKaO+MFFWcvkIS/tQcRk01m1F5IRFswLeQ+oQHNcck=
 github.com/klauspost/compress v1.13.6/go.mod h1:/3/Vjq9QcHkK5uEr5lBEmyoZ1iFhe47etQ6QUkpK6sk=
 github.com/klauspost/compress v1.18.1 h1:bcSGx7UbpBqMChDtsF28Lw6v/G94LPrrbMbdC3JH2co=
+github.com/klauspost/compress v1.18.1/go.mod h1:ZQFFVG+MdnR0P+l6wpXgIL4NTtwiKIdBnrBd8Nrxr+0=
 github.com/konsorten/go-windows-terminal-sequences v1.0.1/go.mod h1:T0+1ngSBFLxvqU3pZ+m/2kptfBszLMUkC4ZK/EgS/cQ=
 github.com/konsorten/go-windows-terminal-sequences v1.0.2/go.mod h1:T0+1ngSBFLxvqU3pZ+m/2kptfBszLMUkC4ZK/EgS/cQ=
 github.com/konsorten/go-windows-terminal-sequences v1.0.3/go.mod h1:T0+1ngSBFLxvqU3pZ+m/2kptfBszLMUkC4ZK/EgS/cQ=
@@ -405,6 +406,7 @@ github.com/opencontainers/image-spec v1.0.1/go.mod h1:BtxoFyWECRxE4U/7sNtV5W15zM
 github.com/opencontainers/image-spec v1.1.1 h1:y0fUlFfIZhPF1W537XOLg0/fcx6zcHCJwooC2xJA040=
 github.com/opencontainers/image-spec v1.1.1/go.mod h1:qpqAh3Dmcf36wStyyWU+kCeDgrGnAve2nCC8+7h8Q0M=
 github.com/opencontainers/runc v1.2.8 h1:RnEICeDReapbZ5lZEgHvj7E9Q3Eex9toYmaGBsbvU5Q=
+github.com/opencontainers/runc v1.2.8/go.mod h1:cC0YkmZcuvr+rtBZ6T7NBoVbMGNAdLa/21vIElJDOzI=
 github.com/ory/client-go v1.22.8 h1:v1NCqmKIKFQFYQihWUJuksvxILujvVA8HUOCAs5Lxr0=
 github.com/ory/client-go v1.22.8/go.mod h1:o/1hF5MKq3gyn9nUWZF/VVz35nitCzsGfIwl5SXVJ1Y=
 github.com/ory/dockertest/v3 v3.12.0 h1:3oV9d0sDzlSQfHtIaB5k6ghUCVMVLpAY8hwrqoCyRCw=
@@ -458,10 +460,17 @@ github.com/segmentio/encoding v0.5.3 h1:OjMgICtcSFuNvQCdwqMCv9Tg7lEOXGwm1J5RPQcc
 github.com/segmentio/encoding v0.5.3/go.mod h1:HS1ZKa3kSN32ZHVZ7ZLPLXWvOVIiZtyJnO1gPH1sKt0=
 github.com/shopspring/decimal v0.0.0-20180709203117-cd690d0c9e24/go.mod h1:M+9NzErvs504Cn4c5DxATwIqPbtswREoFCre64PpcG4=
 github.com/shortlink-org/go-sdk/auth v0.0.0-20251108145352-f59577605d0a h1:x2P6Oy1zdgkzSPvAoLsyBTcIBEw1212ceIfIB5U5H5g=
+github.com/shortlink-org/go-sdk/auth v0.0.0-20251108145352-f59577605d0a/go.mod h1:6LQpx6YJL7k8qMQDf789xQPzmALgJhcIeckhK15zT7w=
 github.com/shortlink-org/go-sdk/cache v0.0.0-20251109062829-3e4d690eb1d1 h1:K9m40PtmdtuvpQuIFcGT1lMj3oQF+ogRWP6pu/ddBp4=
+github.com/shortlink-org/go-sdk/cache v0.0.0-20251109062829-3e4d690eb1d1/go.mod h1:QzSUIz/MT0HNJIdkvEUwkja5yrxntRLL77onKSuwsBQ=
 github.com/shortlink-org/go-sdk/db v0.0.0-20251021172021-f38879dace30 h1:/LIXdXvpRJxW+ACsPbp30LDbbT9NNJ/Hyde30dW2GOo=
 github.com/shortlink-org/go-sdk/db v0.0.0-20251021172021-f38879dace30/go.mod h1:7DrSVkxjleWAZgeSf/wIMAW9hPTbIhaZ0lEqQg0U7bs=
+github.com/shortlink-org/go-sdk/flight_trace v0.0.0-20251110214249-6546029ac459 h1:qfNRV5CbbBiiUsST99Hqjitn3c1VAwiNhxUXlJLoJ90=
+github.com/shortlink-org/go-sdk/flight_trace v0.0.0-20251110214249-6546029ac459/go.mod h1:wfwOCvYo3F1QHEAaoZxVfQ5gOkMo+nVUgRGI8m9JFWk=
+github.com/shortlink-org/go-sdk/flight_trace v0.0.0-20251110214928-3ad4bcac690c h1:8FZtsX9gjreEWs9HhE5ypnXniFp//pr7WZC0mJnKFcM=
+github.com/shortlink-org/go-sdk/flight_trace v0.0.0-20251110214928-3ad4bcac690c/go.mod h1:5g+aBwU6OPTYoQLKYOhQyySlzvAueaDegYtaaAXAE4U=
 github.com/shortlink-org/go-sdk/logger v0.0.0-20251108203914-f363e5ad1155 h1:ljnHpZLlTltuwN6geDhvm3DjytfGIy7StV+9e4L0LXk=
+github.com/shortlink-org/go-sdk/logger v0.0.0-20251108203914-f363e5ad1155/go.mod h1:6iQv5CA8MeXDxWXhj5jMPhyEFdlIoSkhb+NZl8flBGI=
 github.com/shortlink-org/go-sdk/observability v0.0.0-20251108145352-f59577605d0a h1:/Wcku4Vf50hwOXOD948tyFFKfE3OgLYV+nemPYlRFuI=
 github.com/shortlink-org/go-sdk/observability v0.0.0-20251108145352-f59577605d0a/go.mod h1:cVIZY3fcjwTzeHO++a9nF/35tm0C7j/ZEEUKDXreJpQ=
 github.com/sirupsen/logrus v1.4.1/go.mod h1:ni0Sbl8bgC9z8RoU9G6nDWqqs/fq4eDPysMBDgk/93Q=
@@ -543,6 +552,7 @@ go.mongodb.org/mongo-driver v1.1.0/go.mod h1:u7ryQJ+DOzQmeO7zB6MHyr8jkEQvC8vH7qL
 go.mongodb.org/mongo-driver v1.17.2 h1:gvZyk8352qSfzyZ2UMWcpDpMSGEr1eqE4T793SqyhzM=
 go.mongodb.org/mongo-driver v1.17.2/go.mod h1:Hy04i7O2kC4RS06ZrhPRqj/u4DTYkFDAAccj+rVKqgQ=
 go.mongodb.org/mongo-driver/v2 v2.4.0 h1:Oq6BmUAAFTzMeh6AonuDlgZMuAuEiUxoAD1koK5MuFo=
+go.mongodb.org/mongo-driver/v2 v2.4.0/go.mod h1:jHeEDJHJq7tm6ZF45Issun9dbogjfnPySb1vXA7EeAI=
 go.opencensus.io v0.21.0/go.mod h1:mSImk1erAIZhrmZN+AvHh14ztQfjbGwt4TtuofqLduU=
 go.opencensus.io v0.22.0/go.mod h1:+kGneAE2xo2IficOXnaByMWTGM9T73dGwxeWcUqIpI8=
 go.opencensus.io v0.22.2/go.mod h1:yxeiOL68Rb0Xd1ddK5vPZ/oVn4vY4Ynel7k9FzqtOIw=
