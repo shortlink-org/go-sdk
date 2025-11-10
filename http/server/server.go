@@ -19,6 +19,10 @@ func New(ctx context.Context, h http.Handler, config Config, tracer trace.Tracer
 
 	handler := http.TimeoutHandler(h, config.Timeout, fmt.Sprintf(`{"error": %q}`, TimeoutMessage))
 
+	if tracer != nil {
+		handler = otelhttp.NewHandler(handler, "")
+	}
+
 	server := &http.Server{
 		Addr:    fmt.Sprintf(":%d", config.Port),
 		Handler: handler,
@@ -30,10 +34,6 @@ func New(ctx context.Context, h http.Handler, config Config, tracer trace.Tracer
 		WriteTimeout:      config.Timeout + viper.GetDuration("HTTP_SERVER_WRITE_TIMEOUT"),
 		IdleTimeout:       viper.GetDuration("HTTP_SERVER_IDLE_TIMEOUT"),
 		ReadHeaderTimeout: viper.GetDuration("HTTP_SERVER_READ_HEADER_TIMEOUT"),
-	}
-
-	if tracer != nil {
-		server.Handler = otelhttp.NewHandler(handler, "")
 	}
 
 	return server
