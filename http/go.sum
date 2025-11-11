@@ -469,6 +469,8 @@ github.com/shortlink-org/go-sdk/flight_trace v0.0.0-20251110214249-6546029ac459 
 github.com/shortlink-org/go-sdk/flight_trace v0.0.0-20251110214249-6546029ac459/go.mod h1:wfwOCvYo3F1QHEAaoZxVfQ5gOkMo+nVUgRGI8m9JFWk=
 github.com/shortlink-org/go-sdk/flight_trace v0.0.0-20251110214928-3ad4bcac690c h1:8FZtsX9gjreEWs9HhE5ypnXniFp//pr7WZC0mJnKFcM=
 github.com/shortlink-org/go-sdk/flight_trace v0.0.0-20251110214928-3ad4bcac690c/go.mod h1:5g+aBwU6OPTYoQLKYOhQyySlzvAueaDegYtaaAXAE4U=
+github.com/shortlink-org/go-sdk/flight_trace v0.0.0-20251110220022-59bbb127b5c1 h1:ID5NXmkwPmVJdJlZxI/V5fdfCClxXSby/dphcSxOAL4=
+github.com/shortlink-org/go-sdk/flight_trace v0.0.0-20251110220022-59bbb127b5c1/go.mod h1:5g+aBwU6OPTYoQLKYOhQyySlzvAueaDegYtaaAXAE4U=
 github.com/shortlink-org/go-sdk/logger v0.0.0-20251108203914-f363e5ad1155 h1:ljnHpZLlTltuwN6geDhvm3DjytfGIy7StV+9e4L0LXk=
 github.com/shortlink-org/go-sdk/logger v0.0.0-20251108203914-f363e5ad1155/go.mod h1:6iQv5CA8MeXDxWXhj5jMPhyEFdlIoSkhb+NZl8flBGI=
 github.com/shortlink-org/go-sdk/observability v0.0.0-20251108145352-f59577605d0a h1:/Wcku4Vf50hwOXOD948tyFFKfE3OgLYV+nemPYlRFuI=
