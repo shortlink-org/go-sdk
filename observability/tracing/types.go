@@ -6,4 +6,5 @@ type Config struct {
 	ServiceVersion string
 	URI            string
 	PyroscopeURI   string
+	Insecure       bool
 }

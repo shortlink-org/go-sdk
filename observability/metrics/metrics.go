@@ -28,6 +28,7 @@ type Monitoring struct {
 	Handler    *http.ServeMux
 	Prometheus *prometheus.Registry
 	Metrics    *api.MeterProvider
+	exporter   *otlpmetricgrpc.Exporter
 }
 
 // New - Monitoring endpoints
@@ -64,22 +65,34 @@ func New(ctx context.Context, log logger.Logger, tracer trace.TracerProvider) (*
 		slog.String("addr", "0.0.0.0:9090"),
 	)
 
-	// Create a new OTLP exporter for sending metrics to the OpenTelemetry Collector.
-	_, err = otlpmetricgrpc.New(ctx)
-	if err != nil {
-		return nil, nil, err
-	}
-
 	return monitoring, func() {
-		errShutdown := monitoring.Metrics.Shutdown(ctx)
-		if errShutdown != nil {
-			log.ErrorWithContext(ctx, errShutdown.Error())
+		viper.SetDefault("OTEL_METRIC_SHUTDOWN_TIMEOUT", "10s")
+
+		shutdownCtx, cancel := context.WithTimeout(context.Background(), viper.GetDuration("OTEL_METRIC_SHUTDOWN_TIMEOUT"))
+		defer cancel()
+
+		if monitoring.Metrics != nil {
+			if errShutdown := monitoring.Metrics.Shutdown(shutdownCtx); errShutdown != nil {
+				log.ErrorWithContext(shutdownCtx, errShutdown.Error())
+			}
+		}
+
+		if monitoring.exporter != nil {
+			exporterCtx, exporterCancel := context.WithTimeout(context.Background(), viper.GetDuration("OTEL_METRIC_SHUTDOWN_TIMEOUT"))
+			defer exporterCancel()
+
+			if errShutdown := monitoring.exporter.Shutdown(exporterCtx); errShutdown != nil {
+				log.ErrorWithContext(exporterCtx, errShutdown.Error())
+			}
 		}
 	}, nil
 }
 
 // SetMetrics - Create a "common" meter provider for metrics
 func (m *Monitoring) SetMetrics(ctx context.Context) (*api.MeterProvider, error) {
+	viper.SetDefault("OTEL_METRIC_EXPORT_INTERVAL", "60s")
+	viper.SetDefault("OTEL_METRIC_EXPORT_TIMEOUT", "30s")
+
 	// See the go.opentelemetry.io/otel/sdk/resource package for more
 	// information about how to create and use Resources.
 	// Setup resource.
@@ -94,9 +107,21 @@ func (m *Monitoring) SetMetrics(ctx context.Context) (*api.MeterProvider, error)
 		return nil, err
 	}
 
+	// Create a new OTLP exporter for sending metrics to the OpenTelemetry Collector.
+	m.exporter, err = otlpmetricgrpc.New(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	periodicReader := api.NewPeriodicReader(
+		m.exporter,
+		api.WithInterval(viper.GetDuration("OTEL_METRIC_EXPORT_INTERVAL")),
+		api.WithTimeout(viper.GetDuration("OTEL_METRIC_EXPORT_TIMEOUT")),
+	)
+
 	// prometheus.DefaultRegisterer is used by default
 	// so that metrics are available via promhttp.Handler.
-	registry, err := promExporter.New(
+	prometheusReader, err := promExporter.New(
 		promExporter.WithRegisterer(m.Prometheus),
 	)
 	if err != nil {
@@ -105,7 +130,8 @@ func (m *Monitoring) SetMetrics(ctx context.Context) (*api.MeterProvider, error)
 
 	provider := api.NewMeterProvider(
 		api.WithResource(res),
-		api.WithReader(registry),
+		api.WithReader(prometheusReader),
+		api.WithReader(periodicReader),
 		api.WithExemplarFilter(exemplar.TraceBasedFilter),
 	)
 
