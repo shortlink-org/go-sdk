@@ -10,7 +10,7 @@ require (
 	github.com/prometheus/client_golang v1.23.2
 	github.com/prometheus/client_model v0.6.2
 	github.com/shortlink-org/go-sdk/auth v0.0.0-20251108145352-f59577605d0a
-	github.com/shortlink-org/go-sdk/cache v0.0.0-20251109062829-3e4d690eb1d1
+	github.com/shortlink-org/go-sdk/cache v0.0.0-20251111111225-d6c6e03a09ba
 	github.com/shortlink-org/go-sdk/flight_trace v0.0.0-20251110220022-59bbb127b5c1
 	github.com/shortlink-org/go-sdk/logger v0.0.0-20251108203914-f363e5ad1155
 	github.com/spf13/viper v1.21.0
@@ -69,8 +69,8 @@ require (
 	github.com/prometheus/otlptranslator v0.0.2 // indirect
 	github.com/prometheus/procfs v0.17.0 // indirect
 	github.com/redis/go-redis/v9 v9.16.0 // indirect
-	github.com/redis/rueidis v1.0.67 // indirect
-	github.com/redis/rueidis/rueidiscompat v1.0.67 // indirect
+	github.com/redis/rueidis v1.0.68 // indirect
+	github.com/redis/rueidis/rueidiscompat v1.0.68 // indirect
 	github.com/redis/rueidis/rueidisotel v1.0.67 // indirect
 	github.com/sagikazarmark/locafero v0.11.0 // indirect
 	github.com/shortlink-org/go-sdk/db v0.0.0-20251021172021-f38879dace30 // indirect

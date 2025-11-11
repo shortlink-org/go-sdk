@@ -437,10 +437,12 @@ github.com/redis/go-redis/v9 v9.16.0 h1:OotgqgLSRCmzfqChbQyG1PHC3tLNR89DG4jdOERS
 github.com/redis/go-redis/v9 v9.16.0/go.mod h1:u410H11HMLoB+TP67dz8rL9s6QW2j76l0//kSOd3370=
 github.com/redis/rueidis v1.0.67 h1:v2BIArP50KkRsEkhPWyVg4pcwI3rPVehl6EYyWlPHrM=
 github.com/redis/rueidis v1.0.67/go.mod h1:Lkhr2QTgcoYBhxARU7kJRO8SyVlgUuEkcJO1Y8MCluA=
+github.com/redis/rueidis v1.0.68/go.mod h1:Lkhr2QTgcoYBhxARU7kJRO8SyVlgUuEkcJO1Y8MCluA=
 github.com/redis/rueidis/mock v1.0.67 h1:oa79kKH/LHmwBUJ9tKIRXGrgwGrvkPMyzd8UMiX1VGI=
 github.com/redis/rueidis/mock v1.0.67/go.mod h1:T7dENp4+lHjpd2XWpa9Cungqx7s1CpQp5lqeBGtpDPA=
 github.com/redis/rueidis/rueidiscompat v1.0.67 h1:qtbLw31cbnIBFrwoytAikbgLyH7UYRl+99G/qnAQx4Y=
 github.com/redis/rueidis/rueidiscompat v1.0.67/go.mod h1:Gj7Q//F123yvUhw7Vau/0yESukSm2AuxvPd83Ea73ac=
+github.com/redis/rueidis/rueidiscompat v1.0.68/go.mod h1:LyhuhHr15BI28QNp6qKhhF9WOvA7czyg2ReBl+Jt9RE=
 github.com/redis/rueidis/rueidisotel v1.0.67 h1:vVMcrglVYDoGi3TzyqiSUi5YqgEiHKsdEZDm749WSp4=
 github.com/redis/rueidis/rueidisotel v1.0.67/go.mod h1:wAmgem+Df/LiwqoPwv5to3s/DbE0UE1g7ZeiAg3ast0=
 github.com/remyoudompheng/bigfft v0.0.0-20190728182440-6a916e37a237/go.mod h1:qqbHyh8v60DhA7CoWK5oRCqLrMHRGoxYCSS9EjAz6Eo=
@@ -463,6 +465,7 @@ github.com/shortlink-org/go-sdk/auth v0.0.0-20251108145352-f59577605d0a h1:x2P6O
 github.com/shortlink-org/go-sdk/auth v0.0.0-20251108145352-f59577605d0a/go.mod h1:6LQpx6YJL7k8qMQDf789xQPzmALgJhcIeckhK15zT7w=
 github.com/shortlink-org/go-sdk/cache v0.0.0-20251109062829-3e4d690eb1d1 h1:K9m40PtmdtuvpQuIFcGT1lMj3oQF+ogRWP6pu/ddBp4=
 github.com/shortlink-org/go-sdk/cache v0.0.0-20251109062829-3e4d690eb1d1/go.mod h1:QzSUIz/MT0HNJIdkvEUwkja5yrxntRLL77onKSuwsBQ=
+github.com/shortlink-org/go-sdk/cache v0.0.0-20251111111225-d6c6e03a09ba/go.mod h1:Q5Cnry1fTe73YlLuV0gzhr6XDKMaryy67q1/ZoE8KG0=
 github.com/shortlink-org/go-sdk/db v0.0.0-20251021172021-f38879dace30 h1:/LIXdXvpRJxW+ACsPbp30LDbbT9NNJ/Hyde30dW2GOo=
 github.com/shortlink-org/go-sdk/db v0.0.0-20251021172021-f38879dace30/go.mod h1:7DrSVkxjleWAZgeSf/wIMAW9hPTbIhaZ0lEqQg0U7bs=
 github.com/shortlink-org/go-sdk/flight_trace v0.0.0-20251110220022-59bbb127b5c1 h1:ID5NXmkwPmVJdJlZxI/V5fdfCClxXSby/dphcSxOAL4=
