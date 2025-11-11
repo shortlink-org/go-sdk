@@ -11,6 +11,7 @@ import (
 	grpc_recovery "github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors/recovery"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
+	"github.com/shortlink-org/go-sdk/flight_trace"
 	"github.com/spf13/viper"
 	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
 	"go.opentelemetry.io/otel/trace"
@@ -22,6 +23,7 @@ import (
 
 	"github.com/shortlink-org/go-sdk/logger"
 
+	flight_trace_interceptor "github.com/shortlink-org/go-sdk/grpc/middleware/flight_trace"
 	grpc_logger "github.com/shortlink-org/go-sdk/grpc/middleware/logger"
 	pprof_interceptor "github.com/shortlink-org/go-sdk/grpc/middleware/pprof"
 	session_interceptor "github.com/shortlink-org/go-sdk/grpc/middleware/session"
@@ -46,7 +48,13 @@ type server struct {
 }
 
 // InitServer - initialize gRPC server
-func InitServer(ctx context.Context, log logger.Logger, tracer trace.TracerProvider, prom *prometheus.Registry) (*Server, error) {
+func InitServer(
+	ctx context.Context,
+	log logger.Logger,
+	tracer trace.TracerProvider,
+	prom *prometheus.Registry,
+	fr *flight_trace.Recorder,
+) (*Server, error) {
 	viper.SetDefault("GRPC_SERVER_ENABLED", true) // gRPC grpServer enable
 
 	if !viper.GetBool("GRPC_SERVER_ENABLED") {
@@ -54,7 +62,7 @@ func InitServer(ctx context.Context, log logger.Logger, tracer trace.TracerProvi
 		return nil, nil
 	}
 
-	config, err := setServerConfig(log, tracer, prom) //nolint:contextcheck // false positive
+	config, err := setServerConfig(log, tracer, prom, fr) //nolint:contextcheck // false positive
 	if err != nil {
 		return nil, err
 	}
@@ -107,7 +115,12 @@ func InitServer(ctx context.Context, log logger.Logger, tracer trace.TracerProvi
 }
 
 // setConfig - set configuration
-func setServerConfig(log logger.Logger, tracer trace.TracerProvider, monitor *prometheus.Registry) (*server, error) {
+func setServerConfig(
+	log logger.Logger,
+	tracer trace.TracerProvider,
+	monitor *prometheus.Registry,
+	fr *flight_trace.Recorder,
+) (*server, error) {
 	viper.SetDefault("GRPC_SERVER_PORT", "50051") // gRPC port
 	grpc_port := viper.GetInt("GRPC_SERVER_PORT")
 
@@ -125,6 +138,7 @@ func setServerConfig(log logger.Logger, tracer trace.TracerProvider, monitor *pr
 	config.WithTracer(tracer)
 	config.withSession()
 	config.withPprofLabels()
+	config.WithFlightTrace(fr, log)
 
 	if monitor != nil {
 		config.WithMetrics(monitor)
@@ -244,4 +258,10 @@ func (s *server) withSession() {
 func (s *server) withPprofLabels() {
 	s.interceptorUnaryServerList = append(s.interceptorUnaryServerList, pprof_interceptor.UnaryServerInterceptor())
 	s.interceptorStreamServerList = append(s.interceptorStreamServerList, pprof_interceptor.StreamServerInterceptor())
+}
+
+// WithFlightTrace - setup flight trace
+func (s *server) WithFlightTrace(fr *flight_trace.Recorder, log logger.Logger) {
+	s.interceptorUnaryServerList = append(s.interceptorUnaryServerList, flight_trace_interceptor.UnaryServerInterceptor(fr, log))
+	s.interceptorStreamServerList = append(s.interceptorStreamServerList, flight_trace_interceptor.StreamServerInterceptor(fr, log))
 }
