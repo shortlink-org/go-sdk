@@ -53,6 +53,8 @@ github.com/segmentio/encoding v0.5.3 h1:OjMgICtcSFuNvQCdwqMCv9Tg7lEOXGwm1J5RPQcc
 github.com/segmentio/encoding v0.5.3/go.mod h1:HS1ZKa3kSN32ZHVZ7ZLPLXWvOVIiZtyJnO1gPH1sKt0=
 github.com/shortlink-org/go-sdk/flight_trace v0.0.0-20251111111225-d6c6e03a09ba h1:+kYr35iaB60f3WSlv5kDQF8raYWB8Xar0AEoDd6ooHk=
 github.com/shortlink-org/go-sdk/flight_trace v0.0.0-20251111111225-d6c6e03a09ba/go.mod h1:5g+aBwU6OPTYoQLKYOhQyySlzvAueaDegYtaaAXAE4U=
+github.com/shortlink-org/go-sdk/flight_trace v0.0.0-20251111173054-8c030dab4702 h1:GlVwFrz2EljYP4E2YMt9B+3bDcuAvGmme6hudnU0ueU=
+github.com/shortlink-org/go-sdk/flight_trace v0.0.0-20251111173054-8c030dab4702/go.mod h1:5g+aBwU6OPTYoQLKYOhQyySlzvAueaDegYtaaAXAE4U=
 github.com/sourcegraph/conc v0.3.1-0.20240121214520-5f936abd7ae8 h1:+jumHNA0Wrelhe64i8F6HNlS8pkoyMv5sreGx2Ry5Rw=
 github.com/sourcegraph/conc v0.3.1-0.20240121214520-5f936abd7ae8/go.mod h1:3n1Cwaq1E1/1lhQhtRK2ts/ZwZEhjcQeJQ1RuC6Q/8U=
 github.com/spf13/afero v1.15.0 h1:b/YBCLWAJdFWJTN9cLhiXXcD7mzKn9Dm86dNnfyQw1I=
