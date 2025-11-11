@@ -10,6 +10,11 @@ allowing you to programmatically control and dump runtime traces.
 - On-demand dump creation (`DumpSnapshot`, `DumpSnapshotAsync`)
 - Framework-agnostic — works in HTTP, gRPC, CLI, or background workers
 
+## 🔌 Middleware
+
+- HTTP: [`http/middleware/flight_trace`](../http/middleware/flight_trace)
+- gRPC: [`grpc/middleware/flight_trace`](../grpc/middleware/flight_trace)
+
 ## ⚙️ Configuration
 
 | Variable                    | Type     | Description                      | Default             |
