@@ -2,13 +2,8 @@ package auth_middleware
 
 import (
 	"context"
-	"crypto/sha256"
-	"encoding/hex"
-	"errors"
 	"net/http"
-	"time"
 
-	redisCache "github.com/go-redis/cache/v9"
 	ory "github.com/ory/client-go"
 	"github.com/spf13/viper"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
@@ -18,7 +13,6 @@ import (
 	"go.opentelemetry.io/otel/trace"
 
 	"github.com/shortlink-org/go-sdk/auth/session"
-	"github.com/shortlink-org/go-sdk/cache"
 )
 
 const tracerName = "github.com/shortlink-org/go-sdk/http/middleware/auth"
