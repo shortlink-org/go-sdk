@@ -8,6 +8,7 @@ import (
 
 	"github.com/spf13/viper"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
+	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/trace"
 )
 
@@ -20,7 +21,13 @@ func New(ctx context.Context, h http.Handler, config Config, tracer trace.Tracer
 	handler := http.TimeoutHandler(h, config.Timeout, fmt.Sprintf(`{"error": %q}`, TimeoutMessage))
 
 	if tracer != nil {
-		handler = otelhttp.NewHandler(handler, "")
+		handler = otelhttp.NewHandler(
+			handler,
+			"",
+			otelhttp.WithTracerProvider(tracer),
+			otelhttp.WithMeterProvider(otel.GetMeterProvider()),
+			otelhttp.WithPropagators(otel.GetTextMapPropagator()),
+		)
 	}
 
 	server := &http.Server{
