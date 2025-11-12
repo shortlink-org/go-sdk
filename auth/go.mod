@@ -4,7 +4,7 @@ go 1.25.3
 
 require (
 	github.com/authzed/authzed-go v1.6.0
-	github.com/ory/client-go v1.22.8
+	github.com/ory/client-go v1.22.9
 	github.com/shortlink-org/go-sdk/grpc v0.0.0-20251108145352-f59577605d0a
 	github.com/shortlink-org/go-sdk/logger v0.0.0-20251108203914-f363e5ad1155
 	github.com/shortlink-org/go-sdk/observability v0.0.0-20251108145352-f59577605d0a
@@ -62,7 +62,7 @@ require (
 	go.yaml.in/yaml/v2 v2.4.2 // indirect
 	go.yaml.in/yaml/v3 v3.0.4 // indirect
 	golang.org/x/net v0.46.0 // indirect
-	golang.org/x/oauth2 v0.32.0 // indirect
+	golang.org/x/oauth2 v0.33.0 // indirect
 	golang.org/x/sys v0.37.0 // indirect
 	golang.org/x/text v0.30.0 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20250929231259-57b25ae835d4 // indirect
