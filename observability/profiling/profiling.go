@@ -8,17 +8,18 @@ import (
 	"runtime"
 
 	"github.com/felixge/fgprof"
-	"github.com/spf13/viper"
 
 	http_server "github.com/shortlink-org/go-sdk/http/server"
 	"github.com/shortlink-org/go-sdk/logger"
+
+	"github.com/shortlink-org/go-sdk/config"
 )
 
 type PprofEndpoint *http.ServeMux
 
-func New(ctx context.Context, log logger.Logger) (PprofEndpoint, error) {
-	viper.SetDefault("PROFILING_PORT", 7071)
-	viper.SetDefault("PROFILING_TIMEOUT", "30s")
+func New(ctx context.Context, log logger.Logger, cfg *config.Config) (PprofEndpoint, error) {
+	cfg.SetDefault("PROFILING_PORT", 7071)
+	cfg.SetDefault("PROFILING_TIMEOUT", "30s")
 
 	mux := http.NewServeMux()
 
@@ -38,12 +39,12 @@ func New(ctx context.Context, log logger.Logger) (PprofEndpoint, error) {
 	mux.Handle("/debug/pprof/fgprof", fgprof.Handler())
 
 	go func() {
-		cfg := http_server.Config{
-			Port:    viper.GetInt("PROFILING_PORT"),
-			Timeout: viper.GetDuration("PROFILING_TIMEOUT"),
+		serverCfg := http_server.Config{
+			Port:    cfg.GetInt("PROFILING_PORT"),
+			Timeout: cfg.GetDuration("PROFILING_TIMEOUT"),
 		}
 
-		server := http_server.New(ctx, mux, cfg, nil)
+		server := http_server.New(ctx, mux, serverCfg, nil)
 		if err := server.ListenAndServe(); err != nil {
 			log.Error(err.Error())
 		}

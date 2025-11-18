@@ -7,7 +7,7 @@ import (
 	"context"
 	"log/slog"
 
-	"github.com/grafana/otel-profiling-go"
+	otelpyroscope "github.com/grafana/otel-profiling-go"
 	"github.com/spf13/viper"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
@@ -18,22 +18,23 @@ import (
 
 	"github.com/shortlink-org/go-sdk/logger"
 
+	"github.com/shortlink-org/go-sdk/config"
 	"github.com/shortlink-org/go-sdk/observability/common"
 )
 
 // New returns a new instance of the TracerProvider.
 //
 //nolint:ireturn // It's make by specification
-func New(ctx context.Context, log logger.Logger) (traceProvider.TracerProvider, func(), error) {
-	viper.SetDefault("TRACER_URI", "localhost:4317") // Tracing addr:host
+func New(ctx context.Context, log logger.Logger, cfg *config.Config) (traceProvider.TracerProvider, func(), error) {
+	cfg.SetDefault("TRACER_URI", "localhost:4317") // Tracing addr:host
 
 	config := Config{
 		ServiceName:    viper.GetString("SERVICE_NAME"),
 		ServiceVersion: viper.GetString("SERVICE_VERSION"),
-		URI:            viper.GetString("TRACER_URI"),
+		URI:            cfg.GetString("TRACER_URI"),
 	}
 
-	tracer, tracerClose, err := Init(ctx, config, log)
+	tracer, tracerClose, err := Init(ctx, config, log, cfg)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -46,7 +47,7 @@ func New(ctx context.Context, log logger.Logger) (traceProvider.TracerProvider, 
 }
 
 // Init returns an instance of Tracer Provider that samples 100% of traces and logs all spans to stdout.
-func Init(ctx context.Context, cnf Config, log logger.Logger) (*trace.TracerProvider, func(), error) {
+func Init(ctx context.Context, cnf Config, log logger.Logger, cfg *config.Config) (*trace.TracerProvider, func(), error) {
 	// Setup resource.
 	res, err := common.NewResource(ctx, cnf.ServiceName, cnf.ServiceVersion)
 	if err != nil {
@@ -54,7 +55,7 @@ func Init(ctx context.Context, cnf Config, log logger.Logger) (*trace.TracerProv
 	}
 
 	// Setup trace provider.
-	tp, err := newTraceProvider(ctx, res, cnf.URI)
+	tp, err := newTraceProvider(ctx, res, cnf.URI, cfg)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -88,19 +89,23 @@ func Init(ctx context.Context, cnf Config, log logger.Logger) (*trace.TracerProv
 	return tp, cleanup, nil
 }
 
-func newTraceProvider(ctx context.Context, res *resource.Resource, uri string) (*trace.TracerProvider, error) {
-	viper.SetDefault("TRACING_INITIAL_INTERVAL", "2s")
-	viper.SetDefault("TRACING_MAX_INTERVAL", "30s")
-	viper.SetDefault("TRACING_MAX_ELAPSED_TIME", "1m")
+func newTraceProvider(ctx context.Context, res *resource.Resource, uri string, cfg *config.Config) (*trace.TracerProvider, error) {
+	cfg.SetDefault("TRACING_INITIAL_INTERVAL", "2s")
+	cfg.SetDefault("TRACING_MAX_INTERVAL", "30s")
+	cfg.SetDefault("TRACING_MAX_ELAPSED_TIME", "1m")
+
+	initialInterval := cfg.GetDuration("TRACING_INITIAL_INTERVAL")
+	maxInterval := cfg.GetDuration("TRACING_MAX_INTERVAL")
+	maxElapsedTime := cfg.GetDuration("TRACING_MAX_ELAPSED_TIME")
 
 	traceExporter, err := otlptracegrpc.New(ctx,
 		otlptracegrpc.WithInsecure(),
 		otlptracegrpc.WithEndpoint(uri),
 		otlptracegrpc.WithRetry(otlptracegrpc.RetryConfig{
 			Enabled:         true,
-			InitialInterval: viper.GetDuration("TRACING_INITIAL_INTERVAL"),
-			MaxInterval:     viper.GetDuration("TRACING_MAX_INTERVAL"),
-			MaxElapsedTime:  viper.GetDuration("TRACING_MAX_ELAPSED_TIME"),
+			InitialInterval: initialInterval,
+			MaxInterval:     maxInterval,
+			MaxElapsedTime:  maxElapsedTime,
 		}),
 	)
 	if err != nil {
@@ -108,7 +113,7 @@ func newTraceProvider(ctx context.Context, res *resource.Resource, uri string) (
 	}
 
 	traceProviderService := trace.NewTracerProvider(
-		trace.WithBatcher(traceExporter, trace.WithBatchTimeout(viper.GetDuration("TRACING_INITIAL_INTERVAL"))),
+		trace.WithBatcher(traceExporter, trace.WithBatchTimeout(initialInterval)),
 		trace.WithResource(res),
 		trace.WithSampler(trace.ParentBased(trace.AlwaysSample())),
 	)
