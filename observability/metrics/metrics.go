@@ -12,7 +12,6 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/spf13/viper"
 	"go.opentelemetry.io/otel"
-	"go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetricgrpc"
 	promExporter "go.opentelemetry.io/otel/exporters/prometheus"
 	api "go.opentelemetry.io/otel/sdk/metric"
 	"go.opentelemetry.io/otel/sdk/metric/exemplar"
@@ -63,12 +62,6 @@ func New(ctx context.Context, log logger.Logger, tracer trace.TracerProvider) (*
 	log.Info("Run monitoring",
 		slog.String("addr", "0.0.0.0:9090"),
 	)
-
-	// Create a new OTLP exporter for sending metrics to the OpenTelemetry Collector.
-	_, err = otlpmetricgrpc.New(ctx)
-	if err != nil {
-		return nil, nil, err
-	}
 
 	return monitoring, func() {
 		errShutdown := monitoring.Metrics.Shutdown(ctx)

@@ -7,6 +7,7 @@ import (
 	"context"
 	"log/slog"
 
+	"github.com/grafana/otel-profiling-go"
 	"github.com/spf13/viper"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
@@ -24,14 +25,12 @@ import (
 //
 //nolint:ireturn // It's make by specification
 func New(ctx context.Context, log logger.Logger) (traceProvider.TracerProvider, func(), error) {
-	viper.SetDefault("TRACER_URI", "localhost:4317")                     // Tracing addr:host
-	viper.SetDefault("PYROSCOPE_URI", "http://pyroscope.pyroscope:4040") // Pyroscope addr:host
+	viper.SetDefault("TRACER_URI", "localhost:4317") // Tracing addr:host
 
 	config := Config{
 		ServiceName:    viper.GetString("SERVICE_NAME"),
 		ServiceVersion: viper.GetString("SERVICE_VERSION"),
 		URI:            viper.GetString("TRACER_URI"),
-		PyroscopeURI:   viper.GetString("PYROSCOPE_URI"),
 	}
 
 	tracer, tracerClose, err := Init(ctx, config, log)
@@ -90,7 +89,7 @@ func Init(ctx context.Context, cnf Config, log logger.Logger) (*trace.TracerProv
 }
 
 func newTraceProvider(ctx context.Context, res *resource.Resource, uri string) (*trace.TracerProvider, error) {
-	viper.SetDefault("TRACING_INITIAL_INTERVAL", "5s")
+	viper.SetDefault("TRACING_INITIAL_INTERVAL", "2s")
 	viper.SetDefault("TRACING_MAX_INTERVAL", "30s")
 	viper.SetDefault("TRACING_MAX_ELAPSED_TIME", "1m")
 
@@ -108,13 +107,13 @@ func newTraceProvider(ctx context.Context, res *resource.Resource, uri string) (
 		return nil, err
 	}
 
-	traceProvider := trace.NewTracerProvider(
+	traceProviderService := trace.NewTracerProvider(
 		trace.WithBatcher(traceExporter, trace.WithBatchTimeout(viper.GetDuration("TRACING_INITIAL_INTERVAL"))),
 		trace.WithResource(res),
-		trace.WithSampler(trace.AlwaysSample()),
+		trace.WithSampler(trace.ParentBased(trace.AlwaysSample())),
 	)
 
-	otel.SetTracerProvider(traceProvider)
+	otel.SetTracerProvider(otelpyroscope.NewTracerProvider(traceProviderService))
 
 	// Register the W3C trace context and baggage propagators so data is propagated across services/processes
 	otel.SetTextMapPropagator(
@@ -124,5 +123,5 @@ func newTraceProvider(ctx context.Context, res *resource.Resource, uri string) (
 		),
 	)
 
-	return traceProvider, nil
+	return traceProviderService, nil
 }
