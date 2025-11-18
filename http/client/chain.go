@@ -1,19 +1,19 @@
 package http_client
 
-import "net/http"
+import (
+	"net/http"
 
-// Middleware wraps a RoundTripper.
-type Middleware func(next http.RoundTripper) http.RoundTripper
+	"github.com/shortlink-org/go-sdk/http/client/internal/types"
+)
 
-// RoundTripperFunc allows using a function as a RoundTripper.
-type RoundTripperFunc func(*http.Request) (*http.Response, error)
+// Middleware is an alias for types.Middleware for backward compatibility.
+type Middleware = types.Middleware
 
-func (f RoundTripperFunc) RoundTrip(r *http.Request) (*http.Response, error) {
-	return f(r)
-}
+// RoundTripperFunc is an alias for types.RoundTripperFunc for backward compatibility.
+type RoundTripperFunc = types.RoundTripperFunc
 
 // Chain builds a middleware pipeline.
-func Chain(mw ...Middleware) Middleware {
+func Chain(mw ...types.Middleware) types.Middleware {
 	return func(final http.RoundTripper) http.RoundTripper {
 		for i := len(mw) - 1; i >= 0; i-- {
 			final = mw[i](final)

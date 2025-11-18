@@ -5,11 +5,12 @@ import (
 	"math/rand"
 	"sync"
 	"time"
+
+	"github.com/shortlink-org/go-sdk/http/client/internal/types"
 )
 
-type Limiter interface {
-	Wait(ctx context.Context) (time.Duration, error)
-}
+// Limiter is an alias for types.Limiter for backward compatibility.
+type Limiter = types.Limiter
 
 type tokenBucketLimiter struct {
 	mu sync.Mutex
@@ -20,12 +21,14 @@ type tokenBucketLimiter struct {
 	last   time.Time
 
 	jitterFraction float64
+	rand           *rand.Rand
+	muRand         sync.Mutex
 }
 
 //lint:ignore ireturn we intentionally return the concrete limiter type for customization
 func NewTokenBucketLimiter(ratePerSec float64, burst int, jitterFraction float64) (*tokenBucketLimiter, error) {
 	if ratePerSec <= 0 || burst <= 0 {
-		return nil, ErrInvalidLimiterConfig
+		return nil, types.ErrInvalidLimiterConfig
 	}
 
 	if jitterFraction < 0 {
@@ -42,6 +45,7 @@ func NewTokenBucketLimiter(ratePerSec float64, burst int, jitterFraction float64
 	limiter.tokens = float64(burst)
 	limiter.last = time.Now()
 	limiter.jitterFraction = jitterFraction
+	limiter.rand = rand.New(rand.NewSource(time.Now().UnixNano())) //nolint:gosec // jitter does not require cryptographic randomness
 
 	return limiter, nil
 }
@@ -104,8 +108,9 @@ func (l *tokenBucketLimiter) jitter(duration time.Duration) time.Duration {
 		return duration
 	}
 
-	// #nosec G404 -- jitter randomness does not require cryptographic strength.
-	offset := rand.Int63n(2*jitterRange+1) - jitterRange
+	l.muRand.Lock()
+	offset := l.rand.Int63n(2*jitterRange+1) - jitterRange
+	l.muRand.Unlock()
 
 	return duration + time.Duration(offset)
 }

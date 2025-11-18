@@ -5,6 +5,13 @@ import (
 	"time"
 
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
+
+	"github.com/shortlink-org/go-sdk/http/client/internal/types"
+	"github.com/shortlink-org/go-sdk/http/client/middleware/deadline"
+	"github.com/shortlink-org/go-sdk/http/client/middleware/metrics429"
+	"github.com/shortlink-org/go-sdk/http/client/middleware/otelwait"
+	"github.com/shortlink-org/go-sdk/http/client/middleware/serverlimit"
+	"github.com/shortlink-org/go-sdk/http/client/middleware/tokenbucket"
 )
 
 func New(opts ...Option) (*http.Client, error) {
@@ -20,7 +27,7 @@ func New(opts ...Option) (*http.Client, error) {
 	}
 
 	// Local Token Bucket (optional)
-	var limiter Limiter
+	var limiter types.Limiter
 
 	if cfg.rate > 0 && cfg.burst > 0 {
 		l, err := NewTokenBucketLimiter(cfg.rate, cfg.burst, cfg.jitter)
@@ -39,25 +46,25 @@ func New(opts ...Option) (*http.Client, error) {
 
 	// Build middleware chain
 	chain := Chain(
-		OTelWaitMiddleware(OTelWaitConfig{
+		otelwait.Middleware(otelwait.Config{
 			Client: cfg.clientName,
 		}),
-		DeadlineMiddleware(DeadlineConfig{
+		deadline.Middleware(deadline.Config{
 			Threshold: cfg.deadlineThreshold,
 			Metrics:   cfg.metrics,
 			Client:    cfg.clientName,
 		}),
-		ServerRateLimitMiddleware(ServerLimitConfig{
+		serverlimit.Middleware(serverlimit.Config{
 			JitterFraction: cfg.headerJitter,
 			Metrics:        cfg.metrics,
 			Client:         cfg.clientName,
 		}),
-		TokenBucketMiddleware(TokenBucketConfig{
+		tokenbucket.Middleware(tokenbucket.Config{
 			Limiter: limiter,
 			Metrics: cfg.metrics,
 			Client:  cfg.clientName,
 		}),
-		Metrics429Middleware(Metrics429Config{
+		metrics429.Middleware(metrics429.Config{
 			Metrics: cfg.metrics,
 			Client:  cfg.clientName,
 		}),

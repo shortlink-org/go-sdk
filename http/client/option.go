@@ -16,8 +16,10 @@ type config struct {
 	base              http.RoundTripper
 }
 
+// Option configures an HTTP client during construction.
 type Option func(*config) error
 
+// WithClientName sets the client name used for metrics and tracing.
 func WithClientName(name string) Option {
 	return func(c *config) error {
 		c.clientName = name
@@ -25,6 +27,9 @@ func WithClientName(name string) Option {
 	}
 }
 
+// WithRateLimit configures the local token bucket rate limiter.
+// Rate is in requests per second, burst is the maximum number of tokens.
+// Both must be positive for the limiter to be created.
 func WithRateLimit(rate float64, burst int) Option {
 	return func(c *config) error {
 		c.rate = rate
@@ -34,6 +39,9 @@ func WithRateLimit(rate float64, burst int) Option {
 	}
 }
 
+// WithJitter sets the jitter fraction for the token bucket limiter.
+// Fraction should be between 0 and 1. Negative values are normalized to 0,
+// values greater than 1 are normalized to 1.
 func WithJitter(fraction float64) Option {
 	return func(c *config) error {
 		c.jitter = fraction
@@ -41,6 +49,9 @@ func WithJitter(fraction float64) Option {
 	}
 }
 
+// WithServerHeaderJitter sets the jitter fraction for server rate limit waits.
+// Fraction should be between 0 and 1. Negative values are normalized to 0,
+// values greater than 1 are normalized to 1.
 func WithServerHeaderJitter(fraction float64) Option {
 	return func(c *config) error {
 		c.headerJitter = fraction
@@ -48,6 +59,9 @@ func WithServerHeaderJitter(fraction float64) Option {
 	}
 }
 
+// WithDeadlineThreshold sets the minimum time before a context deadline
+// at which requests will be rejected early. If a request's deadline is
+// closer than this threshold, it will be cancelled immediately.
 func WithDeadlineThreshold(t time.Duration) Option {
 	return func(c *config) error {
 		c.deadlineThreshold = t
@@ -55,6 +69,7 @@ func WithDeadlineThreshold(t time.Duration) Option {
 	}
 }
 
+// WithMetrics sets the Prometheus metrics collector.
 func WithMetrics(m *Metrics) Option {
 	return func(c *config) error {
 		c.metrics = m
@@ -62,9 +77,16 @@ func WithMetrics(m *Metrics) Option {
 	}
 }
 
+// WithBaseTransport sets the base HTTP transport to wrap with middleware.
+// If nil, http.DefaultTransport is used.
 func WithBaseTransport(rt http.RoundTripper) Option {
 	return func(c *config) error {
-		c.base = rt
+		if rt == nil {
+			c.base = http.DefaultTransport
+		} else {
+			c.base = rt
+		}
+
 		return nil
 	}
 }

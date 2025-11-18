@@ -1,190 +1,728 @@
 {
-  "title": "Rate-Limited HTTP Client",
-  "editable": true,
-  "style": "dark",
-  "tags": ["rate-limit", "http"],
-  "timezone": "",
-  "schemaVersion": 39,
-  "version": 1,
-  "refresh": "30s",
-
-  "templating": {
+  "annotations": {
     "list": [
       {
-        "type": "query",
-        "datasource": "${DS_PROMETHEUS}",
-        "name": "client",
-        "label": "Client",
-        "refresh": 1,
-        "query": "label_values(rate_limit_wait_seconds, client)",
-        "includeAll": true
-      },
-      {
-        "type": "query",
-        "datasource": "${DS_PROMETHEUS}",
-        "name": "host",
-        "label": "Host",
-        "refresh": 1,
-        "query": "label_values(rate_limit_wait_seconds{client=~\"$client\"}, host)",
-        "includeAll": true
-      },
-      {
-        "type": "query",
-        "datasource": "${DS_PROMETHEUS}",
-        "name": "method",
-        "label": "Method",
-        "refresh": 1,
-        "query": "label_values(rate_limit_wait_seconds{client=~\"$client\"}, method)",
-        "includeAll": true
+        "builtIn": 1,
+        "datasource": "-- Grafana --",
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "type": "dashboard"
       }
     ]
   },
-
-  "rows": [
+  "editable": true,
+  "gnetId": null,
+  "graphTooltip": 1,
+  "id": null,
+  "links": [],
+  "panels": [
     {
-      "title": "Rate Limit Wait Time (Local + Server)",
-      "height": "300px",
-      "panels": [
-        {
-          "type": "graph",
-          "title": "Rate Limit Wait (avg)",
-          "datasource": "${DS_PROMETHEUS}",
-          "id": 1,
-          "targets": [
-            {
-              "expr": "rate(rate_limit_wait_seconds_sum{client=~\"$client\",host=~\"$host\",method=~\"$method\"}[5m]) / rate(rate_limit_wait_seconds_count{client=~\"$client\",host=~\"$host\",method=~\"$method\"}[5m])",
-              "legendFormat": "{{source}}"
-            }
-          ],
-          "lines": true,
-          "linewidth": 2,
-          "yaxes": [
-            {
-              "format": "s",
-              "label": "Seconds",
-              "logBase": 1
+      "datasource": "${DS_PROMETHEUS}",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "drawStyle": "line",
+            "fillOpacity": 10,
+            "gradientMode": "none",
+            "hideFrom": {
+              "tooltip": false,
+              "viz": false,
+              "legend": false
             },
-            {
-              "format": "short"
+            "lineInterpolation": "linear",
+            "lineWidth": 2,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "never",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
             }
-          ]
+          },
+          "mappings": [],
+          "max": null,
+          "min": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "s"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 0
+      },
+      "id": 1,
+      "options": {
+        "legend": {
+          "calcs": ["mean", "max"],
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      },
+      "pluginVersion": "9.0.0",
+      "targets": [
+        {
+          "datasource": "${DS_PROMETHEUS}",
+          "editorMode": "code",
+          "expr": "sum(rate(${namespace}_${subsystem}_rate_limit_wait_seconds_sum{client=~\"$client\",host=~\"$host\",method=~\"$method\",source=~\"$source\"}[5m])) by (source) / sum(rate(${namespace}_${subsystem}_rate_limit_wait_seconds_count{client=~\"$client\",host=~\"$host\",method=~\"$method\",source=~\"$source\"}[5m])) by (source)",
+          "format": "time_series",
+          "instant": false,
+          "legendFormat": "{{source}}",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "Rate Limit Wait Time (Average)",
+      "type": "timeseries"
+    },
+    {
+      "datasource": "${DS_PROMETHEUS}",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "s"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 0
+      },
+      "id": 2,
+      "options": {
+        "calculate": false,
+        "cellGap": 2,
+        "cellValues": {
+          "unit": "short"
+        },
+        "color": {
+          "exponent": 0.5,
+          "fill": "dark-orange",
+          "mode": "spectrum",
+          "reverse": false,
+          "scale": 2,
+          "scheme": "Spectral",
+          "steps": 64
+        },
+        "exemplars": {
+          "color": "rgba(255,0,255,0.7)"
+        },
+        "filterValues": {
+          "le": 1e-9
+        },
+        "legend": {
+          "show": true
+        },
+        "rowsFrame": {
+          "layout": "auto"
+        },
+        "tooltip": {
+          "show": true,
+          "yHistogram": false
+        },
+        "yAxis": {
+          "axisPlacement": "left",
+          "reverse": false,
+          "unit": "s"
+        }
+      },
+      "pluginVersion": "9.0.0",
+      "targets": [
+        {
+          "datasource": "${DS_PROMETHEUS}",
+          "editorMode": "code",
+          "expr": "sum(rate(${namespace}_${subsystem}_rate_limit_wait_seconds_bucket{client=~\"$client\",host=~\"$host\",method=~\"$method\",source=~\"$source\"}[5m])) by (le)",
+          "format": "heatmap",
+          "instant": false,
+          "legendFormat": "{{le}}",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "Rate Limit Wait Time Distribution (Heatmap)",
+      "type": "heatmap"
+    },
+    {
+      "datasource": "${DS_PROMETHEUS}",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "drawStyle": "line",
+            "fillOpacity": 10,
+            "gradientMode": "none",
+            "hideFrom": {
+              "tooltip": false,
+              "viz": false,
+              "legend": false
+            },
+            "lineInterpolation": "linear",
+            "lineWidth": 2,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "never",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "max": null,
+          "min": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "s"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 8
+      },
+      "id": 3,
+      "options": {
+        "legend": {
+          "calcs": ["mean", "max", "last"],
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      },
+      "pluginVersion": "9.0.0",
+      "targets": [
+        {
+          "datasource": "${DS_PROMETHEUS}",
+          "editorMode": "code",
+          "expr": "histogram_quantile(0.50, sum(rate(${namespace}_${subsystem}_rate_limit_wait_seconds_bucket{client=~\"$client\",host=~\"$host\",method=~\"$method\",source=~\"$source\"}[5m])) by (le))",
+          "format": "time_series",
+          "instant": false,
+          "legendFormat": "p50",
+          "range": true,
+          "refId": "A"
         },
         {
-          "type": "heatmap",
-          "title": "Rate Limit Wait (Histogram)",
           "datasource": "${DS_PROMETHEUS}",
-          "id": 2,
-          "targets": [
-            {
-              "expr": "rate(rate_limit_wait_seconds_bucket{client=~\"$client\",host=~\"$host\",method=~\"$method\"}[5m])",
-              "legendFormat": "{{le}}"
-            }
-          ],
-          "yAxis": {
-            "format": "s"
+          "editorMode": "code",
+          "expr": "histogram_quantile(0.95, sum(rate(${namespace}_${subsystem}_rate_limit_wait_seconds_bucket{client=~\"$client\",host=~\"$host\",method=~\"$method\",source=~\"$source\"}[5m])) by (le))",
+          "format": "time_series",
+          "instant": false,
+          "legendFormat": "p95",
+          "range": true,
+          "refId": "B"
+        },
+        {
+          "datasource": "${DS_PROMETHEUS}",
+          "editorMode": "code",
+          "expr": "histogram_quantile(0.99, sum(rate(${namespace}_${subsystem}_rate_limit_wait_seconds_bucket{client=~\"$client\",host=~\"$host\",method=~\"$method\",source=~\"$source\"}[5m])) by (le))",
+          "format": "time_series",
+          "instant": false,
+          "legendFormat": "p99",
+          "range": true,
+          "refId": "C"
+        }
+      ],
+      "title": "Rate Limit Wait Time Percentiles (p50, p95, p99)",
+      "type": "timeseries"
+    },
+    {
+      "datasource": "${DS_PROMETHEUS}",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
           },
-          "xAxis": {
-            "show": true
+          "custom": {
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "drawStyle": "line",
+            "fillOpacity": 10,
+            "gradientMode": "none",
+            "hideFrom": {
+              "tooltip": false,
+              "viz": false,
+              "legend": false
+            },
+            "lineInterpolation": "linear",
+            "lineWidth": 2,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "never",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
           },
-          "tooltip": {
-            "show": true
-          }
+          "mappings": [],
+          "max": null,
+          "min": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "ops"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 8
+      },
+      "id": 4,
+      "options": {
+        "legend": {
+          "calcs": ["mean", "max", "last"],
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
         }
-      ]
-    },
-
-    {
-      "title": "Client Throttling (Server 429)",
-      "height": "250px",
-      "panels": [
+      },
+      "pluginVersion": "9.0.0",
+      "targets": [
         {
-          "type": "graph",
-          "title": "HTTP 429 Count",
           "datasource": "${DS_PROMETHEUS}",
-          "id": 3,
-          "targets": [
-            {
-              "expr": "sum(rate(rate_limit_429_total{client=~\"$client\",host=~\"$host\",method=~\"$method\"}[5m])) by (client, host, method)",
-              "legendFormat": "{{client}} {{host}} {{method}}"
-            }
-          ],
-          "lines": true,
-          "linewidth": 2,
-          "yaxes": [
-            {
-              "format": "ops",
-              "label": "Requests/sec"
-            },
-            {
-              "format": "short"
-            }
-          ]
+          "editorMode": "code",
+          "expr": "sum(rate(${namespace}_${subsystem}_rate_limit_429_total{client=~\"$client\",host=~\"$host\",method=~\"$method\"}[5m])) by (client, host, method)",
+          "format": "time_series",
+          "instant": false,
+          "legendFormat": "{{client}} {{host}} {{method}}",
+          "range": true,
+          "refId": "A"
         }
-      ]
+      ],
+      "title": "HTTP 429 Responses (Rate)",
+      "type": "timeseries"
     },
-
     {
-      "title": "Deadline-Aware Cancellations",
-      "height": "250px",
-      "panels": [
-        {
-          "type": "graph",
-          "title": "Deadline Cancelled Requests",
-          "datasource": "${DS_PROMETHEUS}",
-          "id": 4,
-          "targets": [
-            {
-              "expr": "sum(rate(deadline_cancelled_total{client=~\"$client\",host=~\"$host\",method=~\"$method\"}[5m])) by (client, host, method)",
-              "legendFormat": "{{client}} {{host}} {{method}}"
-            }
-          ],
-          "lines": true,
-          "linewidth": 2,
-          "yaxes": [
-            {
-              "format": "ops",
-              "label": "Requests/sec"
+      "datasource": "${DS_PROMETHEUS}",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "drawStyle": "line",
+            "fillOpacity": 10,
+            "gradientMode": "none",
+            "hideFrom": {
+              "tooltip": false,
+              "viz": false,
+              "legend": false
             },
-            {
-              "format": "short"
+            "lineInterpolation": "linear",
+            "lineWidth": 2,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "never",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
             }
-          ]
+          },
+          "mappings": [],
+          "max": null,
+          "min": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "ops"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 16
+      },
+      "id": 5,
+      "options": {
+        "legend": {
+          "calcs": ["mean", "max", "last"],
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
         }
-      ]
+      },
+      "pluginVersion": "9.0.0",
+      "targets": [
+        {
+          "datasource": "${DS_PROMETHEUS}",
+          "editorMode": "code",
+          "expr": "sum(rate(${namespace}_${subsystem}_deadline_canceled_total{client=~\"$client\",host=~\"$host\",method=~\"$method\"}[5m])) by (client, host, method)",
+          "format": "time_series",
+          "instant": false,
+          "legendFormat": "{{client}} {{host}} {{method}}",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "Deadline-Aware Cancellations (Rate)",
+      "type": "timeseries"
     },
-
     {
-      "title": "Sources of Wait (server vs token bucket)",
-      "height": "250px",
-      "panels": [
-        {
-          "type": "graph",
-          "title": "Wait by Source",
-          "datasource": "${DS_PROMETHEUS}",
-          "id": 5,
-          "targets": [
-            {
-              "expr": "sum(rate(rate_limit_wait_seconds_sum{client=~\"$client\",host=~\"$host\",method=~\"$method\",source=\"server\"}[5m])) / sum(rate(rate_limit_wait_seconds_count{client=~\"$client\",host=~\"$host\",method=~\"$method\",source=\"server\"}[5m]))",
-              "legendFormat": "server-limit"
+      "datasource": "${DS_PROMETHEUS}",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "drawStyle": "line",
+            "fillOpacity": 10,
+            "gradientMode": "none",
+            "hideFrom": {
+              "tooltip": false,
+              "viz": false,
+              "legend": false
             },
-            {
-              "expr": "sum(rate(rate_limit_wait_seconds_sum{client=~\"$client\",host=~\"$host\",method=~\"$method\",source=\"bucket\"}[5m])) / sum(rate(rate_limit_wait_seconds_count{client=~\"$client\",host=~\"$host\",method=~\"$method\",source=\"bucket\"}[5m]))",
-              "legendFormat": "token-bucket"
-            }
-          ],
-          "lines": true,
-          "linewidth": 2,
-          "yaxes": [
-            {
-              "format": "s",
-              "label": "Seconds"
+            "lineInterpolation": "linear",
+            "lineWidth": 2,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
             },
-            {
-              "format": "short"
+            "showPoints": "never",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
             }
-          ]
+          },
+          "mappings": [],
+          "max": null,
+          "min": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "s"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 16
+      },
+      "id": 6,
+      "options": {
+        "legend": {
+          "calcs": ["mean", "max"],
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
         }
-      ]
+      },
+      "pluginVersion": "9.0.0",
+      "targets": [
+        {
+          "datasource": "${DS_PROMETHEUS}",
+          "editorMode": "code",
+          "expr": "sum(rate(${namespace}_${subsystem}_rate_limit_wait_seconds_sum{client=~\"$client\",host=~\"$host\",method=~\"$method\",source=\"server\"}[5m])) / sum(rate(${namespace}_${subsystem}_rate_limit_wait_seconds_count{client=~\"$client\",host=~\"$host\",method=~\"$method\",source=\"server\"}[5m]))",
+          "format": "time_series",
+          "instant": false,
+          "legendFormat": "server-limit",
+          "range": true,
+          "refId": "A"
+        },
+        {
+          "datasource": "${DS_PROMETHEUS}",
+          "editorMode": "code",
+          "expr": "sum(rate(${namespace}_${subsystem}_rate_limit_wait_seconds_sum{client=~\"$client\",host=~\"$host\",method=~\"$method\",source=\"bucket\"}[5m])) / sum(rate(${namespace}_${subsystem}_rate_limit_wait_seconds_count{client=~\"$client\",host=~\"$host\",method=~\"$method\",source=\"bucket\"}[5m]))",
+          "format": "time_series",
+          "instant": false,
+          "legendFormat": "token-bucket",
+          "range": true,
+          "refId": "B"
+        }
+      ],
+      "title": "Wait Time by Source (server vs bucket)",
+      "type": "timeseries"
     }
-  ]
+  ],
+  "refresh": "30s",
+  "schemaVersion": 38,
+  "style": "dark",
+  "tags": ["rate-limit", "http", "go-sdk"],
+  "templating": {
+    "list": [
+      {
+        "allValue": null,
+        "current": {
+          "selected": false,
+          "text": "All",
+          "value": "$__all"
+        },
+        "datasource": "${DS_PROMETHEUS}",
+        "definition": "label_values(${namespace}_${subsystem}_rate_limit_wait_seconds, client)",
+        "description": "Filter by client name",
+        "error": null,
+        "hide": 0,
+        "includeAll": true,
+        "label": "Client",
+        "multi": true,
+        "name": "client",
+        "options": [],
+        "query": {
+          "query": "label_values(${namespace}_${subsystem}_rate_limit_wait_seconds, client)",
+          "refId": "StandardVariableQuery"
+        },
+        "refresh": 1,
+        "regex": "",
+        "skipUrlSync": false,
+        "sort": 0,
+        "type": "query"
+      },
+      {
+        "allValue": null,
+        "current": {
+          "selected": false,
+          "text": "All",
+          "value": "$__all"
+        },
+        "datasource": "${DS_PROMETHEUS}",
+        "definition": "label_values(${namespace}_${subsystem}_rate_limit_wait_seconds{client=~\"$client\"}, host)",
+        "description": "Filter by host",
+        "error": null,
+        "hide": 0,
+        "includeAll": true,
+        "label": "Host",
+        "multi": true,
+        "name": "host",
+        "options": [],
+        "query": {
+          "query": "label_values(${namespace}_${subsystem}_rate_limit_wait_seconds{client=~\"$client\"}, host)",
+          "refId": "StandardVariableQuery"
+        },
+        "refresh": 1,
+        "regex": "",
+        "skipUrlSync": false,
+        "sort": 0,
+        "type": "query"
+      },
+      {
+        "allValue": null,
+        "current": {
+          "selected": false,
+          "text": "All",
+          "value": "$__all"
+        },
+        "datasource": "${DS_PROMETHEUS}",
+        "definition": "label_values(${namespace}_${subsystem}_rate_limit_wait_seconds{client=~\"$client\"}, method)",
+        "description": "Filter by HTTP method",
+        "error": null,
+        "hide": 0,
+        "includeAll": true,
+        "label": "Method",
+        "multi": true,
+        "name": "method",
+        "options": [],
+        "query": {
+          "query": "label_values(${namespace}_${subsystem}_rate_limit_wait_seconds{client=~\"$client\"}, method)",
+          "refId": "StandardVariableQuery"
+        },
+        "refresh": 1,
+        "regex": "",
+        "skipUrlSync": false,
+        "sort": 0,
+        "type": "query"
+      },
+      {
+        "allValue": null,
+        "current": {
+          "selected": false,
+          "text": "All",
+          "value": "$__all"
+        },
+        "datasource": "${DS_PROMETHEUS}",
+        "definition": "label_values(${namespace}_${subsystem}_rate_limit_wait_seconds{client=~\"$client\"}, source)",
+        "description": "Filter by wait source (server or bucket)",
+        "error": null,
+        "hide": 0,
+        "includeAll": true,
+        "label": "Source",
+        "multi": true,
+        "name": "source",
+        "options": [],
+        "query": {
+          "query": "label_values(${namespace}_${subsystem}_rate_limit_wait_seconds{client=~\"$client\"}, source)",
+          "refId": "StandardVariableQuery"
+        },
+        "refresh": 1,
+        "regex": "",
+        "skipUrlSync": false,
+        "sort": 0,
+        "type": "query"
+      },
+      {
+        "current": {
+          "selected": false,
+          "text": "prometheus",
+          "value": "prometheus"
+        },
+        "hide": 0,
+        "label": "Namespace",
+        "name": "namespace",
+        "options": [
+          {
+            "selected": true,
+            "text": "prometheus",
+            "value": "prometheus"
+          }
+        ],
+        "query": "prometheus",
+        "skipUrlSync": false,
+        "type": "textbox"
+      },
+      {
+        "current": {
+          "selected": false,
+          "text": "http_client",
+          "value": "http_client"
+        },
+        "hide": 0,
+        "label": "Subsystem",
+        "name": "subsystem",
+        "options": [
+          {
+            "selected": true,
+            "text": "http_client",
+            "value": "http_client"
+          }
+        ],
+        "query": "http_client",
+        "skipUrlSync": false,
+        "type": "textbox"
+      }
+    ]
+  },
+  "time": {
+    "from": "now-6h",
+    "to": "now"
+  },
+  "timepicker": {},
+  "timezone": "",
+  "title": "Rate-Limited HTTP Client",
+  "uid": null,
+  "version": 1
 }
