@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/go-chi/chi/v5/middleware"
-
 	"github.com/shortlink-org/go-sdk/logger"
 )
 
@@ -22,33 +21,33 @@ func Logger(log logger.Logger) func(next http.Handler) http.Handler {
 }
 
 func (c chilogger) middleware(next http.Handler) http.Handler {
-	fn := func(w http.ResponseWriter, r *http.Request) {
+	handlerFunc := func(writer http.ResponseWriter, request *http.Request) {
 		start := time.Now()
-		ww := middleware.NewWrapResponseWriter(w, r.ProtoMajor)
+		wrappedWriter := middleware.NewWrapResponseWriter(writer, request.ProtoMajor)
 
 		defer func() {
 			latency := time.Since(start)
 
 			fields := []slog.Attr{
-				slog.Int("status", ww.Status()),
+				slog.Int("status", wrappedWriter.Status()),
 				slog.Duration("took", latency),
-				slog.String("remote", r.RemoteAddr),
-				slog.String("request", r.RequestURI),
-				slog.String("method", r.Method),
+				slog.String("remote", request.RemoteAddr),
+				slog.String("request", request.RequestURI),
+				slog.String("method", request.Method),
 			}
 
 			switch {
-			case ww.Status() >= http.StatusInternalServerError:
-				c.log.ErrorWithContext(r.Context(), "request completed", fields...)
-			case ww.Status() >= http.StatusBadRequest:
-				c.log.WarnWithContext(r.Context(), "request completed", fields...)
+			case wrappedWriter.Status() >= http.StatusInternalServerError:
+				c.log.ErrorWithContext(request.Context(), "request completed", fields...)
+			case wrappedWriter.Status() >= http.StatusBadRequest:
+				c.log.WarnWithContext(request.Context(), "request completed", fields...)
 			default:
-				c.log.InfoWithContext(r.Context(), "request completed", fields...)
+				c.log.InfoWithContext(request.Context(), "request completed", fields...)
 			}
 		}()
 
-		next.ServeHTTP(ww, r)
+		next.ServeHTTP(wrappedWriter, request)
 	}
 
-	return http.HandlerFunc(fn)
+	return http.HandlerFunc(handlerFunc)
 }

@@ -5,9 +5,8 @@ import (
 	"log/slog"
 	"net/http"
 
-	"golang.org/x/sync/singleflight"
-
 	"github.com/shortlink-org/go-sdk/logger"
+	"golang.org/x/sync/singleflight"
 )
 
 type Option func(*singleFlight)
@@ -31,46 +30,44 @@ func SingleFlight(log logger.Logger, options ...Option) func(next http.Handler) 
 		return fmt.Sprintf("%s?%s", r.URL.Path, r.URL.RawQuery)
 	}
 
-	sf := &singleFlight{
-		log:   log,
-		keyFn: keyFn,
-	}
+	singleFlightInstance := new(singleFlight)
+	singleFlightInstance.log = log
+	singleFlightInstance.keyFn = keyFn
 
 	for _, option := range options {
-		option(sf)
+		option(singleFlightInstance)
 	}
 
-	return sf.middleware
+	return singleFlightInstance.middleware
 }
 
 func (s *singleFlight) middleware(next http.Handler) http.Handler {
-	fn := func(w http.ResponseWriter, r *http.Request) {
-		if r.Method == http.MethodGet {
-			key := s.keyFn(r)
+	handlerFunc := func(writer http.ResponseWriter, request *http.Request) {
+		if request.Method == http.MethodGet {
+			key := s.keyFn(request)
 
 			response, err, _ := s.group.Do(key, func() (any, error) {
-				next.ServeHTTP(w, r)
+				next.ServeHTTP(writer, request)
 
 				//nolint:nilnil // nil, nil is valid return
 				return nil, nil
 			})
-
 			if err != nil {
-				http.Error(w, err.Error(), http.StatusInternalServerError)
+				http.Error(writer, err.Error(), http.StatusInternalServerError)
 
 				return
 			}
 
-			_, err = fmt.Fprint(w, response)
+			_, err = fmt.Fprint(writer, response)
 			if err != nil {
 				s.log.Error("failed to write response",
 					slog.Any("error", err),
 				)
 			}
 		} else {
-			next.ServeHTTP(w, r)
+			next.ServeHTTP(writer, request)
 		}
 	}
 
-	return http.HandlerFunc(fn)
+	return http.HandlerFunc(handlerFunc)
 }

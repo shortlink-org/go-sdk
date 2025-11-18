@@ -1,0 +1,190 @@
+{
+  "title": "Rate-Limited HTTP Client",
+  "editable": true,
+  "style": "dark",
+  "tags": ["rate-limit", "http"],
+  "timezone": "",
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "30s",
+
+  "templating": {
+    "list": [
+      {
+        "type": "query",
+        "datasource": "${DS_PROMETHEUS}",
+        "name": "client",
+        "label": "Client",
+        "refresh": 1,
+        "query": "label_values(rate_limit_wait_seconds, client)",
+        "includeAll": true
+      },
+      {
+        "type": "query",
+        "datasource": "${DS_PROMETHEUS}",
+        "name": "host",
+        "label": "Host",
+        "refresh": 1,
+        "query": "label_values(rate_limit_wait_seconds{client=~\"$client\"}, host)",
+        "includeAll": true
+      },
+      {
+        "type": "query",
+        "datasource": "${DS_PROMETHEUS}",
+        "name": "method",
+        "label": "Method",
+        "refresh": 1,
+        "query": "label_values(rate_limit_wait_seconds{client=~\"$client\"}, method)",
+        "includeAll": true
+      }
+    ]
+  },
+
+  "rows": [
+    {
+      "title": "Rate Limit Wait Time (Local + Server)",
+      "height": "300px",
+      "panels": [
+        {
+          "type": "graph",
+          "title": "Rate Limit Wait (avg)",
+          "datasource": "${DS_PROMETHEUS}",
+          "id": 1,
+          "targets": [
+            {
+              "expr": "rate(rate_limit_wait_seconds_sum{client=~\"$client\",host=~\"$host\",method=~\"$method\"}[5m]) / rate(rate_limit_wait_seconds_count{client=~\"$client\",host=~\"$host\",method=~\"$method\"}[5m])",
+              "legendFormat": "{{source}}"
+            }
+          ],
+          "lines": true,
+          "linewidth": 2,
+          "yaxes": [
+            {
+              "format": "s",
+              "label": "Seconds",
+              "logBase": 1
+            },
+            {
+              "format": "short"
+            }
+          ]
+        },
+        {
+          "type": "heatmap",
+          "title": "Rate Limit Wait (Histogram)",
+          "datasource": "${DS_PROMETHEUS}",
+          "id": 2,
+          "targets": [
+            {
+              "expr": "rate(rate_limit_wait_seconds_bucket{client=~\"$client\",host=~\"$host\",method=~\"$method\"}[5m])",
+              "legendFormat": "{{le}}"
+            }
+          ],
+          "yAxis": {
+            "format": "s"
+          },
+          "xAxis": {
+            "show": true
+          },
+          "tooltip": {
+            "show": true
+          }
+        }
+      ]
+    },
+
+    {
+      "title": "Client Throttling (Server 429)",
+      "height": "250px",
+      "panels": [
+        {
+          "type": "graph",
+          "title": "HTTP 429 Count",
+          "datasource": "${DS_PROMETHEUS}",
+          "id": 3,
+          "targets": [
+            {
+              "expr": "sum(rate(rate_limit_429_total{client=~\"$client\",host=~\"$host\",method=~\"$method\"}[5m])) by (client, host, method)",
+              "legendFormat": "{{client}} {{host}} {{method}}"
+            }
+          ],
+          "lines": true,
+          "linewidth": 2,
+          "yaxes": [
+            {
+              "format": "ops",
+              "label": "Requests/sec"
+            },
+            {
+              "format": "short"
+            }
+          ]
+        }
+      ]
+    },
+
+    {
+      "title": "Deadline-Aware Cancellations",
+      "height": "250px",
+      "panels": [
+        {
+          "type": "graph",
+          "title": "Deadline Cancelled Requests",
+          "datasource": "${DS_PROMETHEUS}",
+          "id": 4,
+          "targets": [
+            {
+              "expr": "sum(rate(deadline_cancelled_total{client=~\"$client\",host=~\"$host\",method=~\"$method\"}[5m])) by (client, host, method)",
+              "legendFormat": "{{client}} {{host}} {{method}}"
+            }
+          ],
+          "lines": true,
+          "linewidth": 2,
+          "yaxes": [
+            {
+              "format": "ops",
+              "label": "Requests/sec"
+            },
+            {
+              "format": "short"
+            }
+          ]
+        }
+      ]
+    },
+
+    {
+      "title": "Sources of Wait (server vs token bucket)",
+      "height": "250px",
+      "panels": [
+        {
+          "type": "graph",
+          "title": "Wait by Source",
+          "datasource": "${DS_PROMETHEUS}",
+          "id": 5,
+          "targets": [
+            {
+              "expr": "sum(rate(rate_limit_wait_seconds_sum{client=~\"$client\",host=~\"$host\",method=~\"$method\",source=\"server\"}[5m])) / sum(rate(rate_limit_wait_seconds_count{client=~\"$client\",host=~\"$host\",method=~\"$method\",source=\"server\"}[5m]))",
+              "legendFormat": "server-limit"
+            },
+            {
+              "expr": "sum(rate(rate_limit_wait_seconds_sum{client=~\"$client\",host=~\"$host\",method=~\"$method\",source=\"bucket\"}[5m])) / sum(rate(rate_limit_wait_seconds_count{client=~\"$client\",host=~\"$host\",method=~\"$method\",source=\"bucket\"}[5m]))",
+              "legendFormat": "token-bucket"
+            }
+          ],
+          "lines": true,
+          "linewidth": 2,
+          "yaxes": [
+            {
+              "format": "s",
+              "label": "Seconds"
+            },
+            {
+              "format": "short"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

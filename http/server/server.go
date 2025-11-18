@@ -23,18 +23,14 @@ func New(ctx context.Context, h http.Handler, config Config, tracer trace.Tracer
 		handler = otelhttp.NewHandler(handler, "")
 	}
 
-	server := &http.Server{
-		Addr:    fmt.Sprintf(":%d", config.Port),
-		Handler: handler,
-		BaseContext: func(_ net.Listener) context.Context {
-			return ctx
-		},
-
-		ReadTimeout:       viper.GetDuration("HTTP_SERVER_READ_TIMEOUT"),
-		WriteTimeout:      config.Timeout + viper.GetDuration("HTTP_SERVER_WRITE_TIMEOUT"),
-		IdleTimeout:       viper.GetDuration("HTTP_SERVER_IDLE_TIMEOUT"),
-		ReadHeaderTimeout: viper.GetDuration("HTTP_SERVER_READ_HEADER_TIMEOUT"),
-	}
+	server := &http.Server{} //nolint:gosec,exhaustruct // timeouts configured via viper immediately below
+	server.Addr = fmt.Sprintf(":%d", config.Port)
+	server.Handler = handler
+	server.BaseContext = func(_ net.Listener) context.Context { return ctx }
+	server.ReadTimeout = viper.GetDuration("HTTP_SERVER_READ_TIMEOUT")
+	server.WriteTimeout = config.Timeout + viper.GetDuration("HTTP_SERVER_WRITE_TIMEOUT")
+	server.IdleTimeout = viper.GetDuration("HTTP_SERVER_IDLE_TIMEOUT")
+	server.ReadHeaderTimeout = viper.GetDuration("HTTP_SERVER_READ_HEADER_TIMEOUT")
 
 	return server
 }

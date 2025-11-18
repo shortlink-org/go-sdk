@@ -3,11 +3,12 @@ package csrf
 import (
 	"net/http"
 	"net/http/httptest"
-	"os"
 	"testing"
 
+	"github.com/shortlink-org/go-sdk/logger"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestMiddleware(t *testing.T) {
@@ -70,26 +71,35 @@ func TestMiddleware(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			// Clean up environment
-			os.Unsetenv("CSRF_TRUSTED_ORIGINS")
+			mustUnsetenv(t, "CSRF_TRUSTED_ORIGINS")
 			viper.Reset()
 
 			// Set up environment variable if provided
 			if tt.envValue != "" {
-				os.Setenv(tt.envVar, tt.envValue)
+				mustSetenv(t, tt.envVar, tt.envValue)
+				t.Cleanup(func() {
+					mustUnsetenv(t, tt.envVar)
+				})
 			}
 
 			// Create a test handler
 			handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				w.WriteHeader(http.StatusOK)
-				w.Write([]byte("OK"))
+				writeOK(t, w)
 			})
 
 			// Apply CSRF middleware
-			middleware := Middleware()
+			var cfg logger.Configuration
+
+			logInstance, err := logger.New(cfg)
+			require.NoError(t, err)
+
+			log := logInstance
+			middleware := Middleware(log)
 			protectedHandler := middleware(handler)
 
 			// Create test request
-			req := httptest.NewRequest(tt.method, "/test", nil)
+			req := httptest.NewRequest(tt.method, "/test", http.NoBody)
 			if tt.origin != "" {
 				req.Header.Set("Origin", tt.origin)
 			}
@@ -102,7 +112,7 @@ func TestMiddleware(t *testing.T) {
 			assert.Equal(t, tt.expectedStatus, rr.Code, tt.description)
 
 			// Clean up
-			os.Unsetenv(tt.envVar)
+			mustUnsetenv(t, tt.envVar)
 		})
 	}
 }
@@ -158,7 +168,7 @@ func TestNew(t *testing.T) {
 			// Create a test handler
 			handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				w.WriteHeader(http.StatusOK)
-				w.Write([]byte("OK"))
+				writeOK(t, w)
 			})
 
 			// Apply CSRF middleware with custom config
@@ -166,7 +176,7 @@ func TestNew(t *testing.T) {
 			protectedHandler := middleware(handler)
 
 			// Create test request
-			req := httptest.NewRequest(tt.method, "/test", nil)
+			req := httptest.NewRequest(tt.method, "/test", http.NoBody)
 			req.Header.Set("Origin", tt.origin)
 
 			// Record response
@@ -214,44 +224,46 @@ func TestConfigureTrustedOrigins(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			// Clean up
-			os.Unsetenv("CSRF_TRUSTED_ORIGINS")
+			mustUnsetenv(t, "CSRF_TRUSTED_ORIGINS")
 			viper.Reset()
 
-			// Set environment variable
 			if tt.envValue != "" {
-				os.Setenv(tt.envVar, tt.envValue)
+				mustSetenv(t, tt.envVar, tt.envValue)
+				t.Cleanup(func() {
+					mustUnsetenv(t, tt.envVar)
+				})
 			}
 
-			// Create a mock CrossOriginProtection to test configuration
 			antiCSRF := http.NewCrossOriginProtection()
 
-			// Call the function under test
-			configureTrustedOrigins(antiCSRF)
+			var cfg logger.Configuration
 
-			// Verify that origins were configured (we can't directly inspect them,
-			// but we can test the behavior with a handler)
+			logInstance, err := logger.New(cfg)
+			require.NoError(t, err)
+
+			log := logInstance
+
+			configureTrustedOrigins(antiCSRF, log)
+
 			handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				w.WriteHeader(http.StatusOK)
 			})
 			protectedHandler := antiCSRF.Handler(handler)
 
-			// Test each expected origin
 			for _, expectedOrigin := range tt.expected {
-				if expectedOrigin != "" {
-					req := httptest.NewRequest("POST", "/test", nil)
-					req.Header.Set("Origin", expectedOrigin)
-					rr := httptest.NewRecorder()
-					protectedHandler.ServeHTTP(rr, req)
-
-					// If the origin was properly configured, it should be allowed
-					assert.Equal(t, http.StatusOK, rr.Code,
-						"Expected origin %s to be allowed", expectedOrigin)
+				if expectedOrigin == "" {
+					continue
 				}
-			}
 
-			// Clean up
-			os.Unsetenv(tt.envVar)
+				req := httptest.NewRequest(http.MethodPost, "/test", http.NoBody)
+				req.Header.Set("Origin", expectedOrigin)
+
+				rr := httptest.NewRecorder()
+				protectedHandler.ServeHTTP(rr, req)
+
+				assert.Equal(t, http.StatusOK, rr.Code,
+					"Expected origin %s to be allowed", expectedOrigin)
+			}
 		})
 	}
 }
@@ -262,27 +274,37 @@ func TestCustomEnvironmentVariable(t *testing.T) {
 	customValue := "https://shortlink.best,https://api.shortlink.best"
 
 	// Clean up
-	os.Unsetenv("CSRF_TRUSTED_ORIGINS")
-	os.Unsetenv(customEnvVar)
+	mustUnsetenv(t, "CSRF_TRUSTED_ORIGINS")
+	mustUnsetenv(t, customEnvVar)
 	viper.Reset()
 
 	// Set custom environment variable name in viper
 	viper.Set("CSRF_TRUSTED_ORIGINS_ENV", customEnvVar)
-	os.Setenv(customEnvVar, customValue)
+	mustSetenv(t, customEnvVar, customValue)
+	t.Cleanup(func() {
+		mustUnsetenv(t, customEnvVar)
+	})
 
 	// Create test handler
 	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte("OK"))
+		writeOK(t, w)
 	})
 
 	// Apply middleware
-	middleware := Middleware()
+	var cfg logger.Configuration
+
+	logInstance, err := logger.New(cfg)
+	require.NoError(t, err)
+
+	log := logInstance
+	middleware := Middleware(log)
 	protectedHandler := middleware(handler)
 
 	// Test with one of the configured origins
-	req := httptest.NewRequest("POST", "/test", nil)
+	req := httptest.NewRequest(http.MethodPost, "/test", http.NoBody)
 	req.Header.Set("Origin", "https://shortlink.best")
+
 	rr := httptest.NewRecorder()
 	protectedHandler.ServeHTTP(rr, req)
 
@@ -290,7 +312,7 @@ func TestCustomEnvironmentVariable(t *testing.T) {
 		"Should allow origin from custom environment variable")
 
 	// Clean up
-	os.Unsetenv(customEnvVar)
+	mustUnsetenv(t, customEnvVar)
 	viper.Reset()
 }
 
@@ -302,16 +324,23 @@ func TestViperConfiguration(t *testing.T) {
 	// Create test handler
 	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte("OK"))
+		writeOK(t, w)
 	})
 
 	// Apply middleware
-	middleware := Middleware()
+	var cfg logger.Configuration
+
+	logInstance, err := logger.New(cfg)
+	require.NoError(t, err)
+
+	log := logInstance
+	middleware := Middleware(log)
 	protectedHandler := middleware(handler)
 
 	// Test with configured origin
-	req := httptest.NewRequest("POST", "/test", nil)
+	req := httptest.NewRequest(http.MethodPost, "/test", http.NoBody)
 	req.Header.Set("Origin", "https://shortlink.best")
+
 	rr := httptest.NewRecorder()
 	protectedHandler.ServeHTTP(rr, req)
 
@@ -327,35 +356,69 @@ func BenchmarkMiddleware(b *testing.B) {
 		w.WriteHeader(http.StatusOK)
 	})
 
-	middleware := Middleware()
+	var cfg logger.Configuration
+
+	logInstance, err := logger.New(cfg)
+	require.NoError(b, err)
+
+	log := logInstance
+	middleware := Middleware(log)
 	protectedHandler := middleware(handler)
 
-	req := httptest.NewRequest("GET", "/test", nil)
+	req := httptest.NewRequest(http.MethodGet, "/test", http.NoBody)
 	rr := httptest.NewRecorder()
 
 	b.ResetTimer()
+
 	for b.Loop() {
 		protectedHandler.ServeHTTP(rr, req)
 	}
 }
 
 func BenchmarkMiddlewareWithOrigin(b *testing.B) {
-	os.Setenv("CSRF_TRUSTED_ORIGINS", "https://shortlink.best")
-	defer os.Unsetenv("CSRF_TRUSTED_ORIGINS")
+	mustSetenv(b, "CSRF_TRUSTED_ORIGINS", "https://shortlink.best")
+	b.Cleanup(func() {
+		mustUnsetenv(b, "CSRF_TRUSTED_ORIGINS")
+	})
 
 	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	})
 
-	middleware := Middleware()
+	var cfg logger.Configuration
+
+	logInstance, err := logger.New(cfg)
+	require.NoError(b, err)
+
+	log := logInstance
+	middleware := Middleware(log)
 	protectedHandler := middleware(handler)
 
-	req := httptest.NewRequest("POST", "/test", nil)
+	req := httptest.NewRequest(http.MethodPost, "/test", http.NoBody)
 	req.Header.Set("Origin", "https://shortlink.best")
+
 	rr := httptest.NewRecorder()
 
 	b.ResetTimer()
+
 	for b.Loop() {
 		protectedHandler.ServeHTTP(rr, req)
 	}
+}
+
+func mustSetenv(tb testing.TB, key, value string) {
+	tb.Helper()
+	tb.Setenv(key, value)
+}
+
+func mustUnsetenv(tb testing.TB, key string) {
+	tb.Helper()
+	tb.Setenv(key, "")
+}
+
+func writeOK(tb testing.TB, w http.ResponseWriter) {
+	tb.Helper()
+
+	_, err := w.Write([]byte("OK"))
+	require.NoError(tb, err)
 }

@@ -20,17 +20,17 @@ func Span() func(next http.Handler) http.Handler {
 }
 
 func (s span) middleware(next http.Handler) http.Handler {
-	fn := func(w http.ResponseWriter, r *http.Request) {
-		ww := middleware.NewWrapResponseWriter(w, r.ProtoMajor)
+	handlerFunc := func(writer http.ResponseWriter, request *http.Request) {
+		wrappedWriter := middleware.NewWrapResponseWriter(writer, request.ProtoMajor)
 
 		// Check if "trace_id" already exists in the header
-		if ww.Header().Get(TraceIDHeader) == "" {
+		if wrappedWriter.Header().Get(TraceIDHeader) == "" {
 			// Inject spanId in response header
-			ww.Header().Add(TraceIDHeader, trace.SpanFromContext(r.Context()).SpanContext().TraceID().String())
+			wrappedWriter.Header().Add(TraceIDHeader, trace.SpanFromContext(request.Context()).SpanContext().TraceID().String())
 		}
 
-		next.ServeHTTP(ww, r)
+		next.ServeHTTP(wrappedWriter, request)
 	}
 
-	return http.HandlerFunc(fn)
+	return http.HandlerFunc(handlerFunc)
 }

@@ -12,14 +12,14 @@ import (
 // 1<<20 - 1MB
 // 1<<30 - 1GB
 func RequestSize(bytes int64) func(http.Handler) http.Handler {
-	f := func(h http.Handler) http.Handler {
-		fn := func(w http.ResponseWriter, r *http.Request) {
+	wrapRequestSize := func(handler http.Handler) http.Handler {
+		handlerFunc := func(w http.ResponseWriter, r *http.Request) {
 			r.Body = http.MaxBytesReader(w, r.Body, bytes)
-			h.ServeHTTP(w, r)
+			handler.ServeHTTP(w, r)
 		}
 
-		return http.HandlerFunc(fn)
+		return http.HandlerFunc(handlerFunc)
 	}
 
-	return f
+	return wrapRequestSize
 }

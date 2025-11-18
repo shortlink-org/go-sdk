@@ -12,6 +12,7 @@ import (
 )
 
 func Test_NewMetrics(t *testing.T) {
+	const delta = 1e-9
 	// middlewares
 	middlewares, err := NewMetrics()
 	require.NoError(t, err)
@@ -40,23 +41,25 @@ func Test_NewMetrics(t *testing.T) {
 	for _, mf := range resp {
 		switch mf.GetName() {
 		case "http_requests_total":
-			for _, m := range mf.GetMetric() {
-				labels := m.GetLabel()
+			for _, metric := range mf.GetMetric() {
+				labels := metric.GetLabel()
 				require.Equal(t, "200", getValueForLabel(labels, "status"))
 				require.Equal(t, "GET", getValueForLabel(labels, "method"))
 				require.Equal(t, "/users/{firstName}", getValueForLabel(labels, "path"))
-				require.Equal(t, float64(1), m.GetCounter().GetValue())
+				require.InDelta(t, 1, metric.GetCounter().GetValue(), delta)
 			}
 		case "http_request_duration_milliseconds":
-			for _, m := range mf.GetMetric() {
-				labels := m.GetLabel()
+			for _, metric := range mf.GetMetric() {
+				labels := metric.GetLabel()
 				require.Equal(t, "200", getValueForLabel(labels, "status"))
 				require.Equal(t, "GET", getValueForLabel(labels, "method"))
 				require.Equal(t, "/users/{firstName}", getValueForLabel(labels, "path"))
-				require.Equal(t, uint64(1), m.GetHistogram().GetBucket()[0].GetCumulativeCount())
-				require.Equal(t, uint64(1), m.GetHistogram().GetBucket()[1].GetCumulativeCount())
-				require.Equal(t, uint64(1), m.GetHistogram().GetBucket()[2].GetCumulativeCount())
+				require.Equal(t, uint64(1), metric.GetHistogram().GetBucket()[0].GetCumulativeCount())
+				require.Equal(t, uint64(1), metric.GetHistogram().GetBucket()[1].GetCumulativeCount())
+				require.Equal(t, uint64(1), metric.GetHistogram().GetBucket()[2].GetCumulativeCount())
 			}
+		default:
+			continue
 		}
 	}
 }

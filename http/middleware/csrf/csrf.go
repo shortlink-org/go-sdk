@@ -12,12 +12,12 @@ import (
 )
 
 // Middleware creates a CSRF protection middleware using Go's built-in CrossOriginProtection
-func Middleware(log logger.Logger) func(http.Handler) http.Handler {
+func Middleware(loggerInstance logger.Logger) func(http.Handler) http.Handler {
 	// Initialize CrossOriginProtection
 	antiCSRF := http.NewCrossOriginProtection()
 
 	// Configure trusted origins from environment variables
-	configureTrustedOrigins(antiCSRF, log)
+	configureTrustedOrigins(antiCSRF, loggerInstance)
 
 	// Return a middleware function that wraps the handler with CSRF protection
 	return func(next http.Handler) http.Handler {
@@ -26,7 +26,7 @@ func Middleware(log logger.Logger) func(http.Handler) http.Handler {
 }
 
 // configureTrustedOrigins sets up trusted origins from environment variables
-func configureTrustedOrigins(antiCSRF *http.CrossOriginProtection, log logger.Logger) {
+func configureTrustedOrigins(antiCSRF *http.CrossOriginProtection, loggerInstance logger.Logger) {
 	// Set default environment variable names
 	viper.SetDefault("CSRF_TRUSTED_ORIGINS_ENV", "CSRF_TRUSTED_ORIGINS")
 	viper.SetDefault("CSRF_TRUSTED_ORIGINS", "")
@@ -41,19 +41,20 @@ func configureTrustedOrigins(antiCSRF *http.CrossOriginProtection, log logger.Lo
 	}
 
 	if trustedOrigins != "" {
-		origins := strings.Split(trustedOrigins, ",")
-		for _, origin := range origins {
+		origins := strings.SplitSeq(trustedOrigins, ",")
+		for origin := range origins {
 			trimmedOrigin := strings.TrimSpace(origin)
 			if trimmedOrigin != "" {
-				if err := antiCSRF.AddTrustedOrigin(trimmedOrigin); err != nil {
-					log.Error("CSRF trusted origin configuration error", slog.String("origin", trimmedOrigin), slog.Any("error", err))
+				err := antiCSRF.AddTrustedOrigin(trimmedOrigin)
+				if err != nil {
+					loggerInstance.Error("CSRF trusted origin configuration error", slog.String("origin", trimmedOrigin), slog.Any("error", err))
 				} else {
-					log.Info("CSRF trusted origin added", slog.String("origin", trimmedOrigin))
+					loggerInstance.Info("CSRF trusted origin added", slog.String("origin", trimmedOrigin))
 				}
 			}
 		}
 	} else {
-		log.Info("No CSRF trusted origins configured. All cross-origin requests will be protected.")
+		loggerInstance.Info("No CSRF trusted origins configured. All cross-origin requests will be protected.")
 	}
 }
 
@@ -68,7 +69,8 @@ func New(config Config) func(http.Handler) http.Handler {
 
 	// Add trusted origins from config
 	for _, origin := range config.TrustedOrigins {
-		if err := antiCSRF.AddTrustedOrigin(origin); err != nil {
+		err := antiCSRF.AddTrustedOrigin(origin)
+		if err != nil {
 			log.Printf("Failed to add trusted origin %s: %v", origin, err)
 		} else {
 			log.Printf("Added trusted origin: %s", origin)

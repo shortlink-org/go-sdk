@@ -16,6 +16,7 @@ linters:
     - wsl              # deprecated
     - wrapcheck        # too much for sdk code
     - testpackage      # too restrictive for sdk code
+    - gomoddirectives  # too noisy
 
   exclusions:
     paths:

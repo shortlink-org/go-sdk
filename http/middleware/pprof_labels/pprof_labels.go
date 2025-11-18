@@ -9,15 +9,13 @@ import (
 // These labels include the request path and method.
 // The updated context is then used to serve the HTTP request.
 func Labels(next http.Handler) http.Handler {
-	fn := func(w http.ResponseWriter, r *http.Request) {
-		ctx := pprof.WithLabels(r.Context(), pprof.Labels(
-			"path", r.URL.Path,
-			"method", r.Method,
+	return http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+		ctx := pprof.WithLabels(request.Context(), pprof.Labels(
+			"path", request.URL.Path,
+			"method", request.Method,
 		))
 
 		pprof.SetGoroutineLabels(ctx)
-		next.ServeHTTP(w, r.WithContext(ctx))
-	}
-
-	return http.HandlerFunc(fn)
+		next.ServeHTTP(writer, request.WithContext(ctx))
+	})
 }

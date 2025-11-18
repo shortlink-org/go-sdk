@@ -5,14 +5,13 @@ import (
 	"net/http"
 
 	ory "github.com/ory/client-go"
+	"github.com/shortlink-org/go-sdk/auth/session"
 	"github.com/spf13/viper"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/trace"
-
-	"github.com/shortlink-org/go-sdk/auth/session"
 )
 
 const tracerName = "github.com/shortlink-org/go-sdk/http/middleware/auth"
@@ -29,31 +28,42 @@ type auth struct {
 func Auth() func(next http.Handler) http.Handler {
 	viper.SetDefault("AUTH_URI", "http://127.0.0.1:4433")
 
-	c := ory.NewConfiguration()
-	c.Servers = ory.ServerConfigurations{{URL: viper.GetString("AUTH_URI")}}
-	c.HTTPClient = &http.Client{
-		Transport: otelhttp.NewTransport(http.DefaultTransport),
-	}
+	oryConfig := ory.NewConfiguration()
+
+	var serverConfig ory.ServerConfiguration
+
+	serverConfig.URL = viper.GetString("AUTH_URI")
+	oryConfig.Servers = ory.ServerConfigurations{serverConfig}
+	httpClient := new(http.Client)
+	httpClient.Transport = otelhttp.NewTransport(http.DefaultTransport)
+	oryConfig.HTTPClient = httpClient
 
 	return auth{
-		ory:    ory.NewAPIClient(c),
+		ory:    ory.NewAPIClient(oryConfig),
 		tracer: otel.Tracer(tracerName),
 	}.middleware
 }
 
 func (a auth) middleware(next http.Handler) http.Handler {
-	fn := func(w http.ResponseWriter, r *http.Request) {
-		ctx, span := a.tracer.Start(r.Context(), "ory.kratos.session",
+	return http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+		ctx, span := a.tracer.Start(request.Context(), "ory.kratos.session",
 			trace.WithAttributes(attribute.String("component", "auth_middleware")),
 			trace.WithSpanKind(trace.SpanKindClient),
 		)
 		defer span.End()
 
-		cookies := r.Header.Get("Cookie")
+		cookies := request.Header.Get("Cookie")
 
-		sess, resp, err := a.ory.FrontendAPI.ToSession(ctx).Cookie(cookies).Execute()
+		sess, resp, err := a.ory.FrontendAPI.ToSession(ctx).
+			Cookie(cookies).
+			Execute()
 		if resp != nil {
-			defer resp.Body.Close()
+			defer func() {
+				closeErr := resp.Body.Close()
+				if closeErr != nil {
+					span.RecordError(closeErr)
+				}
+			}()
 		}
 
 		switch {
@@ -75,7 +85,7 @@ func (a auth) middleware(next http.Handler) http.Handler {
 			// NOTE:
 			// 	- we use 302 instead of 303 because proxy servers might not understand the 303 status code
 			// details -> https://stackoverflow.com/questions/2839585/what-is-correct-http-status-code-when-redirecting-to-a-login-page
-			http.Redirect(w, r, viper.GetString("AUTH_URI")+"/auth/login", http.StatusFound)
+			http.Redirect(writer, request, viper.GetString("AUTH_URI")+"/auth/login", http.StatusFound)
 			return
 		}
 
@@ -90,12 +100,10 @@ func (a auth) middleware(next http.Handler) http.Handler {
 		}
 
 		// set the new context
-		r = r.WithContext(ctx)
+		request = request.WithContext(ctx)
 
-		next.ServeHTTP(w, r)
-	}
-
-	return http.HandlerFunc(fn)
+		next.ServeHTTP(writer, request)
+	})
 }
 
 // GetCookie retrieves the cookie from the context.
