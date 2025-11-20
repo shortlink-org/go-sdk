@@ -5,7 +5,8 @@ import (
 	"fmt"
 
 	"github.com/dgraph-io/badger/v4"
-	"github.com/spf13/viper"
+
+	"github.com/shortlink-org/go-sdk/config"
 )
 
 // Config - config
@@ -17,6 +18,17 @@ type Config struct {
 type Store struct {
 	client *badger.DB
 	config Config
+	cfg    *config.Config
+}
+
+// New creates a Badger store configured via cfg.
+func New(cfg *config.Config) *Store {
+	return &Store{
+		config: Config{
+			Path: "",
+		},
+		cfg: cfg,
+	}
 }
 
 // Init - initialize
@@ -39,7 +51,7 @@ func (s *Store) Init(ctx context.Context) error {
 	go func() {
 		<-ctx.Done()
 
-		_ = s.close()
+		s.close() //nolint:errcheck,gosec // background cleanup, best effort in tests
 	}()
 
 	return nil
@@ -66,10 +78,9 @@ func (s *Store) close() error {
 
 // setConfig - set configuration
 func (s *Store) setConfig() {
-	viper.AutomaticEnv()
-	viper.SetDefault("STORE_BADGER_PATH", "/tmp/links.badger") // Badger path to file
+	s.cfg.SetDefault("STORE_BADGER_PATH", "/tmp/links.badger") // Badger path to file
 
 	s.config = Config{
-		Path: viper.GetString("STORE_BADGER_PATH"),
+		Path: s.cfg.GetString("STORE_BADGER_PATH"),
 	}
 }

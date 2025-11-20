@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/shortlink-org/go-sdk/config"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/goleak"
 	"golang.org/x/sync/errgroup"
@@ -36,7 +37,10 @@ func TestNew(t *testing.T) {
 			return nil
 		}
 
-		b, errChan := New(ctx, aggrCB)
+		cfg, err := config.New()
+		require.NoError(t, err)
+
+		b, errChan := New(ctx, cfg, aggrCB)
 		require.NotNil(t, b)
 		require.NotNil(t, errChan)
 
@@ -81,8 +85,11 @@ func TestNew(t *testing.T) {
 			return nil
 		}
 
+		cfg, err := config.New()
+		require.NoError(t, err)
+
 		requests := []string{"A", "B", "C", "D"}
-		b, errChan := New(ctx, aggrCB)
+		b, errChan := New(ctx, cfg, aggrCB)
 		require.NotNil(t, b)
 		require.NotNil(t, errChan)
 

@@ -1,17 +1,17 @@
 package permission
 
 import (
-	"context"
-
 	"github.com/authzed/authzed-go/v1"
+	"go.opentelemetry.io/otel/trace"
+
 	"github.com/shortlink-org/go-sdk/auth"
+	"github.com/shortlink-org/go-sdk/config"
 	rpc "github.com/shortlink-org/go-sdk/grpc"
 	"github.com/shortlink-org/go-sdk/logger"
 	"github.com/shortlink-org/go-sdk/observability/metrics"
-	"go.opentelemetry.io/otel/trace"
 )
 
-func New(_ context.Context, log logger.Logger, tracer trace.TracerProvider, monitor *metrics.Monitoring) (*authzed.Client, error) {
+func New(log logger.Logger, tracer trace.TracerProvider, monitor *metrics.Monitoring, cfg *config.Config) (*authzed.Client, error) {
 	// Initialize gRPC Client's interceptor.
 	opts := []rpc.Option{
 		rpc.WithSession(),
@@ -21,7 +21,7 @@ func New(_ context.Context, log logger.Logger, tracer trace.TracerProvider, moni
 		rpc.WithLogger(log),
 	}
 
-	permission, err := auth.New(opts...)
+	permission, err := auth.New(cfg, opts...)
 	if err != nil {
 		return nil, err
 	}

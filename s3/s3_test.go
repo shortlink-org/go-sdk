@@ -16,6 +16,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"go.uber.org/goleak"
 
+	"github.com/shortlink-org/go-sdk/config"
 	"github.com/shortlink-org/go-sdk/logger"
 )
 
@@ -28,8 +29,11 @@ func TestMain(m *testing.M) {
 func TestMinio(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 
-	log, err := logger.New(logger.Zap, config.Configuration{})
+	log, err := logger.New(logger.Configuration{})
 	require.NoError(t, err, "Error init a logger")
+
+	cfg, err := config.New()
+	require.NoError(t, err, "Error init config")
 
 	client := &Client{}
 
@@ -53,7 +57,7 @@ func TestMinio(t *testing.T) {
 
 	// exponential backoff-retry, because the application in the container might not be ready to accept connections yet
 	endpoint := fmt.Sprintf("localhost:%s", resource.GetPort("9000/tcp"))
-	t.Setenv("S3_ENDPOINT", fmt.Sprintf("localhost:%s", resource.GetPort("9000/tcp")))
+	cfg.Set("S3_ENDPOINT", fmt.Sprintf("localhost:%s", resource.GetPort("9000/tcp")))
 
 	if err := pool.Retry(func() error {
 		url := fmt.Sprintf("http://%s/minio/health/live", endpoint)
@@ -67,7 +71,7 @@ func TestMinio(t *testing.T) {
 			return fmt.Errorf("status code not OK")
 		}
 
-		client, err = New(ctx, log)
+		client, err = New(ctx, log, cfg)
 		if err != nil {
 			return err
 		}
@@ -112,10 +116,7 @@ func TestMinio(t *testing.T) {
 
 		// Read the file into a byte slice
 		data, err := io.ReadAll(file)
-		if err != nil {
-			fmt.Println("Error reading file:", err)
-			return
-		}
+		require.NoError(t, err, "Error reading file")
 
 		// Convert the byte slice to a *bytes.Reader
 		reader := bytes.NewReader(data)

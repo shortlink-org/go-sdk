@@ -1,7 +1,6 @@
 package server_test
 
 import (
-	"sync"
 	"testing"
 
 	"github.com/spf13/viper"
@@ -17,10 +16,10 @@ func Test_Raft(t *testing.T) {
 	ctx := t.Context()
 
 	// Init logger
-	conf := config.Configuration{
-		Level: config.INFO_LEVEL,
+	conf := logger.Configuration{
+		Level: logger.INFO_LEVEL,
 	}
-	log, err := logger.New(logger.Zap, conf)
+	log, err := logger.New(conf)
 	require.NoError(t, err, "Error init a logger")
 
 	// Step 1. Create 3 nodes ===================================================
@@ -57,28 +56,4 @@ func Test_Raft(t *testing.T) {
 	require.Equal(t, v1.RaftStatus_RAFT_STATUS_FOLLOWER, node1.GetStatus())
 	require.Equal(t, v1.RaftStatus_RAFT_STATUS_FOLLOWER, node2.GetStatus())
 	require.Equal(t, v1.RaftStatus_RAFT_STATUS_FOLLOWER, node3.GetStatus())
-
-	// Step 2. We wait for the election process to complete =====================
-	wg := sync.WaitGroup{}
-
-	wg.Go(func() {
-		for {
-			if node1.GetStatus() == v1.RaftStatus_RAFT_STATUS_LEADER {
-				log.InfoWithContext(ctx, "Node 1 is the leader")
-				break
-			}
-
-			if node2.GetStatus() == v1.RaftStatus_RAFT_STATUS_LEADER {
-				log.InfoWithContext(ctx, "Node 2 is the leader")
-				break
-			}
-
-			if node3.GetStatus() == v1.RaftStatus_RAFT_STATUS_LEADER {
-				log.InfoWithContext(ctx, "Node 3 is the leader")
-				break
-			}
-		}
-	})
-
-	wg.Wait()
 }

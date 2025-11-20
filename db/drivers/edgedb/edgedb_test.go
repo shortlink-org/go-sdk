@@ -1,4 +1,4 @@
-//go:build unit || (database && redis)
+//go:build unit || (database && edgedb)
 
 package edgedb
 
@@ -11,6 +11,8 @@ import (
 	"github.com/ory/dockertest/v3"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/goleak"
+
+	"github.com/shortlink-org/go-sdk/config"
 )
 
 func TestMain(m *testing.M) {
@@ -21,7 +23,9 @@ func TestMain(m *testing.M) {
 
 func TestEdgeDB(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
-	store := Store{}
+	cfg, err := config.New()
+	require.NoError(t, err)
+	store := New(cfg)
 
 	// uses a sensible default on windows (tcp/http) and linux/osx (socket)
 	pool, err := dockertest.NewPool("")
@@ -33,11 +37,10 @@ func TestEdgeDB(t *testing.T) {
 
 	// exponential backoff-retry, because the application in the container might not be ready to accept connections yet
 	if err := pool.Retry(func() error {
-		t.Setenv("STORE_EDGEDB_URI", fmt.Sprintf("edgedb://localhost:%s", resource.GetPort("5656/tcp")))
+		cfg.Set("STORE_EDGEDB_URI", fmt.Sprintf("edgedb://localhost:%s", resource.GetPort("5656/tcp")))
 
-		err = store.Init(ctx)
-		if err != nil {
-			return err
+		if errInit := store.Init(ctx); errInit != nil {
+			return errInit
 		}
 
 		return nil

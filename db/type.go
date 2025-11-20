@@ -2,6 +2,8 @@ package db
 
 import (
 	"context"
+
+	"github.com/shortlink-org/go-sdk/config"
 )
 
 // DB - common interface of db
@@ -15,4 +17,5 @@ type Store struct {
 	DB
 
 	typeStore string
+	cfg       *config.Config
 }

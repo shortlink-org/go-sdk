@@ -5,15 +5,16 @@ import (
 
 	"github.com/redis/rueidis"
 	"github.com/redis/rueidis/rueidisotel"
-	"github.com/spf13/viper"
+	"github.com/shortlink-org/go-sdk/config"
 	"go.opentelemetry.io/otel/sdk/metric"
 	"go.opentelemetry.io/otel/trace"
 )
 
-func New(tracer trace.TracerProvider, metrics *metric.MeterProvider) *Store {
+func New(tracer trace.TracerProvider, metrics *metric.MeterProvider, cfg *config.Config) *Store {
 	return &Store{
 		tracer:  tracer,
 		metrics: metrics,
+		cfg:     cfg,
 	}
 }
 
@@ -64,14 +65,13 @@ func (s *Store) GetConn() any {
 
 // setConfig - set configuration
 func (s *Store) setConfig() {
-	viper.AutomaticEnv()
-	viper.SetDefault("STORE_REDIS_URI", "localhost:6379") // Redis Hosts
-	viper.SetDefault("STORE_REDIS_USERNAME", "")          // Redis Username
-	viper.SetDefault("STORE_REDIS_PASSWORD", "")          // Redis Password
+	s.cfg.SetDefault("STORE_REDIS_URI", "localhost:6379") // Redis Hosts
+	s.cfg.SetDefault("STORE_REDIS_USERNAME", "")          // Redis Username
+	s.cfg.SetDefault("STORE_REDIS_PASSWORD", "")          // Redis Password
 
 	s.config = Config{
-		Host:     viper.GetStringSlice("STORE_REDIS_URI"),
-		Username: viper.GetString("STORE_REDIS_USERNAME"),
-		Password: viper.GetString("STORE_REDIS_PASSWORD"),
+		Host:     s.cfg.GetStringSlice("STORE_REDIS_URI"),
+		Username: s.cfg.GetString("STORE_REDIS_USERNAME"),
+		Password: s.cfg.GetString("STORE_REDIS_PASSWORD"),
 	}
 }

@@ -6,7 +6,7 @@ import (
 
 	ory "github.com/ory/client-go"
 	"github.com/shortlink-org/go-sdk/auth/session"
-	"github.com/spf13/viper"
+	"github.com/shortlink-org/go-sdk/config"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
@@ -23,16 +23,17 @@ var contextCookieKey = &contextKey{"cookie"}
 type auth struct {
 	ory    *ory.APIClient
 	tracer trace.Tracer
+	cfg    *config.Config
 }
 
-func Auth() func(next http.Handler) http.Handler {
-	viper.SetDefault("AUTH_URI", "http://127.0.0.1:4433")
+func Auth(cfg *config.Config) func(next http.Handler) http.Handler {
+	cfg.SetDefault("AUTH_URI", "http://127.0.0.1:4433")
 
 	oryConfig := ory.NewConfiguration()
 
 	var serverConfig ory.ServerConfiguration
 
-	serverConfig.URL = viper.GetString("AUTH_URI")
+	serverConfig.URL = cfg.GetString("AUTH_URI")
 	oryConfig.Servers = ory.ServerConfigurations{serverConfig}
 	httpClient := new(http.Client)
 	httpClient.Transport = otelhttp.NewTransport(http.DefaultTransport)
@@ -41,6 +42,7 @@ func Auth() func(next http.Handler) http.Handler {
 	return auth{
 		ory:    ory.NewAPIClient(oryConfig),
 		tracer: otel.Tracer(tracerName),
+		cfg:    cfg,
 	}.middleware
 }
 
@@ -85,7 +87,7 @@ func (a auth) middleware(next http.Handler) http.Handler {
 			// NOTE:
 			// 	- we use 302 instead of 303 because proxy servers might not understand the 303 status code
 			// details -> https://stackoverflow.com/questions/2839585/what-is-correct-http-status-code-when-redirecting-to-a-login-page
-			http.Redirect(writer, request, viper.GetString("AUTH_URI")+"/auth/login", http.StatusFound)
+			http.Redirect(writer, request, a.cfg.GetString("AUTH_URI")+"/auth/login", http.StatusFound)
 			return
 		}
 

@@ -11,7 +11,6 @@ import (
 func TestRaftBuilder(t *testing.T) {
 	testCases := []struct {
 		name          string
-		id            uuid.UUID
 		peerIDs       []string
 		nameField     string
 		address       string
@@ -20,7 +19,6 @@ func TestRaftBuilder(t *testing.T) {
 	}{
 		{
 			name:      "Valid Raft",
-			id:        mustNewV7(t),
 			peerIDs:   []string{"peer1", "peer2"},
 			nameField: "RaftNode1",
 			address:   "http://127.0.0.1:8080",
@@ -28,7 +26,6 @@ func TestRaftBuilder(t *testing.T) {
 		},
 		{
 			name:          "Invalid Address",
-			id:            mustNewV7(t),
 			peerIDs:       []string{"peer1", "peer2"},
 			nameField:     "RaftNode2",
 			address:       "://invalid-url",
@@ -53,7 +50,7 @@ func TestRaftBuilder(t *testing.T) {
 			} else {
 				require.NoError(t, err)
 				require.NotNil(t, raft)
-				require.Equal(t, tc.id, raft.id)
+				require.NotEqual(t, uuid.Nil, raft.id)
 				require.Equal(t, tc.peerIDs, raft.peerIDs)
 				require.Equal(t, tc.nameField, raft.name)
 				require.Equal(t, tc.weight, raft.weight)
@@ -64,13 +61,4 @@ func TestRaftBuilder(t *testing.T) {
 			}
 		})
 	}
-}
-
-func mustNewV7(t *testing.T) uuid.UUID {
-	t.Helper()
-
-	id, err := uuid.NewV7()
-	require.NoError(t, err)
-
-	return id
 }

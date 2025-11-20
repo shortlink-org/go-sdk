@@ -5,6 +5,8 @@ import (
 	"sync"
 
 	"github.com/nats-io/nats.go"
+
+	"github.com/shortlink-org/go-sdk/config"
 )
 
 // Config - configuration
@@ -20,4 +22,5 @@ type MQ struct {
 	config *Config
 
 	subscribes map[string]chan *nats.Msg
+	cfg        *config.Config
 }

@@ -5,7 +5,7 @@ import (
 	"time"
 
 	_ "github.com/mattn/go-sqlite3" // Init SQLite-driver
-	"github.com/spf13/viper"
+	"github.com/shortlink-org/go-sdk/config"
 	"github.com/uptrace/opentelemetry-go-extra/otelsql"
 	"go.opentelemetry.io/otel/sdk/metric"
 	semconv "go.opentelemetry.io/otel/semconv/v1.37.0"
@@ -13,10 +13,11 @@ import (
 )
 
 // New - create new instance of Store
-func New(tracer trace.TracerProvider, metrics *metric.MeterProvider) *Store {
+func New(tracer trace.TracerProvider, metrics *metric.MeterProvider, cfg *config.Config) *Store {
 	return &Store{
 		metrics: metrics,
 		tracer:  tracer,
+		cfg:     cfg,
 	}
 }
 
@@ -96,10 +97,9 @@ func (s *Store) close() error {
 
 // setConfig - set configuration
 func (s *Store) setConfig() {
-	viper.AutomaticEnv()
-	viper.SetDefault("STORE_SQLITE_PATH", "/tmp/links.sqlite") // SQLite URI
+	s.cfg.SetDefault("STORE_SQLITE_PATH", "/tmp/links.sqlite") // SQLite URI
 
 	s.config = Config{
-		Path: viper.GetString("STORE_SQLITE_PATH"),
+		Path: s.cfg.GetString("STORE_SQLITE_PATH"),
 	}
 }

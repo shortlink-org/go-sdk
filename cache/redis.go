@@ -66,7 +66,8 @@ func (r *RedisClient) Exists(ctx context.Context, key string) (bool, error) {
 
 // Close closes the Redis connection
 func (r *RedisClient) Close() error {
-	if err := r.client.Close(); err != nil {
+	err := r.client.Close()
+	if err != nil {
 		return NewCacheError("close", err)
 	}
 

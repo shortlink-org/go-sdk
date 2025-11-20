@@ -7,6 +7,7 @@ import (
 
 	amqp "github.com/rabbitmq/amqp091-go"
 
+	"github.com/shortlink-org/go-sdk/config"
 	"github.com/shortlink-org/go-sdk/logger"
 )
 
@@ -14,16 +15,18 @@ type MQ struct {
 	mu sync.Mutex
 
 	config *Config
+	cfg    *config.Config
 
 	log  logger.Logger
 	conn *Connection
 	ch   *Channel
 }
 
-func New(log logger.Logger) *MQ {
+func New(log logger.Logger, cfg *config.Config) *MQ {
 	return &MQ{
 		log:    log,
-		config: loadConfig(), // Set configuration
+		cfg:    cfg,
+		config: loadConfig(cfg), // Set configuration
 	}
 }
 

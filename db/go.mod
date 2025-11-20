@@ -21,7 +21,6 @@ require (
 	github.com/redis/rueidis v1.0.68
 	github.com/redis/rueidis/rueidisotel v1.0.68
 	github.com/shortlink-org/go-sdk/logger v0.0.0-20251108203914-f363e5ad1155
-	github.com/spf13/viper v1.21.0
 	github.com/stretchr/testify v1.11.1
 	github.com/syndtr/goleveldb v1.0.1-0.20220721030215-126854af5e6d
 	github.com/uptrace/go-clickhouse v0.3.1
@@ -35,6 +34,14 @@ require (
 	go.opentelemetry.io/otel/trace v1.38.0
 	go.uber.org/goleak v1.3.0
 	google.golang.org/grpc v1.77.0
+)
+
+require (
+	github.com/Masterminds/semver/v3 v3.3.1 // indirect
+	github.com/Unleash/unleash-go-sdk/v5 v5.0.3 // indirect
+	github.com/spf13/viper v1.21.0 // indirect
+	github.com/stretchr/objx v0.5.2 // indirect
+	github.com/twmb/murmur3 v1.1.8 // indirect
 )
 
 require (
@@ -98,6 +105,7 @@ require (
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
 	github.com/sagikazarmark/locafero v0.11.0 // indirect
+	github.com/shortlink-org/go-sdk/config v0.0.0
 	github.com/sigurn/crc16 v0.0.0-20240131213347-83fcde1e29d1 // indirect
 	github.com/sirupsen/logrus v1.9.3 // indirect
 	github.com/sourcegraph/conc v0.3.1-0.20240121214520-5f936abd7ae8 // indirect
@@ -137,3 +145,5 @@ require (
 	google.golang.org/protobuf v1.36.10 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
+
+replace github.com/shortlink-org/go-sdk/config => ../config

@@ -26,6 +26,7 @@ func TestMerge(t *testing.T) {
 	// Populate channels with some data
 	for i := range 5 {
 		ch1 <- i
+
 		ch2 <- i + 5
 	}
 

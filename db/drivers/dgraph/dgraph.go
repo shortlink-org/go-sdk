@@ -6,11 +6,11 @@ import (
 
 	"github.com/dgraph-io/dgo/v2"
 	"github.com/dgraph-io/dgo/v2/protos/api"
-	"github.com/spf13/viper"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/encoding/gzip"
 
+	"github.com/shortlink-org/go-sdk/config"
 	"github.com/shortlink-org/go-sdk/logger"
 )
 
@@ -24,11 +24,16 @@ type Store struct {
 	log    logger.Logger
 	client *dgo.Dgraph
 	config Config
+	cfg    *config.Config
 }
 
-func New(log logger.Logger) *Store {
+func New(log logger.Logger, cfg *config.Config) *Store {
 	return &Store{
 		log: log,
+		config: Config{
+			URL: "",
+		},
+		cfg: cfg,
 	}
 }
 
@@ -52,7 +57,8 @@ func (s *Store) Init(ctx context.Context) error {
 
 	s.client = dgo.NewDgraphClient(api.NewDgraphClient(conn))
 
-	if errMigrate := s.migrate(ctx); errMigrate != nil {
+	errMigrate := s.migrate(ctx)
+	if errMigrate != nil {
 		return &StoreError{
 			Op:      "migrate",
 			Err:     fmt.Errorf("%w: %w", ErrDgraphMigrate, errMigrate),
@@ -81,15 +87,18 @@ func (s *Store) GetConn() any {
 // Migrate - init structure
 func (s *Store) migrate(ctx context.Context) error {
 	txn := s.client.NewTxn()
+
 	defer func() {
-		if err := txn.Discard(ctx); err != nil {
-			s.log.ErrorWithContext(ctx, err.Error())
+		errDiscard := txn.Discard(ctx)
+		if errDiscard != nil {
+			s.log.ErrorWithContext(ctx, errDiscard.Error())
 		}
 	}()
 
 	// TODO: use migration tool
-	operation := &api.Operation{
-		Schema: `
+	operation := new(api.Operation)
+
+	operation.Schema = `
 type Link {
 	url: string
 	hash: string
@@ -100,11 +109,10 @@ type Link {
 
 url: string @index(term) @lang .
 hash: string @index(term) @lang .
-describe: string @index(term) @lang .
-created_at: datetime .
-updated_at: datetime .
-`,
-	}
+	describe: string @index(term) @lang .
+	created_at: datetime .
+	updated_at: datetime .
+`
 
 	err := s.client.Alter(ctx, operation)
 	if err != nil {
@@ -120,10 +128,9 @@ updated_at: datetime .
 
 // setConfig - set configuration
 func (s *Store) setConfig() {
-	viper.AutomaticEnv()
-	viper.SetDefault("STORE_DGRAPH_URI", "localhost:9080") // DGRAPH URI
+	s.cfg.SetDefault("STORE_DGRAPH_URI", "localhost:9080") // DGRAPH URI
 
 	s.config = Config{
-		URL: viper.GetString("STORE_DGRAPH_URI"),
+		URL: s.cfg.GetString("STORE_DGRAPH_URI"),
 	}
 }

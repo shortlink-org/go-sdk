@@ -10,7 +10,6 @@ require (
 	github.com/shortlink-org/go-sdk/config v0.0.0
 	github.com/shortlink-org/go-sdk/http v0.0.0-20251108145352-f59577605d0a
 	github.com/shortlink-org/go-sdk/logger v0.0.0-20251108203914-f363e5ad1155
-	github.com/spf13/viper v1.21.0
 	go.opentelemetry.io/otel v1.38.0
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc v1.38.0
 	go.opentelemetry.io/otel/exporters/prometheus v0.60.0
@@ -49,6 +48,7 @@ require (
 	github.com/spf13/afero v1.15.0 // indirect
 	github.com/spf13/cast v1.10.0 // indirect
 	github.com/spf13/pflag v1.0.10 // indirect
+	github.com/spf13/viper v1.21.0 // indirect
 	github.com/stretchr/objx v0.5.2 // indirect
 	github.com/stretchr/testify v1.11.1 // indirect
 	github.com/subosito/gotenv v1.6.0 // indirect

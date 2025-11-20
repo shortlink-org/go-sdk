@@ -2,26 +2,27 @@ package auth
 
 import (
 	"github.com/authzed/authzed-go/v1"
-	rpc "github.com/shortlink-org/go-sdk/grpc"
-	"github.com/spf13/viper"
 	"google.golang.org/grpc"
+
+	"github.com/shortlink-org/go-sdk/config"
+	rpc "github.com/shortlink-org/go-sdk/grpc"
 )
 
-func New(options ...rpc.Option) (*authzed.Client, error) {
-	viper.SetDefault("SPICE_DB_COMMON_KEY", "secret-shortlink-preshared-key")
-	viper.SetDefault("SPICE_DB_TIMEOUT", "5s")
+func New(cfg *config.Config, options ...rpc.Option) (*authzed.Client, error) {
+	cfg.SetDefault("SPICE_DB_COMMON_KEY", "secret-shortlink-preshared-key")
+	cfg.SetDefault("SPICE_DB_TIMEOUT", "5s")
 
-	config, err := rpc.SetClientConfig(options...)
+	clientCfg, err := rpc.SetClientConfig(cfg, options...)
 	if err != nil {
 		return nil, &ConfigurationError{Cause: err}
 	}
 
-	dialOptions := config.GetOptions()
+	dialOptions := clientCfg.GetOptions()
 	dialOptions = append(dialOptions,
-		grpc.WithPerRPCCredentials(insecureMetadataCreds{"authorization": "Bearer " + viper.GetString("SPICE_DB_COMMON_KEY")}),
-		grpc.WithIdleTimeout(viper.GetDuration("SPICE_DB_TIMEOUT")))
+		grpc.WithPerRPCCredentials(insecureMetadataCreds{"authorization": "Bearer " + cfg.GetString("SPICE_DB_COMMON_KEY")}),
+		grpc.WithIdleTimeout(cfg.GetDuration("SPICE_DB_TIMEOUT")))
 
-	client, err := authzed.NewClient(config.GetURI(), dialOptions...)
+	client, err := authzed.NewClient(clientCfg.GetURI(), dialOptions...)
 	if err != nil {
 		return nil, &ClientInitError{Cause: err}
 	}

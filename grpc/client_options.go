@@ -4,16 +4,14 @@ import (
 	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-middleware/providers/prometheus"
 	"github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors/timeout"
 	"github.com/prometheus/client_golang/prometheus"
-	"github.com/spf13/viper"
 	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
+	api "go.opentelemetry.io/otel/sdk/metric"
 	"go.opentelemetry.io/otel/trace"
 	"google.golang.org/grpc"
 
-	"github.com/shortlink-org/go-sdk/logger"
-	api "go.opentelemetry.io/otel/sdk/metric"
-
 	grpc_logger "github.com/shortlink-org/go-sdk/grpc/middleware/logger"
 	session_interceptor "github.com/shortlink-org/go-sdk/grpc/middleware/session"
+	"github.com/shortlink-org/go-sdk/logger"
 )
 
 type Option func(*Client)
@@ -27,10 +25,10 @@ func (c *Client) apply(options ...Option) {
 
 // WithTimeout sets a unary timeout interceptor
 func WithTimeout() Option {
-	viper.SetDefault("GRPC_CLIENT_TIMEOUT", "10s") // Set timeout for gRPC-Client
-	timeoutClient := viper.GetDuration("GRPC_CLIENT_TIMEOUT")
-
 	return func(c *Client) {
+		c.cfg.SetDefault("GRPC_CLIENT_TIMEOUT", "10s") // Set timeout for gRPC-Client
+		timeoutClient := c.cfg.GetDuration("GRPC_CLIENT_TIMEOUT")
+
 		c.interceptorUnaryClientList = append(
 			c.interceptorUnaryClientList,
 			timeout.UnaryClientInterceptor(timeoutClient),
@@ -40,14 +38,13 @@ func WithTimeout() Option {
 
 // WithLogger adds unary & stream logging interceptors
 func WithLogger(log logger.Logger) Option {
-	viper.SetDefault("GRPC_CLIENT_LOGGER_ENABLED", true) // Enable logging for gRPC-Client
-	isEnableLogger := viper.GetBool("GRPC_CLIENT_LOGGER_ENABLED")
-
-	if isEnableLogger == false {
-		return func(_ *Client) {}
-	}
-
 	return func(c *Client) {
+		c.cfg.SetDefault("GRPC_CLIENT_LOGGER_ENABLED", true) // Enable logging for gRPC-Client
+		isEnableLogger := c.cfg.GetBool("GRPC_CLIENT_LOGGER_ENABLED")
+		if !isEnableLogger {
+			return
+		}
+
 		c.interceptorUnaryClientList = append(c.interceptorUnaryClientList, grpc_logger.UnaryClientInterceptor(log))
 		c.interceptorStreamClientList = append(c.interceptorStreamClientList, grpc_logger.StreamClientInterceptor(log))
 	}

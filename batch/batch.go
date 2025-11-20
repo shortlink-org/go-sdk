@@ -8,16 +8,16 @@ import (
 	"sync"
 	"time"
 
-	"github.com/spf13/viper"
+	"github.com/shortlink-org/go-sdk/config"
 )
 
 const defaultErrChanBuffer = 10
 
 // New creates a new batch with a specified callback function.
-func New[T any](ctx context.Context, callback func([]*Item[T]) error, opts ...Option[T]) (*Batch[T], <-chan error) {
-	viper.SetDefault("BATCH_INTERVAL", "100ms")
-	viper.SetDefault("BATCH_SIZE", 100)
-	viper.SetDefault("BATCH_ERROR_BUFFER", defaultErrChanBuffer)
+func New[T any](ctx context.Context, cfg *config.Config, callback func([]*Item[T]) error, opts ...Option[T]) (*Batch[T], <-chan error) {
+	cfg.SetDefault("BATCH_INTERVAL", "100ms")
+	cfg.SetDefault("BATCH_SIZE", 100)
+	cfg.SetDefault("BATCH_ERROR_BUFFER", defaultErrChanBuffer)
 
 	batch := &Batch[T]{
 		mu: sync.Mutex{},
@@ -25,12 +25,12 @@ func New[T any](ctx context.Context, callback func([]*Item[T]) error, opts ...Op
 
 		callback: callback,
 		items:    []*Item[T]{},
-		interval: viper.GetDuration("BATCH_INTERVAL"),
-		size:     viper.GetInt("BATCH_SIZE"),
+		interval: cfg.GetDuration("BATCH_INTERVAL"),
+		size:     cfg.GetInt("BATCH_SIZE"),
 		// Instead of storing ctx, use a done channel.
 		done: make(chan struct{}),
 		// Buffered error channel to report errors from callback.
-		errChan: make(chan error, viper.GetInt("BATCH_ERROR_BUFFER")),
+		errChan: make(chan error, cfg.GetInt("BATCH_ERROR_BUFFER")),
 	}
 
 	// Apply options

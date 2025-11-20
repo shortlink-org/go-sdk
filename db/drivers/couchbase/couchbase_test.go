@@ -1,4 +1,4 @@
-//go:build unit || (database && cockroachdb)
+//go:build unit || (database && couchbase)
 
 package couchbase
 
@@ -11,6 +11,8 @@ import (
 	"github.com/ory/dockertest/v3"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/goleak"
+
+	"github.com/shortlink-org/go-sdk/config"
 )
 
 func TestMain(m *testing.M) {
@@ -19,9 +21,11 @@ func TestMain(m *testing.M) {
 	os.Exit(m.Run())
 }
 
-func TestCockroachDB(t *testing.T) {
+func TestCouchbase(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
-	store := Store{}
+	cfg, err := config.New()
+	require.NoError(t, err)
+	store := New(cfg)
 
 	// uses a sensible default on windows (tcp/http) and linux/osx (socket)
 	pool, err := dockertest.NewPool("")

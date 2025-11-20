@@ -6,16 +6,18 @@ import (
 
 	"github.com/XSAM/otelsql"
 	_ "github.com/go-sql-driver/mysql"
-	"github.com/spf13/viper"
 	"go.opentelemetry.io/otel/sdk/metric"
 	semconv "go.opentelemetry.io/otel/semconv/v1.37.0"
 	"go.opentelemetry.io/otel/trace"
+
+	"github.com/shortlink-org/go-sdk/config"
 )
 
-func New(tracer trace.TracerProvider, metrics *metric.MeterProvider) *Store {
+func New(tracer trace.TracerProvider, metrics *metric.MeterProvider, cfg *config.Config) *Store {
 	return &Store{
 		tracer:  tracer,
 		metrics: metrics,
+		cfg:     cfg,
 	}
 }
 
@@ -38,17 +40,21 @@ func (s *Store) Init(ctx context.Context) error {
 	}
 
 	// Connect to MySQL
-	if s.client, err = otelsql.Open("mysql", s.config.URI, options...); err != nil {
+	conn, connErr := otelsql.Open("mysql", s.config.URI, options...)
+	if connErr != nil {
 		return &StoreError{
 			Op:      "init",
 			Err:     ErrClientConnection,
-			Details: err.Error(),
+			Details: connErr.Error(),
 		}
 	}
 
+	s.client = conn
+
 	// Check connection
-	if errPing := s.client.Ping(); errPing != nil {
-		_ = s.client.Close()
+	errPing := s.client.PingContext(ctx)
+	if errPing != nil {
+		s.client.Close() //nolint:errcheck,gosec // best-effort cleanup on ping failure
 
 		return &PingConnectionError{
 			Err: errPing,
@@ -71,10 +77,11 @@ func (s *Store) Init(ctx context.Context) error {
 	go func() {
 		<-ctx.Done()
 
-		if err := s.close(); err != nil {
+		errClose := s.close()
+		if errClose != nil {
 			// We can't return the error here since we're in a goroutine,
 			// but in a real application you might want to log this
-			_ = err
+			_ = errClose
 		}
 	}()
 
@@ -88,7 +95,8 @@ func (s *Store) GetConn() any {
 
 // Close - close
 func (s *Store) close() error {
-	if err := s.client.Close(); err != nil {
+	err := s.client.Close()
+	if err != nil {
 		return &StoreError{
 			Op:      "close",
 			Err:     err,
@@ -101,11 +109,10 @@ func (s *Store) close() error {
 
 // setConfig - set configuration
 func (s *Store) setConfig() error {
-	viper.AutomaticEnv()
-	viper.SetDefault("STORE_MYSQL_URI", "shortlink:shortlink@(localhost:3306)/shortlink") // MySQL URI
+	s.cfg.SetDefault("STORE_MYSQL_URI", "shortlink:shortlink@(localhost:3306)/shortlink") // MySQL URI
 
 	// parse uri
-	uri, err := url.Parse(viper.GetString("STORE_MYSQL_URI"))
+	uri, err := url.Parse(s.cfg.GetString("STORE_MYSQL_URI"))
 	if err != nil {
 		return &StoreError{
 			Op:      "setConfig",

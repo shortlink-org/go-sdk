@@ -11,12 +11,19 @@ require (
 	github.com/shortlink-org/go-sdk/auth v0.0.0-20251108145352-f59577605d0a
 	github.com/shortlink-org/go-sdk/flight_trace v0.0.0-20251111173054-8c030dab4702
 	github.com/shortlink-org/go-sdk/logger v0.0.0-20251108203914-f363e5ad1155
-	github.com/spf13/viper v1.21.0
 	github.com/stretchr/testify v1.11.1
 	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.63.0
 	go.opentelemetry.io/otel v1.38.0
 	go.opentelemetry.io/otel/trace v1.38.0
 	golang.org/x/sync v0.18.0
+)
+
+require (
+	github.com/Masterminds/semver/v3 v3.3.1 // indirect
+	github.com/Unleash/unleash-go-sdk/v5 v5.0.3 // indirect
+	github.com/spf13/viper v1.21.0 // indirect
+	github.com/stretchr/objx v0.5.2 // indirect
+	github.com/twmb/murmur3 v1.1.8 // indirect
 )
 
 require (
@@ -34,6 +41,7 @@ require (
 	github.com/prometheus/common v0.66.1 // indirect
 	github.com/prometheus/procfs v0.17.0 // indirect
 	github.com/sagikazarmark/locafero v0.11.0 // indirect
+	github.com/shortlink-org/go-sdk/config v0.0.0
 	github.com/sourcegraph/conc v0.3.1-0.20240121214520-5f936abd7ae8 // indirect
 	github.com/spf13/afero v1.15.0 // indirect
 	github.com/spf13/cast v1.10.0 // indirect
@@ -51,4 +59,9 @@ require (
 )
 
 replace github.com/shortlink-org/go-sdk/auth => ../auth //lint:ignore gomoddirectives local development dependency
+
 replace github.com/shortlink-org/go-sdk/logger => ../logger //lint:ignore gomoddirectives local development dependency
+
+replace github.com/shortlink-org/go-sdk/config => ../config
+
+replace github.com/shortlink-org/go-sdk/flight_trace => ../flight_trace

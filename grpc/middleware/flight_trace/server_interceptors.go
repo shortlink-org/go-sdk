@@ -7,13 +7,13 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/spf13/viper"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
 
+	"github.com/shortlink-org/go-sdk/config"
 	"github.com/shortlink-org/go-sdk/flight_trace"
 	"github.com/shortlink-org/go-sdk/logger"
 )
@@ -23,8 +23,8 @@ const debugTraceKey = "X-DEBUG-TRACE"
 // UnaryServerInterceptor records Flight Recorder dumps based on conditions:
 // - Incoming metadata contains "X-DEBUG-TRACE: true"
 // - The request latency exceeds FLIGHT_TRACE_LATENCY_THRESHOLD
-func UnaryServerInterceptor(fr *flight_trace.Recorder, log logger.Logger) grpc.UnaryServerInterceptor {
-	viper.SetDefault("FLIGHT_TRACE_LATENCY_THRESHOLD", "1s")
+func UnaryServerInterceptor(fr *flight_trace.Recorder, log logger.Logger, cfg *config.Config) grpc.UnaryServerInterceptor {
+	cfg.SetDefault("FLIGHT_TRACE_LATENCY_THRESHOLD", "1s")
 
 	return func(ctx context.Context, req any, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (any, error) {
 		if fr == nil {
@@ -39,7 +39,7 @@ func UnaryServerInterceptor(fr *flight_trace.Recorder, log logger.Logger) grpc.U
 		vals := md.Get(debugTraceKey)
 		shouldDump := len(vals) > 0 && vals[0] == "true"
 
-		threshold := viper.GetDuration("FLIGHT_TRACE_LATENCY_THRESHOLD")
+		threshold := cfg.GetDuration("FLIGHT_TRACE_LATENCY_THRESHOLD")
 		shouldDump = shouldDump || duration > threshold
 
 		if shouldDump {
@@ -66,8 +66,8 @@ func UnaryServerInterceptor(fr *flight_trace.Recorder, log logger.Logger) grpc.U
 }
 
 // StreamServerInterceptor is similar to UnaryServerInterceptor but for streaming RPCs.
-func StreamServerInterceptor(fr *flight_trace.Recorder, log logger.Logger) grpc.StreamServerInterceptor {
-	viper.SetDefault("FLIGHT_TRACE_LATENCY_THRESHOLD", "1s")
+func StreamServerInterceptor(fr *flight_trace.Recorder, log logger.Logger, cfg *config.Config) grpc.StreamServerInterceptor {
+	cfg.SetDefault("FLIGHT_TRACE_LATENCY_THRESHOLD", "1s")
 
 	return func(srv any, stream grpc.ServerStream, info *grpc.StreamServerInfo, handler grpc.StreamHandler) error {
 		if fr == nil {
@@ -82,7 +82,7 @@ func StreamServerInterceptor(fr *flight_trace.Recorder, log logger.Logger) grpc.
 		vals := md.Get(debugTraceKey)
 		shouldDump := len(vals) > 0 && vals[0] == "true"
 
-		threshold := viper.GetDuration("FLIGHT_TRACE_LATENCY_THRESHOLD")
+		threshold := cfg.GetDuration("FLIGHT_TRACE_LATENCY_THRESHOLD")
 		shouldDump = shouldDump || duration > threshold
 
 		if shouldDump {

@@ -56,14 +56,19 @@ func Test_WorkerPool(t *testing.T) {
 // and results are collected correctly without timing dependencies.
 func TestWorkerPoolWithSynctest(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
-		const numWorkers = 3
-		const numTasks = 10
+		const (
+			numWorkers = 3
+			numTasks   = 10
+		)
 
 		wp := worker_pool.New(numWorkers)
 
-		var completedTasks int64
-		var results []any
-		var resultWg sync.WaitGroup
+		var (
+			completedTasks int64
+			results        []any
+			resultWg       sync.WaitGroup
+		)
+
 		resultWg.Add(1)
 
 		// Define task function that simulates processing work
@@ -76,6 +81,7 @@ func TestWorkerPoolWithSynctest(t *testing.T) {
 		// Start background result collector goroutine
 		go func() {
 			defer resultWg.Done()
+
 			for result := range wp.Result {
 				results = append(results, result.Value)
 				if len(results) == numTasks {
@@ -85,7 +91,7 @@ func TestWorkerPoolWithSynctest(t *testing.T) {
 		}()
 
 		// Submit all tasks to the worker pool for concurrent execution
-		for i := 0; i < numTasks; i++ {
+		for range numTasks {
 			wp.Push(taskFunc)
 		}
 
@@ -116,6 +122,7 @@ func TestWorkerPoolSimpleWithSynctest(t *testing.T) {
 			// Simulate task processing time
 			time.Sleep(50 * time.Millisecond)
 			atomic.AddInt64(&taskExecuted, 1)
+
 			return "completed", nil
 		}
 
@@ -133,6 +140,7 @@ func TestWorkerPoolSimpleWithSynctest(t *testing.T) {
 
 		// Submit task and signal completion
 		taskQueue <- taskFunc
+
 		close(taskQueue)
 
 		// Retrieve task result

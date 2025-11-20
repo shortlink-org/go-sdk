@@ -8,6 +8,8 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/require"
+
+	"github.com/shortlink-org/go-sdk/config"
 )
 
 func TestNewSync(t *testing.T) {
@@ -33,7 +35,16 @@ func TestNewSync(t *testing.T) {
 		)
 
 		go func() {
-			b, err = NewSync(ctx, aggrCB)
+			cfg, setupErr := config.New()
+			if setupErr != nil {
+				err = setupErr
+
+				close(done)
+
+				return
+			}
+
+			b, err = NewSync(ctx, cfg, aggrCB)
 
 			close(done)
 		}()
@@ -78,7 +89,10 @@ func TestBatchProcessingWithSynctest(t *testing.T) {
 		}
 
 		// Configure batch with 100ms flush interval and size threshold of 3 items
-		batch, errChan := New(ctx, aggrCB, WithInterval[string](100*time.Millisecond), WithSize[string](3))
+		cfg, err := config.New()
+		require.NoError(t, err)
+
+		batch, errChan := New(ctx, cfg, aggrCB, WithInterval[string](100*time.Millisecond), WithSize[string](3))
 
 		// Add items below the size threshold to test time-based flushing
 		ch1 := batch.Push("item1")
@@ -105,8 +119,8 @@ func TestBatchProcessingWithSynctest(t *testing.T) {
 		// Add single item to test time-based flush behavior
 		ch4 := batch.Push("item4")
 
-		// Allow time-based flush to occur (100ms interval)
-		// synctest advances time instantly when all goroutines reach stable state
+		// Advance fake time to trigger the ticker-based flush (100ms interval)
+		time.Sleep(100 * time.Millisecond)
 		synctest.Wait()
 
 		// Verify time-based flush processed the remaining item
@@ -151,7 +165,10 @@ func TestBatchCancellationWithSynctest(t *testing.T) {
 		}
 
 		// Create batch with long interval to test cancellation
-		batch, errChan := New(ctx, aggrCB, WithInterval[string](10*time.Second), WithSize[string](100))
+		cfg, err := config.New()
+		require.NoError(t, err)
+
+		batch, errChan := New(ctx, cfg, aggrCB, WithInterval[string](10*time.Second), WithSize[string](100))
 
 		// Add some items
 		ch1 := batch.Push("item1")
@@ -207,12 +224,16 @@ func TestBatchTimeBasedFlushWithSynctest(t *testing.T) {
 		}
 
 		// Create batch with 50ms interval and high size limit
-		batch, errChan := New(ctx, aggrCB, WithInterval[string](50*time.Millisecond), WithSize[string](1000))
+		cfg, err := config.New()
+		require.NoError(t, err)
+
+		batch, errChan := New(ctx, cfg, aggrCB, WithInterval[string](50*time.Millisecond), WithSize[string](1000))
 
 		// Add items over multiple intervals
 		ch1 := batch.Push("item1")
 
-		// Wait for first interval flush
+		// Advance time to the first interval flush (50ms)
+		time.Sleep(50 * time.Millisecond)
 		synctest.Wait()
 		require.Equal(t, int64(1), atomic.LoadInt64(&flushCount))
 		require.Equal(t, "item1", <-ch1)
@@ -221,7 +242,8 @@ func TestBatchTimeBasedFlushWithSynctest(t *testing.T) {
 		ch2 := batch.Push("item2")
 		ch3 := batch.Push("item3")
 
-		// Wait for second interval flush
+		// Advance time to the next interval flush
+		time.Sleep(50 * time.Millisecond)
 		synctest.Wait()
 		require.Equal(t, int64(2), atomic.LoadInt64(&flushCount))
 		require.Equal(t, "item2", <-ch2)

@@ -5,24 +5,28 @@ import (
 	"log/slog"
 
 	"github.com/redis/rueidis"
+	"go.opentelemetry.io/otel/sdk/metric"
+	"go.opentelemetry.io/otel/trace"
 
+	"github.com/shortlink-org/go-sdk/config"
 	"github.com/shortlink-org/go-sdk/db"
-	"github.com/shortlink-org/go-sdk/db/drivers/redis"
+	dbredis "github.com/shortlink-org/go-sdk/db/drivers/redis"
 	"github.com/shortlink-org/go-sdk/logger"
 	"github.com/shortlink-org/go-sdk/mq/query"
 )
 
 type Redis struct {
 	client rueidis.Client //nolint:unused // TODO implement me
+	cfg    *config.Config
 }
 
-func New() *Redis {
-	return &Redis{}
+func New(cfg *config.Config) *Redis {
+	return &Redis{cfg: cfg}
 }
 
 func (r *Redis) Init(ctx context.Context, log logger.Logger) error {
 	var ok bool
-	mq := &redis.Store{}
+	mq := dbredis.New(trace.NewNoopTracerProvider(), metric.NewMeterProvider(), r.cfg)
 
 	err := mq.Init(ctx)
 	if err != nil {

@@ -10,7 +10,7 @@ import (
 
 	"github.com/ory/dockertest/v3"
 	"github.com/ory/dockertest/v3/docker"
-	"github.com/spf13/viper"
+	"github.com/shortlink-org/go-sdk/config"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/goleak"
 
@@ -25,12 +25,14 @@ func TestMain(m *testing.M) {
 }
 
 func TestKafka(t *testing.T) {
-	viper.SetDefault("SERVICE_NAME", "shortlink")
+	cfg, err := config.New()
+	require.NoError(t, err)
+	cfg.SetDefault("SERVICE_NAME", "shortlink")
 
 	ctx, cancel := context.WithCancel(context.Background())
-	mq := Kafka{}
+	mq := New(cfg)
 
-	log, err := logger.New(logger.Zap, config.Configuration{})
+	log, err := logger.New(logger.Configuration{})
 	require.NoError(t, err, "Cannot create logger")
 
 	// uses a sensible default on windows (tcp/http) and linux/osx (socket)
@@ -91,10 +93,9 @@ func TestKafka(t *testing.T) {
 
 	// exponential backoff-retry, because the application in the container might not be ready to accept connections yet
 	if err := pool.Retry(func() error {
-		t.Setenv("MQ_KAFKA_URI", fmt.Sprintf("localhost:%s", KAFKA.GetPort("19093/tcp")))
+		cfg.Set("MQ_KAFKA_URI", fmt.Sprintf("localhost:%s", KAFKA.GetPort("19093/tcp")))
 
-		err = mq.Init(ctx, log)
-		if err != nil {
+		if err := mq.Init(ctx, log); err != nil {
 			return err
 		}
 

@@ -9,7 +9,7 @@ import (
 	"sort"
 	"time"
 
-	"github.com/spf13/viper"
+	"github.com/shortlink-org/go-sdk/config"
 )
 
 var (
@@ -25,29 +25,30 @@ var (
 type Recorder struct {
 	fr       *trace.FlightRecorder
 	dumpPath string
+	cfg      *config.Config
 }
 
 // New initializes the Flight Recorder and starts background cleanup.
-func New(ctx context.Context) (*Recorder, error) {
-	viper.SetDefault("FLIGHT_RECORDER_ENABLED", true)
-	viper.SetDefault("FLIGHT_RECORDER_MIN_AGE", "1s")
-	viper.SetDefault("FLIGHT_RECORDER_MAX_BYTES", 20*1024*1024)
-	viper.SetDefault("FLIGHT_RECORDER_DUMP_PATH", "/tmp/flight_dumps")
-	viper.SetDefault("FLIGHT_RECORDER_MAX_DUMPS", 100)
-	viper.SetDefault("FLIGHT_RECORDER_CLEANUP_INTERVAL", "10m")
+func New(ctx context.Context, cfg *config.Config) (*Recorder, error) {
+	cfg.SetDefault("FLIGHT_RECORDER_ENABLED", true)
+	cfg.SetDefault("FLIGHT_RECORDER_MIN_AGE", "1s")
+	cfg.SetDefault("FLIGHT_RECORDER_MAX_BYTES", 20*1024*1024)
+	cfg.SetDefault("FLIGHT_RECORDER_DUMP_PATH", "/tmp/flight_dumps")
+	cfg.SetDefault("FLIGHT_RECORDER_MAX_DUMPS", 100)
+	cfg.SetDefault("FLIGHT_RECORDER_CLEANUP_INTERVAL", "10m")
 
-	if !viper.GetBool("FLIGHT_RECORDER_ENABLED") {
+	if !cfg.GetBool("FLIGHT_RECORDER_ENABLED") {
 		return nil, nil
 	}
 
-	dumpPath := viper.GetString("FLIGHT_RECORDER_DUMP_PATH")
+	dumpPath := cfg.GetString("FLIGHT_RECORDER_DUMP_PATH")
 	if err := os.MkdirAll(dumpPath, 0o755); err != nil {
 		return nil, ErrCreateDumpPath
 	}
 
 	fr := trace.NewFlightRecorder(trace.FlightRecorderConfig{
-		MinAge:   viper.GetDuration("FLIGHT_RECORDER_MIN_AGE"),
-		MaxBytes: viper.GetUint64("FLIGHT_RECORDER_MAX_BYTES"),
+		MinAge:   cfg.GetDuration("FLIGHT_RECORDER_MIN_AGE"),
+		MaxBytes: cfg.GetUint64("FLIGHT_RECORDER_MAX_BYTES"),
 	})
 	if err := fr.Start(); err != nil {
 		return nil, ErrStartRecorder
@@ -56,6 +57,7 @@ func New(ctx context.Context) (*Recorder, error) {
 	rec := &Recorder{
 		fr:       fr,
 		dumpPath: dumpPath,
+		cfg:      cfg,
 	}
 
 	// Graceful shutdown
@@ -65,7 +67,7 @@ func New(ctx context.Context) (*Recorder, error) {
 	}()
 
 	// Periodic cleanup
-	go rec.periodicCleanup(viper.GetDuration("FLIGHT_RECORDER_CLEANUP_INTERVAL"))
+	go rec.periodicCleanup(cfg.GetDuration("FLIGHT_RECORDER_CLEANUP_INTERVAL"))
 
 	return rec, nil
 }
@@ -104,7 +106,7 @@ func (wr *Recorder) DumpToFileAsync(fileName string) {
 
 // cleanupOldDumps keeps only the N newest dump files, deleting older ones.
 func (wr *Recorder) cleanupOldDumps() {
-	maxDumps := viper.GetInt("FLIGHT_RECORDER_MAX_DUMPS")
+	maxDumps := wr.cfg.GetInt("FLIGHT_RECORDER_MAX_DUMPS")
 	if maxDumps <= 0 {
 		maxDumps = 100
 	}

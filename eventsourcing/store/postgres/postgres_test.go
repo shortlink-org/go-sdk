@@ -11,9 +11,12 @@ import (
 	"github.com/google/uuid"
 	"github.com/ory/dockertest/v3"
 	"github.com/stretchr/testify/require"
+	"go.opentelemetry.io/otel/sdk/metric"
+	"go.opentelemetry.io/otel/trace"
 	"go.uber.org/atomic"
 	"go.uber.org/goleak"
 
+	"github.com/shortlink-org/go-sdk/config"
 	db "github.com/shortlink-org/go-sdk/db/drivers/postgres"
 	eventsourcing "github.com/shortlink-org/go-sdk/eventsourcing/domain/eventsourcing/v1"
 )
@@ -33,7 +36,9 @@ var linkUniqId atomic.Int64
 func TestPostgres(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 
-	st := &db.Store{}
+	cfg, err := config.New()
+	require.NoError(t, err)
+	st := db.New(trace.NewNoopTracerProvider(), metric.NewMeterProvider(), cfg)
 
 	// uses a sensible default on windows (tcp/http) and linux/osx (socket)
 	pool, err := dockertest.NewPool("")
@@ -89,11 +94,12 @@ func TestPostgres(t *testing.T) {
 	}
 
 	t.Run("TestEventSourcingSaveAndLoad", func(t *testing.T) {
-		eventUID := mustNewV7(t).String()
+		eventUID, err := uuid.NewV7()
+		require.NoError(t, err)
 
 		// Create a dummy event
 		event := &eventsourcing.Event{
-			AggregateId:   eventUID,
+			AggregateId:   eventUID.String(),
 			AggregateType: "test-type",
 			Type:          "test-event",
 			Payload:       `{"test": "test-payload"}`,
@@ -101,11 +107,11 @@ func TestPostgres(t *testing.T) {
 		}
 
 		// Save the event
-		err := eventSourcing.Save(ctx, []*eventsourcing.Event{event})
+		err = eventSourcing.Save(ctx, []*eventsourcing.Event{event})
 		require.NoError(t, err, "Could not save event")
 
 		// Load the event
-		_, events, err := eventSourcing.Load(ctx, eventUID)
+		_, events, err := eventSourcing.Load(ctx, eventUID.String())
 		require.NoError(t, err, "Could not load events")
 
 		// Check if the event was saved correctly
@@ -121,16 +127,20 @@ func TestPostgres(t *testing.T) {
 
 	t.Run("TestEventSourcingSaveMultipleEvents", func(t *testing.T) {
 		// Create multiple dummy events with unique aggregate IDs
+		eventUID1, err := uuid.NewV7()
+		require.NoError(t, err)
+		eventUID2, err := uuid.NewV7()
+		require.NoError(t, err)
 		events := []*eventsourcing.Event{
 			{
-				AggregateId:   mustNewV7(t).String(),
+				AggregateId:   eventUID1.String(),
 				AggregateType: "test-type",
 				Type:          "test-event-1",
 				Payload:       `{"test": "test-payload-1"}`,
 				Version:       1,
 			},
 			{
-				AggregateId:   mustNewV7(t).String(),
+				AggregateId:   eventUID2.String(),
 				AggregateType: "test-type",
 				Type:          "test-event-2",
 				Payload:       `{"test": "test-payload-2"}`,
@@ -160,11 +170,12 @@ func TestPostgres(t *testing.T) {
 	})
 
 	t.Run("TestEventSourcingSaveEventExistingAggregate", func(t *testing.T) {
-		eventUID := mustNewV7(t).String()
+		eventUID, err := uuid.NewV7()
+		require.NoError(t, err)
 
 		// Create a dummy event with an existing aggregate ID but a different version
 		event := &eventsourcing.Event{
-			AggregateId:   eventUID,
+			AggregateId:   eventUID.String(),
 			AggregateType: "test-type",
 			Type:          "test-event-3",
 			Payload:       `{"test": "test-payload-3"}`,
@@ -172,12 +183,12 @@ func TestPostgres(t *testing.T) {
 		}
 
 		// Save the event
-		err := eventSourcing.Save(ctx, []*eventsourcing.Event{event})
+		err = eventSourcing.Save(ctx, []*eventsourcing.Event{event})
 		require.NoError(t, err, "Could not save event")
 
 		// Create a new event with the same aggregate ID but a different version
 		event2 := &eventsourcing.Event{
-			AggregateId:   eventUID,
+			AggregateId:   eventUID.String(),
 			AggregateType: "test-type",
 			Type:          "test-event-4",
 			Payload:       `{"test": "test-payload-4"}`,
@@ -189,7 +200,7 @@ func TestPostgres(t *testing.T) {
 		require.NoError(t, err, "Could not save event")
 
 		// Load the events
-		_, events, err := eventSourcing.Load(ctx, eventUID)
+		_, events, err := eventSourcing.Load(ctx, eventUID.String())
 		require.NoError(t, err, "Could not load events")
 
 		// Check if the events were saved correctly
@@ -198,7 +209,9 @@ func TestPostgres(t *testing.T) {
 
 	t.Run("TestEventSourcingLoadNoEvents", func(t *testing.T) {
 		// Try to load events for a non-existent aggregate ID
-		_, events, err := eventSourcing.Load(ctx, mustNewV7(t).String())
+		eventUID, err := uuid.NewV7()
+		require.NoError(t, err)
+		_, events, err := eventSourcing.Load(ctx, eventUID.String())
 		require.NoError(t, err, "Error occurred while loading events")
 
 		// Check if no events were loaded
@@ -206,11 +219,12 @@ func TestPostgres(t *testing.T) {
 	})
 
 	t.Run("TestEventSourcingUpdateAggregate", func(t *testing.T) {
-		eventUID := mustNewV7(t).String()
+		eventUID, err := uuid.NewV7()
+		require.NoError(t, err)
 
 		// Create a dummy event
 		event := &eventsourcing.Event{
-			AggregateId:   eventUID,
+			AggregateId:   eventUID.String(),
 			AggregateType: "test-type",
 			Type:          "test-event",
 			Payload:       `{"test": "test-payload"}`,
@@ -218,7 +232,7 @@ func TestPostgres(t *testing.T) {
 		}
 
 		// Save the event
-		err := eventSourcing.Save(ctx, []*eventsourcing.Event{event})
+		err = eventSourcing.Save(ctx, []*eventsourcing.Event{event})
 		require.NoError(t, err, "Could not save event")
 
 		// Update the event
@@ -228,7 +242,7 @@ func TestPostgres(t *testing.T) {
 		require.NoError(t, err, "Could not update event")
 
 		// Load the event
-		_, events, err := eventSourcing.Load(ctx, eventUID)
+		_, events, err := eventSourcing.Load(ctx, eventUID.String())
 		require.NoError(t, err, "Could not load events")
 
 		// Check if the event was updated correctly
@@ -239,10 +253,4 @@ func TestPostgres(t *testing.T) {
 		require.Equal(t, event.GetPayload(), events[1].GetPayload(), "Payload does not match")
 		require.Equal(t, event.GetVersion(), events[1].GetVersion(), "Version does not match")
 	})
-}
-
-func mustNewV7(t *testing.T) uuid.UUID {
-	id, err := uuid.NewV7()
-	require.NoError(t, err)
-	return id
 }

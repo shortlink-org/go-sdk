@@ -5,13 +5,23 @@ import (
 	"fmt"
 
 	"github.com/jackc/pgx/v5"
-	"github.com/spf13/viper"
+
+	"github.com/shortlink-org/go-sdk/config"
 )
 
 // Store implementation of db interface
 type Store struct {
 	client *pgx.Conn
 	config *pgx.ConnConfig
+	cfg    *config.Config
+}
+
+// New creates a CockroachDB store configured via cfg.
+func New(cfg *config.Config) *Store {
+	return &Store{
+		config: nil,
+		cfg:    cfg,
+	}
 }
 
 // Init - initialize
@@ -69,10 +79,9 @@ func (s *Store) close(ctx context.Context) error {
 func (s *Store) setConfig() error {
 	var err error
 
-	viper.AutomaticEnv()
-	viper.SetDefault("STORE_COCKROACHDB_URI", "postgresql://root@localhost:26257?sslmode=disable") // CockroachDB URI
+	s.cfg.SetDefault("STORE_COCKROACHDB_URI", "postgresql://root@localhost:26257?sslmode=disable") // CockroachDB URI
 
-	s.config, err = pgx.ParseConfig(viper.GetString("STORE_COCKROACHDB_URI"))
+	s.config, err = pgx.ParseConfig(s.cfg.GetString("STORE_COCKROACHDB_URI"))
 	if err != nil {
 		return &StoreError{
 			Op:      "ParseConfig",
@@ -81,7 +90,7 @@ func (s *Store) setConfig() error {
 		}
 	}
 
-	s.config.RuntimeParams["application_name"] = viper.GetString("SERVICE_NAME")
+	s.config.RuntimeParams["application_name"] = s.cfg.GetString("SERVICE_NAME")
 
 	return nil
 }

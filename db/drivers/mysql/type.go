@@ -5,6 +5,8 @@ import (
 
 	"go.opentelemetry.io/otel/sdk/metric"
 	"go.opentelemetry.io/otel/trace"
+
+	"github.com/shortlink-org/go-sdk/config"
 )
 
 // Config - configuration
@@ -20,4 +22,5 @@ type Store struct {
 	metrics *metric.MeterProvider
 
 	config Config
+	cfg    *config.Config
 }

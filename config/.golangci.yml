@@ -1,13 +1,1 @@
-version: "2"
-
-linters:
-  default: all
-
-  disable:
-    - depguard
-
-  settings:
-    revive:
-      rules:
-        - name: exported
-          disabled: true
+../.golangci.yml

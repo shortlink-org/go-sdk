@@ -5,8 +5,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/spf13/viper"
 	clientv3 "go.etcd.io/etcd/client/v3"
+
+	"github.com/shortlink-org/go-sdk/config"
 )
 
 // Config - config
@@ -19,6 +20,12 @@ type Config struct {
 type Store struct {
 	client *clientv3.Client
 	config Config
+	cfg    *config.Config
+}
+
+// New creates an etcd store configured via cfg.
+func New(cfg *config.Config) *Store {
+	return &Store{cfg: cfg}
 }
 
 // Init - initialize
@@ -45,11 +52,7 @@ func (s *Store) Init(ctx context.Context) error {
 	go func() {
 		<-ctx.Done()
 
-		if err := s.close(); err != nil {
-			// We can't return the error here since we're in a goroutine,
-			// but in a real application you might want to log this
-			_ = err
-		}
+		s.close() //nolint:errcheck // background cleanup
 	}()
 
 	return nil
@@ -62,7 +65,8 @@ func (s *Store) GetConn() any {
 
 // close - close
 func (s *Store) close() error {
-	if err := s.client.Close(); err != nil {
+	err := s.client.Close()
+	if err != nil {
 		return &StoreError{
 			Op:      "close",
 			Err:     err,
@@ -75,14 +79,13 @@ func (s *Store) close() error {
 
 // setConfig - set configuration
 func (s *Store) setConfig() {
-	viper.AutomaticEnv()
-	viper.SetDefault("STORE_ETCD_URI", "localhost:2379") // ETCD URI
-	viper.SetDefault("STORE_ETCD_TIMEOUT", "5s")         // ETCD timeout
+	s.cfg.SetDefault("STORE_ETCD_URI", "localhost:2379") // ETCD URI
+	s.cfg.SetDefault("STORE_ETCD_TIMEOUT", "5s")         // ETCD timeout
 
-	etcd := strings.Split(viper.GetString("STORE_ETCD_URI"), ",")
+	etcd := strings.Split(s.cfg.GetString("STORE_ETCD_URI"), ",")
 
 	s.config = Config{
 		URI:         etcd,
-		DialTimeout: viper.GetDuration("STORE_ETCD_TIMEOUT"),
+		DialTimeout: s.cfg.GetDuration("STORE_ETCD_TIMEOUT"),
 	}
 }

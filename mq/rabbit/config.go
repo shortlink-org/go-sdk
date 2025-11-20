@@ -1,7 +1,7 @@
 package rabbit
 
 import (
-	"github.com/spf13/viper"
+	"github.com/shortlink-org/go-sdk/config"
 )
 
 type Config struct {
@@ -10,14 +10,13 @@ type Config struct {
 }
 
 // setConfig - Construct a new RabbitMQ configuration.
-func loadConfig() *Config {
-	viper.AutomaticEnv()
-	viper.SetDefault("MQ_RABBIT_URI", "amqp://localhost:5672") // RabbitMQ URI
+func loadConfig(cfg *config.Config) *Config {
+	cfg.SetDefault("MQ_RABBIT_URI", "amqp://localhost:5672") // RabbitMQ URI
 	// RabbitMQ reconnects after delay seconds
-	viper.SetDefault("MQ_RECONNECT_DELAY_SECONDS", 3)
+	cfg.SetDefault("MQ_RECONNECT_DELAY_SECONDS", 3)
 
 	return &Config{
-		URI:           viper.GetString("MQ_RABBIT_URI"),
-		ReconnectTime: viper.GetInt("MQ_RECONNECT_DELAY_SECONDS"),
+		URI:           cfg.GetString("MQ_RABBIT_URI"),
+		ReconnectTime: cfg.GetInt("MQ_RECONNECT_DELAY_SECONDS"),
 	}
 }

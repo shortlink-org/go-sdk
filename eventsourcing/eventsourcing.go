@@ -7,19 +7,18 @@ import (
 	"context"
 	"log/slog"
 
-	"github.com/spf13/viper"
-
+	"github.com/shortlink-org/go-sdk/config"
 	"github.com/shortlink-org/go-sdk/db"
 	es_postgres "github.com/shortlink-org/go-sdk/eventsourcing/store/postgres"
 	"github.com/shortlink-org/go-sdk/logger"
 )
 
 // New - create new EventStore
-func New(ctx context.Context, log logger.Logger, store db.DB) (EventSourcing, error) {
+func New(ctx context.Context, log logger.Logger, store db.DB, cfg *config.Config) (EventSourcing, error) {
 	var err error
 
 	// Initialize EventStore
-	e := &eventSourcing{}
+	e := &eventSourcing{cfg: cfg}
 
 	// Set configuration
 	e.setConfig()
@@ -46,8 +45,7 @@ func New(ctx context.Context, log logger.Logger, store db.DB) (EventSourcing, er
 
 // setConfig - set configuration
 func (e *eventSourcing) setConfig() {
-	viper.AutomaticEnv()
-	viper.SetDefault("STORE_TYPE", "ram") // Select: postgres
+	e.cfg.SetDefault("STORE_TYPE", "ram") // Select: postgres
 
-	e.typeStore = viper.GetString("STORE_TYPE")
+	e.typeStore = e.cfg.GetString("STORE_TYPE")
 }

@@ -23,6 +23,7 @@ func New(ctx context.Context, limit int64, interval time.Duration) (*RateLimiter
 	done := make(chan struct{})
 
 	rl := &RateLimiter{
+		mu:      sync.Mutex{},
 		limiter: make(chan struct{}, limit),
 		ticker:  ticker,
 		limit:   limit,

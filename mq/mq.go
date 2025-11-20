@@ -7,8 +7,7 @@ import (
 	"context"
 	"log/slog"
 
-	"github.com/spf13/viper"
-
+	"github.com/shortlink-org/go-sdk/config"
 	"github.com/shortlink-org/go-sdk/logger"
 
 	"github.com/shortlink-org/go-sdk/mq/kafka"
@@ -21,15 +20,15 @@ import (
 // New creates a new MQ instance
 //
 //nolint:ireturn // It's made by design
-func New(ctx context.Context, log logger.Logger) (MQ, error) {
-	viper.SetDefault("MQ_ENABLED", "false") // Enabled MQ
+func New(ctx context.Context, log logger.Logger, cfg *config.Config) (MQ, error) {
+	cfg.SetDefault("MQ_ENABLED", "false") // Enabled MQ
 
-	if !viper.GetBool("MQ_ENABLED") {
+	if !cfg.GetBool("MQ_ENABLED") {
 		//nolint:nilnil // It's made by design
 		return nil, nil
 	}
 
-	var service DataBus
+	service := DataBus{cfg: cfg}
 
 	dataBus, err := service.Use(ctx, log)
 	if err != nil {
@@ -49,15 +48,15 @@ func (mq *DataBus) Use(ctx context.Context, log logger.Logger) (*DataBus, error)
 
 	switch mq.typeMQ {
 	case "kafka":
-		mq.mq = &kafka.Kafka{}
+		mq.mq = kafka.New(mq.cfg)
 	case "nats":
-		mq.mq = nats.New()
+		mq.mq = nats.New(mq.cfg)
 	case "rabbitmq":
-		mq.mq = rabbit.New(log)
+		mq.mq = rabbit.New(log, mq.cfg)
 	case "redis":
-		mq.mq = redis.New()
+		mq.mq = redis.New(mq.cfg)
 	default:
-		mq.mq = &kafka.Kafka{}
+		mq.mq = kafka.New(mq.cfg)
 	}
 
 	if err := mq.Init(ctx, log); err != nil {
@@ -108,6 +107,6 @@ func (mq *DataBus) Publish(ctx context.Context, target string, key, payload []by
 
 // setConfig - set configuration
 func (mq *DataBus) setConfig() {
-	viper.SetDefault("MQ_TYPE", "rabbitmq") // Select: kafka, rabbitmq, nats, redis
-	mq.typeMQ = viper.GetString("MQ_TYPE")
+	mq.cfg.SetDefault("MQ_TYPE", "rabbitmq") // Select: kafka, rabbitmq, nats, redis
+	mq.typeMQ = mq.cfg.GetString("MQ_TYPE")
 }

@@ -10,6 +10,7 @@ linters:
   # Enable every linter, then prune the noisy ones
   default: all
   disable:
+    - exhaustruct     # too noisy for current structs
     - godox            # incorrect results in our project
     - depguard         # too restrictive for our use case
     - gochecknoglobals # too noisy
@@ -214,7 +215,7 @@ formatters:
     generated: strict
   settings:
     gci:
-      sections: [standard, default, prefix(github.com/shortlink-org/shortlink)]
+      sections: [standard, default, prefix(github.com/shortlink-org/go-sdk), prefix(github.com/shortlink-org/shortlink)]
       custom-order: true
     gofumpt:
       extra-rules: true

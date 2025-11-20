@@ -6,7 +6,7 @@ import (
 	"net/url"
 
 	"github.com/neo4j/neo4j-go-driver/v5/neo4j"
-	"github.com/spf13/viper"
+	"github.com/shortlink-org/go-sdk/config"
 )
 
 // Config - configuration
@@ -20,6 +20,12 @@ type Config struct {
 type Store struct {
 	client neo4j.DriverWithContext
 	config Config
+	cfg    *config.Config
+}
+
+// New creates a Neo4j store configured via cfg.
+func New(cfg *config.Config) *Store {
+	return &Store{cfg: cfg}
 }
 
 // Init - init connection
@@ -77,13 +83,12 @@ func (s *Store) close(ctx context.Context) error {
 
 // setConfig - set configuration
 func (s *Store) setConfig() error {
-	viper.AutomaticEnv()
 
 	// Neo4j 4.0, defaults to no TLS therefore use bolt:// or neo4j://
 	// Neo4j 3.5, defaults to self-signed certificates, TLS on, therefore use bolt+ssc:// or neo4j+ssc://
-	viper.SetDefault("STORE_NEO4J_URI", "neo4j://localhost:7687") // NEO4J URI
+	s.cfg.SetDefault("STORE_NEO4J_URI", "neo4j://localhost:7687") // NEO4J URI
 
-	uri := viper.GetString("STORE_NEO4J_URI")
+	uri := s.cfg.GetString("STORE_NEO4J_URI")
 
 	params, err := url.ParseRequestURI(uri)
 	if err != nil {

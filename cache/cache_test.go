@@ -11,9 +11,10 @@ import (
 	cache2 "github.com/go-redis/cache/v9"
 	"github.com/ory/dockertest/v3"
 	"github.com/ory/dockertest/v3/docker"
-	"github.com/stretchr/testify/require"
-
 	"github.com/shortlink-org/go-sdk/cache"
+	"github.com/shortlink-org/go-sdk/config"
+	"github.com/shortlink-org/go-sdk/observability/metrics"
+	"github.com/stretchr/testify/require"
 )
 
 func TestCache(t *testing.T) {
@@ -36,12 +37,16 @@ func TestCache(t *testing.T) {
 
 	// exponential backoff-retry, because the application in the container might not be ready to accept connections yet
 	err = pool.Retry(func() error {
-		t.Setenv("STORE_REDIS_URI", fmt.Sprintf("localhost:%s", resource.GetPort("6379/tcp")))
+		cfg, errCfg := config.New()
+		if errCfg != nil {
+			return errCfg
+		}
+		cfg.Set("STORE_REDIS_URI", fmt.Sprintf("localhost:%s", resource.GetPort("6379/tcp")))
 
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
 
-		_, errCache := cache.New(ctx)
+		_, errCache := cache.New(ctx, nil, &metrics.Monitoring{}, cfg)
 		if errCache != nil {
 			return errCache
 		}
@@ -58,7 +63,11 @@ func TestCache(t *testing.T) {
 
 	t.Run("Test Set and Get", func(t *testing.T) {
 		ctx := context.Background()
-		c, err := cache.New(ctx)
+		cfg, err := config.New()
+		require.NoError(t, err)
+		cfg.Set("STORE_REDIS_URI", fmt.Sprintf("localhost:%s", resource.GetPort("6379/tcp")))
+
+		c, err := cache.New(ctx, nil, &metrics.Monitoring{}, cfg)
 		require.NoError(t, err)
 
 		key := "myKey"

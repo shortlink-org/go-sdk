@@ -4,19 +4,19 @@ import (
 	"context"
 	"time"
 
-	"github.com/spf13/viper"
+	"github.com/shortlink-org/go-sdk/config"
 )
 
-// New creates a new logger instance
+// New creates a new logger instance using the provided configuration.
 //
 //nolint:ireturn // It's made by design
-func NewDefault(_ context.Context) (Logger, func(), error) {
-	viper.SetDefault("LOG_LEVEL", INFO_LEVEL)
-	viper.SetDefault("LOG_TIME_FORMAT", time.RFC3339Nano)
+func NewDefault(_ context.Context, cfg *config.Config) (Logger, func(), error) {
+	cfg.SetDefault("LOG_LEVEL", INFO_LEVEL)
+	cfg.SetDefault("LOG_TIME_FORMAT", time.RFC3339Nano)
 
 	conf := Configuration{
-		Level:      viper.GetInt("LOG_LEVEL"),
-		TimeFormat: viper.GetString("LOG_TIME_FORMAT"),
+		Level:      cfg.GetInt("LOG_LEVEL"),
+		TimeFormat: cfg.GetString("LOG_TIME_FORMAT"),
 	}
 
 	log, err := New(conf)

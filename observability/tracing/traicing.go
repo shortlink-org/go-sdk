@@ -8,7 +8,7 @@ import (
 	"log/slog"
 
 	otelpyroscope "github.com/grafana/otel-profiling-go"
-	"github.com/spf13/viper"
+	"github.com/shortlink-org/go-sdk/config"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
 	"go.opentelemetry.io/otel/propagation"
@@ -18,7 +18,6 @@ import (
 
 	"github.com/shortlink-org/go-sdk/logger"
 
-	"github.com/shortlink-org/go-sdk/config"
 	"github.com/shortlink-org/go-sdk/observability/common"
 )
 
@@ -29,8 +28,8 @@ func New(ctx context.Context, log logger.Logger, cfg *config.Config) (traceProvi
 	cfg.SetDefault("TRACER_URI", "localhost:4317") // Tracing addr:host
 
 	config := Config{
-		ServiceName:    viper.GetString("SERVICE_NAME"),
-		ServiceVersion: viper.GetString("SERVICE_VERSION"),
+		ServiceName:    cfg.GetString("SERVICE_NAME"),
+		ServiceVersion: cfg.GetString("SERVICE_VERSION"),
 		URI:            cfg.GetString("TRACER_URI"),
 	}
 

@@ -1,6 +1,4 @@
-/*
-Config package
-*/
+// Package config provides thread-safe configuration management backed by Viper.
 package config
 
 import (

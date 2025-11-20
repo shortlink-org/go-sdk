@@ -10,7 +10,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/collectors"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
-	"github.com/spf13/viper"
+	"github.com/shortlink-org/go-sdk/config"
 	"go.opentelemetry.io/otel"
 	promExporter "go.opentelemetry.io/otel/exporters/prometheus"
 	api "go.opentelemetry.io/otel/sdk/metric"
@@ -27,12 +27,13 @@ type Monitoring struct {
 	Handler    *http.ServeMux
 	Prometheus *prometheus.Registry
 	Metrics    *api.MeterProvider
+	cfg        *config.Config
 }
 
 // New - Monitoring endpoints
-func New(ctx context.Context, log logger.Logger, tracer trace.TracerProvider) (*Monitoring, func(), error) {
+func New(ctx context.Context, log logger.Logger, tracer trace.TracerProvider, cfg *config.Config) (*Monitoring, func(), error) {
 	var err error
-	monitoring := &Monitoring{}
+	monitoring := &Monitoring{cfg: cfg}
 
 	// Create a "common" meter provider for metrics
 	monitoring.Metrics, err = monitoring.SetMetrics(ctx)
@@ -48,11 +49,11 @@ func New(ctx context.Context, log logger.Logger, tracer trace.TracerProvider) (*
 
 	go func() {
 		// Create a new HTTP server for Prometheus metrics
-		config := http_server.Config{
+		serverConfig := http_server.Config{
 			Port:    9090,             //nolint:mnd // port for Prometheus metrics
 			Timeout: 30 * time.Second, //nolint:mnd // timeout for Prometheus metrics
 		}
-		server := http_server.New(ctx, monitoring.Handler, config, tracer)
+		server := http_server.New(ctx, monitoring.Handler, serverConfig, tracer)
 
 		errListenAndServe := server.ListenAndServe()
 		if errListenAndServe != nil {
@@ -76,7 +77,7 @@ func (m *Monitoring) SetMetrics(ctx context.Context) (*api.MeterProvider, error)
 	// See the go.opentelemetry.io/otel/sdk/resource package for more
 	// information about how to create and use Resources.
 	// Setup resource.
-	res, err := common.NewResource(ctx, viper.GetString("SERVICE_NAME"), viper.GetString("SERVICE_VERSION"))
+	res, err := common.NewResource(ctx, m.cfg.GetString("SERVICE_NAME"), m.cfg.GetString("SERVICE_VERSION"))
 	if err != nil {
 		return nil, err
 	}

@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/spf13/viper"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/propagation"
@@ -14,7 +13,7 @@ import (
 )
 
 func (mq *MQ) Subscribe(ctx context.Context, target string, message query.Response) error {
-	queueName := fmt.Sprintf("%s-%s", target, viper.GetString("SERVICE_NAME"))
+	queueName := fmt.Sprintf("%s-%s", target, mq.cfg.GetString("SERVICE_NAME"))
 
 	q, err := mq.ch.QueueDeclare(
 		queueName,
@@ -71,7 +70,7 @@ func (mq *MQ) UnSubscribe(target string) error {
 	mq.mu.Lock()
 	defer mq.mu.Unlock()
 
-	err := mq.ch.QueueUnbind(fmt.Sprintf("%s-%s", target, viper.GetString("SERVICE_NAME")), "*", target, nil)
+	err := mq.ch.QueueUnbind(fmt.Sprintf("%s-%s", target, mq.cfg.GetString("SERVICE_NAME")), "*", target, nil)
 	if err != nil {
 		return fmt.Errorf("failed to unbind queue: %w", err)
 	}

@@ -7,9 +7,9 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/shortlink-org/go-sdk/config"
 	"github.com/shortlink-org/go-sdk/flight_trace"
 	"github.com/shortlink-org/go-sdk/logger"
-	"github.com/spf13/viper"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
 )
@@ -18,9 +18,9 @@ import (
 // - "X-Debug-Trace: true" header is present, OR
 // - request latency exceeds configured threshold (FLIGHT_TRACE_LATENCY_THRESHOLD).
 // The dump filename is attached to the current trace span.
-func DebugTraceMiddleware(recorder *flight_trace.Recorder, loggerInstance logger.Logger) func(http.Handler) http.Handler {
+func DebugTraceMiddleware(recorder *flight_trace.Recorder, loggerInstance logger.Logger, cfg *config.Config) func(http.Handler) http.Handler {
 	// Default threshold (can be overridden via ENV)
-	viper.SetDefault("FLIGHT_TRACE_LATENCY_THRESHOLD", "1s")
+	cfg.SetDefault("FLIGHT_TRACE_LATENCY_THRESHOLD", "1s")
 
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
@@ -35,7 +35,7 @@ func DebugTraceMiddleware(recorder *flight_trace.Recorder, loggerInstance logger
 			next.ServeHTTP(writer, request)
 
 			latency := time.Since(start)
-			if latency > viper.GetDuration("FLIGHT_TRACE_LATENCY_THRESHOLD") {
+			if latency > cfg.GetDuration("FLIGHT_TRACE_LATENCY_THRESHOLD") {
 				shouldDump = true
 			}
 

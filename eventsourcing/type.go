@@ -3,6 +3,7 @@ package eventsourcing
 import (
 	"context"
 
+	"github.com/shortlink-org/go-sdk/config"
 	eventsourcing "github.com/shortlink-org/go-sdk/eventsourcing/domain/eventsourcing/v1"
 )
 
@@ -21,4 +22,5 @@ type eventSourcing struct {
 	repository EventSourcing
 
 	typeStore string
+	cfg       *config.Config
 }

@@ -6,6 +6,8 @@ import (
 	"context"
 	"testing"
 	"time"
+
+	"github.com/shortlink-org/go-sdk/config"
 )
 
 func FuzzBatch(f *testing.F) {
@@ -27,8 +29,13 @@ func FuzzBatch(f *testing.F) {
 			return nil
 		}
 
+		cfg, err := config.New()
+		if err != nil {
+			t.Fatalf("failed to init config: %v", err)
+		}
+
 		// Initialize the Batch with the callback
-		batch, err := New(ctx, callback)
+		batch, err := New(ctx, cfg, callback)
 		if err != nil {
 			t.Fatalf("Failed to create batch: %v", err)
 		}

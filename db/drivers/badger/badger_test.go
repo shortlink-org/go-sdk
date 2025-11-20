@@ -9,6 +9,8 @@ import (
 
 	"github.com/stretchr/testify/require"
 	"go.uber.org/goleak"
+
+	"github.com/shortlink-org/go-sdk/config"
 )
 
 func TestMain(m *testing.M) {
@@ -19,7 +21,9 @@ func TestMain(m *testing.M) {
 
 func TestBadger(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
-	store := Store{}
+	cfg, err := config.New()
+	require.NoError(t, err)
+	store := New(cfg)
 
 	err := store.Init(ctx)
 	require.NoError(t, err)

@@ -10,6 +10,7 @@ import (
 
 	"github.com/ory/dockertest/v3"
 	"github.com/ory/dockertest/v3/docker"
+	"github.com/shortlink-org/go-sdk/config"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/goleak"
 )
@@ -22,7 +23,9 @@ func TestMain(m *testing.M) {
 
 func TestETCD(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
-	store := Store{}
+	cfg, err := config.New()
+	require.NoError(t, err)
+	store := New(cfg)
 
 	// uses a sensible default on windows (tcp/http) and linux/osx (socket)
 	pool, err := dockertest.NewPool("")
@@ -40,7 +43,7 @@ func TestETCD(t *testing.T) {
 
 	// exponential backoff-retry, because the application in the container might not be ready to accept connections yet
 	if err := pool.Retry(func() error {
-		t.Setenv("STORE_ETCD_URI", fmt.Sprintf("localhost:%s", resource.GetPort("2379/tcp")))
+		cfg.Set("STORE_ETCD_URI", fmt.Sprintf("localhost:%s", resource.GetPort("2379/tcp")))
 
 		errInit := store.Init(ctx)
 		if errInit != nil {

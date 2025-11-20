@@ -11,8 +11,13 @@ import (
 	grpc_recovery "github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors/recovery"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
+	"github.com/shortlink-org/go-sdk/config"
 	"github.com/shortlink-org/go-sdk/flight_trace"
-	"github.com/spf13/viper"
+	flight_trace_interceptor "github.com/shortlink-org/go-sdk/grpc/middleware/flight_trace"
+	grpc_logger "github.com/shortlink-org/go-sdk/grpc/middleware/logger"
+	pprof_interceptor "github.com/shortlink-org/go-sdk/grpc/middleware/pprof"
+	session_interceptor "github.com/shortlink-org/go-sdk/grpc/middleware/session"
+	"github.com/shortlink-org/go-sdk/logger"
 	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
 	"go.opentelemetry.io/otel/trace"
 	"google.golang.org/grpc"
@@ -20,13 +25,6 @@ import (
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/reflection"
 	"google.golang.org/grpc/status"
-
-	"github.com/shortlink-org/go-sdk/logger"
-
-	flight_trace_interceptor "github.com/shortlink-org/go-sdk/grpc/middleware/flight_trace"
-	grpc_logger "github.com/shortlink-org/go-sdk/grpc/middleware/logger"
-	pprof_interceptor "github.com/shortlink-org/go-sdk/grpc/middleware/pprof"
-	session_interceptor "github.com/shortlink-org/go-sdk/grpc/middleware/session"
 )
 
 type Server struct {
@@ -45,6 +43,7 @@ type server struct {
 
 	log           logger.Logger
 	serverMetrics *grpc_prometheus.ServerMetrics
+	cfg           *config.Config
 }
 
 // InitServer - initialize gRPC server
@@ -54,15 +53,16 @@ func InitServer(
 	tracer trace.TracerProvider,
 	prom *prometheus.Registry,
 	fr *flight_trace.Recorder,
+	cfg *config.Config,
 ) (*Server, error) {
-	viper.SetDefault("GRPC_SERVER_ENABLED", true) // gRPC grpServer enable
+	cfg.SetDefault("GRPC_SERVER_ENABLED", true) // gRPC grpServer enable
 
-	if !viper.GetBool("GRPC_SERVER_ENABLED") {
+	if !cfg.GetBool("GRPC_SERVER_ENABLED") {
 		//nolint:nilnil // it's correct logic
 		return nil, nil
 	}
 
-	config, err := setServerConfig(log, tracer, prom, fr) //nolint:contextcheck // false positive
+	config, err := setServerConfig(log, tracer, prom, fr, cfg) //nolint:contextcheck // false positive
 	if err != nil {
 		return nil, err
 	}
@@ -120,18 +120,20 @@ func setServerConfig(
 	tracer trace.TracerProvider,
 	monitor *prometheus.Registry,
 	fr *flight_trace.Recorder,
+	cfg *config.Config,
 ) (*server, error) {
-	viper.SetDefault("GRPC_SERVER_PORT", "50051") // gRPC port
-	grpc_port := viper.GetInt("GRPC_SERVER_PORT")
+	cfg.SetDefault("GRPC_SERVER_PORT", "50051") // gRPC port
+	grpc_port := cfg.GetInt("GRPC_SERVER_PORT")
 
-	viper.SetDefault("GRPC_SERVER_HOST", "0.0.0.0") // gRPC host
-	grpc_host := viper.GetString("GRPC_SERVER_HOST")
+	cfg.SetDefault("GRPC_SERVER_HOST", "0.0.0.0") // gRPC host
+	grpc_host := cfg.GetString("GRPC_SERVER_HOST")
 
 	config := &server{
 		port: grpc_port,
 		host: grpc_host,
 
 		log: log,
+		cfg: cfg,
 	}
 
 	config.WithLogger(log)
@@ -216,8 +218,8 @@ func (s *server) WithRecovery(prom *prometheus.Registry) {
 
 // WithLogger - setup logger
 func (s *server) WithLogger(log logger.Logger) {
-	viper.SetDefault("GRPC_SERVER_LOGGER_ENABLED", true) // Enable logging for gRPC-Client
-	isEnableLogger := viper.GetBool("GRPC_SERVER_LOGGER_ENABLED")
+	s.cfg.SetDefault("GRPC_SERVER_LOGGER_ENABLED", true) // Enable logging for gRPC-Client
+	isEnableLogger := s.cfg.GetBool("GRPC_SERVER_LOGGER_ENABLED")
 
 	if isEnableLogger {
 		s.interceptorStreamServerList = append(s.interceptorStreamServerList, grpc_logger.StreamServerInterceptor(log))
@@ -227,14 +229,14 @@ func (s *server) WithLogger(log logger.Logger) {
 
 // WithTLS - setup TLS
 func (s *server) WithTLS() error {
-	viper.SetDefault("GRPC_SERVER_TLS_ENABLED", false) // gRPC tls
-	isEnableTLS := viper.GetBool("GRPC_SERVER_TLS_ENABLED")
+	s.cfg.SetDefault("GRPC_SERVER_TLS_ENABLED", false) // gRPC tls
+	isEnableTLS := s.cfg.GetBool("GRPC_SERVER_TLS_ENABLED")
 
-	viper.SetDefault("GRPC_SERVER_CERT_PATH", "ops/cert/shortlink-server.pem") // gRPC server cert
-	certFile := viper.GetString("GRPC_SERVER_CERT_PATH")
+	s.cfg.SetDefault("GRPC_SERVER_CERT_PATH", "ops/cert/shortlink-server.pem") // gRPC server cert
+	certFile := s.cfg.GetString("GRPC_SERVER_CERT_PATH")
 
-	viper.SetDefault("GRPC_SERVER_KEY_PATH", "ops/cert/shortlink-server-key.pem") // gRPC server key
-	keyFile := viper.GetString("GRPC_SERVER_KEY_PATH")
+	s.cfg.SetDefault("GRPC_SERVER_KEY_PATH", "ops/cert/shortlink-server-key.pem") // gRPC server key
+	keyFile := s.cfg.GetString("GRPC_SERVER_KEY_PATH")
 
 	if isEnableTLS {
 		creds, errTLSFromFile := credentials.NewServerTLSFromFile(certFile, keyFile)
@@ -262,6 +264,6 @@ func (s *server) withPprofLabels() {
 
 // WithFlightTrace - setup flight trace
 func (s *server) WithFlightTrace(fr *flight_trace.Recorder, log logger.Logger) {
-	s.interceptorUnaryServerList = append(s.interceptorUnaryServerList, flight_trace_interceptor.UnaryServerInterceptor(fr, log))
-	s.interceptorStreamServerList = append(s.interceptorStreamServerList, flight_trace_interceptor.StreamServerInterceptor(fr, log))
+	s.interceptorUnaryServerList = append(s.interceptorUnaryServerList, flight_trace_interceptor.UnaryServerInterceptor(fr, log, s.cfg))
+	s.interceptorStreamServerList = append(s.interceptorStreamServerList, flight_trace_interceptor.StreamServerInterceptor(fr, log, s.cfg))
 }

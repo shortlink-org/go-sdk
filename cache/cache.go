@@ -6,19 +6,19 @@ import (
 	"github.com/go-redis/cache/v9"
 	"github.com/redis/rueidis"
 	"github.com/redis/rueidis/rueidiscompat"
-	"github.com/spf13/viper"
 	"go.opentelemetry.io/otel/trace"
 
+	"github.com/shortlink-org/go-sdk/config"
 	db2 "github.com/shortlink-org/go-sdk/db"
 	"github.com/shortlink-org/go-sdk/db/drivers/redis"
 	"github.com/shortlink-org/go-sdk/observability/metrics"
 )
 
 // New returns a new cache.Client.
-func New(ctx context.Context, tracer trace.TracerProvider, monitor *metrics.Monitoring) (*cache.Cache, error) {
-	viper.SetDefault("LOCAL_CACHE_TTL", "5m")
-	viper.SetDefault("LOCAL_CACHE_COUNT", 1000)
-	viper.SetDefault("LOCAL_CACHE_METRICS_ENABLED", true)
+func New(ctx context.Context, tracer trace.TracerProvider, monitor *metrics.Monitoring, cfg *config.Config) (*cache.Cache, error) {
+	cfg.SetDefault("LOCAL_CACHE_TTL", "5m")
+	cfg.SetDefault("LOCAL_CACHE_COUNT", 1000)
+	cfg.SetDefault("LOCAL_CACHE_METRICS_ENABLED", true)
 
 	store := redis.New(tracer, monitor.Metrics)
 
@@ -36,11 +36,13 @@ func New(ctx context.Context, tracer trace.TracerProvider, monitor *metrics.Moni
 		rueidiscompat.NewAdapter(conn),
 	}
 
-	s := cache.New(&cache.Options{
+	cacheClient := cache.New(&cache.Options{
 		Redis:        adapter,
-		LocalCache:   cache.NewTinyLFU(viper.GetInt("LOCAL_CACHE_COUNT"), viper.GetDuration("LOCAL_CACHE_TTL")),
-		StatsEnabled: viper.GetBool("LOCAL_CACHE_METRICS_ENABLED"),
+		LocalCache:   cache.NewTinyLFU(cfg.GetInt("LOCAL_CACHE_COUNT"), cfg.GetDuration("LOCAL_CACHE_TTL")),
+		StatsEnabled: cfg.GetBool("LOCAL_CACHE_METRICS_ENABLED"),
+		Marshal:      nil,
+		Unmarshal:    nil,
 	})
 
-	return s, nil
+	return cacheClient, nil
 }

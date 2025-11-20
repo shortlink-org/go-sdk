@@ -51,31 +51,33 @@ func TestClientRecords429Metrics(t *testing.T) {
 		LabelHost:   "api.example.test",
 		LabelMethod: http.MethodGet,
 	}
-	value := counterValue(t, reg, "test_client_rate_limit_429_total", labels)
-	require.InDelta(t, 1, value, delta, "429 counter must increment")
-}
-
-func counterValue(t *testing.T, reg *prometheus.Registry, name string, labels map[string]string) float64 {
-	t.Helper()
-
 	families, err := reg.Gather()
 	require.NoError(t, err)
 
+	var value float64
+	found := false
+
 	for _, mf := range families {
-		if mf.GetName() != name {
+		if mf.GetName() != "test_client_rate_limit_429_total" {
 			continue
 		}
 
 		for _, metric := range mf.GetMetric() {
 			if matchLabels(metric.GetLabel(), labels) {
-				return metric.GetCounter().GetValue()
+				value = metric.GetCounter().GetValue()
+				found = true
+
+				break
 			}
+		}
+
+		if found {
+			break
 		}
 	}
 
-	t.Fatalf("metric %s with labels %v not found", name, labels)
-
-	return 0
+	require.True(t, found, "metric test_client_rate_limit_429_total with labels %v not found", labels)
+	require.InDelta(t, 1, value, delta, "429 counter must increment")
 }
 
 func matchLabels(metricLabels []*io_prometheus_client.LabelPair, expected map[string]string) bool {

@@ -61,6 +61,7 @@ func TestRateLimiterWithSynctest(t *testing.T) {
 
 		// Third request should block waiting for token refill
 		done := make(chan error, 1)
+
 		go func() {
 			done <- rl.Wait()
 		}()
@@ -88,7 +89,7 @@ func TestRateLimiterWithSynctest(t *testing.T) {
 
 // TestRateLimiterCancellation verifies proper error handling during context cancellation.
 // Ensures that blocked rate limiter operations return the appropriate cancellation error
-// and that resources are cleaned up correctly when the context is cancelled.
+// and that resources are cleaned up correctly when the context is canceled.
 func TestRateLimiterCancellation(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
 		ctx, cancel := context.WithCancel(context.Background())
@@ -102,6 +103,7 @@ func TestRateLimiterCancellation(t *testing.T) {
 
 		// Launch goroutine that will block waiting for token refill
 		done := make(chan error, 1)
+
 		go func() {
 			done <- rl.Wait()
 		}()
@@ -128,30 +130,11 @@ func TestSimpleRateLimiterWithSynctest(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
 		// Create a simple rate limiter scenario without persistent background goroutines
 		limiter := make(chan struct{}, 2)
-		ticker := time.NewTicker(100 * time.Millisecond)
-		defer ticker.Stop()
-
-		ctx, cancel := context.WithCancel(context.Background())
-		defer cancel()
 
 		// Fill initial tokens
 		limiter <- struct{}{}
-		limiter <- struct{}{}
 
-		// Background refiller
-		go func() {
-			for {
-				select {
-				case <-ticker.C:
-					select {
-					case limiter <- struct{}{}:
-					default:
-					}
-				case <-ctx.Done():
-					return
-				}
-			}
-		}()
+		limiter <- struct{}{}
 
 		// Test immediate consumption
 		<-limiter // First token
@@ -159,12 +142,17 @@ func TestSimpleRateLimiterWithSynctest(t *testing.T) {
 
 		// Third request should block until refill
 		done := make(chan struct{})
+
 		go func() {
 			<-limiter // This should block and wait for refill
 			close(done)
 		}()
 
-		// Wait for refill (100ms passes instantly in synctest)
+		// Advance fake time and push a refill token.
+		time.Sleep(100 * time.Millisecond)
+
+		limiter <- struct{}{}
+
 		synctest.Wait()
 
 		// Should complete after time advancement
@@ -175,7 +163,6 @@ func TestSimpleRateLimiterWithSynctest(t *testing.T) {
 			t.Fatal("should have received token after refill")
 		}
 
-		cancel()
 		synctest.Wait()
 	})
 }

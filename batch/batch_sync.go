@@ -2,6 +2,8 @@ package batch
 
 import (
 	"context"
+
+	"github.com/shortlink-org/go-sdk/config"
 )
 
 // NewSync creates a batch that runs in the background like New,
@@ -11,11 +13,12 @@ import (
 // returned error.
 func NewSync[T any](
 	ctx context.Context,
+	cfg *config.Config,
 	callback func([]*Item[T]) error,
 	opts ...Option[T],
 ) (*Batch[T], error) {
 	// Re-use the asynchronous constructor.
-	batch, errChan := New(ctx, callback, opts...)
+	batch, errChan := New(ctx, cfg, callback, opts...)
 
 	var firstErr error
 	for err := range errChan { // errChan closes when ctx.Done() is observed.

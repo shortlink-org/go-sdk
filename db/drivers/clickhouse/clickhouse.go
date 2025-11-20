@@ -4,10 +4,11 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/spf13/viper"
 	"github.com/uptrace/go-clickhouse/ch"
 	"github.com/uptrace/go-clickhouse/chdebug"
 	"github.com/uptrace/go-clickhouse/chotel"
+
+	"github.com/shortlink-org/go-sdk/config"
 )
 
 // Config - config
@@ -19,6 +20,17 @@ type Config struct {
 type Store struct {
 	client *ch.DB
 	config Config
+	cfg    *config.Config
+}
+
+// New creates a ClickHouse store configured via cfg.
+func New(cfg *config.Config) *Store {
+	return &Store{
+		config: Config{
+			URI: "",
+		},
+		cfg: cfg,
+	}
 }
 
 // Init - initialize
@@ -27,11 +39,12 @@ func (s *Store) Init(ctx context.Context) error {
 	s.setConfig()
 
 	// Connect to Clickhouse
-	s.client = ch.Connect(ch.WithDSN(s.config.URI))
-	s.client.AddQueryHook(chdebug.NewQueryHook(chdebug.WithVerbose(true)))
-	s.client.AddQueryHook(chotel.NewQueryHook())
+	clickhouseDB := ch.Connect(ch.WithDSN(s.config.URI))
+	clickhouseDB.AddQueryHook(chdebug.NewQueryHook(chdebug.WithVerbose(true)))
+	clickhouseDB.AddQueryHook(chotel.NewQueryHook())
 
-	if err := s.client.Ping(ctx); err != nil {
+	err := clickhouseDB.Ping(ctx)
+	if err != nil {
 		return &StoreError{
 			Op:      "init",
 			Err:     fmt.Errorf("%w: %w", ErrPing, err),
@@ -39,11 +52,13 @@ func (s *Store) Init(ctx context.Context) error {
 		}
 	}
 
+	s.client = clickhouseDB
+
 	// Graceful shutdown
 	go func() {
 		<-ctx.Done()
 
-		_ = s.close()
+		s.close() //nolint:errcheck,gosec // background cleanup
 	}()
 
 	return nil
@@ -70,10 +85,9 @@ func (s *Store) close() error {
 
 // setConfig - set configuration
 func (s *Store) setConfig() {
-	viper.AutomaticEnv()
-	viper.SetDefault("STORE_CLICKHOUSE_URI", "clickhouse://localhost:9000/default?sslmode=disable") // Clickhouse URI
+	s.cfg.SetDefault("STORE_CLICKHOUSE_URI", "clickhouse://localhost:9000/default?sslmode=disable") // Clickhouse URI
 
 	s.config = Config{
-		URI: viper.GetString("STORE_CLICKHOUSE_URI"),
+		URI: s.cfg.GetString("STORE_CLICKHOUSE_URI"),
 	}
 }

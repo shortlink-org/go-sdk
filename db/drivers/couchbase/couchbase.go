@@ -5,10 +5,15 @@ import (
 	"fmt"
 
 	"github.com/couchbase/gocb/v2"
-	"github.com/spf13/viper"
 )
 
-type config struct {
+// configProvider is the minimal subset of configuration behavior the driver relies on.
+type configProvider interface {
+	SetDefault(key string, value any)
+	GetString(key string) string
+}
+
+type couchbaseConfig struct {
 	uri     string
 	options gocb.ClusterOptions
 }
@@ -16,7 +21,16 @@ type config struct {
 // Store implementation of db interface
 type Store struct {
 	client *gocb.Cluster
-	config *config
+	config *couchbaseConfig
+	cfg    configProvider
+}
+
+// New creates a Couchbase store configured via cfg.
+func New(cfg configProvider) *Store {
+	return &Store{
+		config: nil,
+		cfg:    cfg,
+	}
 }
 
 // Init - initialize
@@ -48,11 +62,24 @@ func (s *Store) Init(ctx context.Context) error {
 
 // setConfig - set configuration
 func (s *Store) setConfig() {
-	viper.AutomaticEnv()
-	viper.SetDefault("STORE_COUCHBASE_URI", "couchbase://localhost") // Couchbase URI (e.g. couchbase://localhost)
+	defaultURI := "couchbase://localhost"
 
-	s.config = &config{
-		uri:     viper.GetString("STORE_COUCHBASE_URI"),
-		options: gocb.ClusterOptions{},
+	if s.cfg != nil {
+		s.cfg.SetDefault("STORE_COUCHBASE_URI", defaultURI)
+	}
+
+	uri := defaultURI
+
+	if s.cfg != nil {
+		if configuredURI := s.cfg.GetString("STORE_COUCHBASE_URI"); configuredURI != "" {
+			uri = configuredURI
+		}
+	}
+
+	var options gocb.ClusterOptions
+
+	s.config = &couchbaseConfig{
+		uri:     uri,
+		options: options,
 	}
 }

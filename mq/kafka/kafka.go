@@ -10,8 +10,8 @@ import (
 	"github.com/IBM/sarama"
 	"github.com/dnwe/otelsarama"
 	"github.com/heptiolabs/healthcheck"
+	"github.com/shortlink-org/go-sdk/config"
 	"github.com/shortlink-org/go-sdk/logger"
-	"github.com/spf13/viper"
 
 	"github.com/shortlink-org/go-sdk/mq/query"
 )
@@ -23,6 +23,7 @@ type Config struct {
 
 type Kafka struct {
 	*Config
+	cfg *config.Config
 
 	client   sarama.Client
 	producer sarama.SyncProducer
@@ -30,6 +31,14 @@ type Kafka struct {
 
 	// Use a sync.Map to keep track of the ConsumerGroup sessions
 	sessions sync.Map
+}
+
+// New creates a Kafka MQ instance configured by cfg.
+func New(cfg *config.Config) *Kafka {
+	return &Kafka{
+		Config: &Config{},
+		cfg:    cfg,
+	}
 }
 
 func (mq *Kafka) Init(ctx context.Context, log logger.Logger) error {
@@ -202,66 +211,65 @@ func (mq *Kafka) UnSubscribe(target string) error {
 // Reference:
 // - https://developers.redhat.com/articles/2022/05/03/fine-tune-kafka-performance-kafka-optimization-theorem#the_kafka_optimization_theorem
 func (mq *Kafka) setConfig() (*sarama.Config, error) {
-	viper.AutomaticEnv()
-	viper.SetDefault("MQ_KAFKA_URI", "localhost:9092")                                                         // Kafka URI
-	viper.SetDefault("MQ_KAFKA_CONSUMER_GROUP", viper.GetString("SERVICE_NAME"))                               // Kafka consumer group
-	viper.SetDefault("MQ_KAFKA_CONSUMER_GROUP_PARTITION_ASSIGNMENT_STRATEGY", sarama.RangeBalanceStrategyName) // Consumer group partition assignment strategy (range, roundrobin, sticky)
-	viper.SetDefault("MQ_KAFKA_CONSUMER_GROUP_OFFSET", sarama.OffsetNewest)                                    // Kafka consumer consumes initial offset from oldest
-	viper.SetDefault("MQ_KAFKA_PRODUCER_RETRY_MAX", 3)                                                         // Kafka producer retry max
-	viper.SetDefault("MQ_KAFKA_SARAMA_VERSION", "MAX")                                                         // Kafka sarama version: MAX, DEFAULT
+	mq.cfg.SetDefault("MQ_KAFKA_URI", "localhost:9092")                                                         // Kafka URI
+	mq.cfg.SetDefault("MQ_KAFKA_CONSUMER_GROUP", mq.cfg.GetString("SERVICE_NAME"))                              // Kafka consumer group
+	mq.cfg.SetDefault("MQ_KAFKA_CONSUMER_GROUP_PARTITION_ASSIGNMENT_STRATEGY", sarama.RangeBalanceStrategyName) // Consumer group partition assignment strategy (range, roundrobin, sticky)
+	mq.cfg.SetDefault("MQ_KAFKA_CONSUMER_GROUP_OFFSET", sarama.OffsetNewest)                                    // Kafka consumer consumes initial offset from oldest
+	mq.cfg.SetDefault("MQ_KAFKA_PRODUCER_RETRY_MAX", 3)                                                         // Kafka producer retry max
+	mq.cfg.SetDefault("MQ_KAFKA_SARAMA_VERSION", "MAX")                                                         // Kafka sarama version: MAX, DEFAULT
 
 	mq.Config = &Config{
 		URI: []string{
-			viper.GetString("MQ_KAFKA_URI"),
+			mq.cfg.GetString("MQ_KAFKA_URI"),
 		},
-		ConsumerGroup: viper.GetString("MQ_KAFKA_CONSUMER_GROUP"),
+		ConsumerGroup: mq.cfg.GetString("MQ_KAFKA_CONSUMER_GROUP"),
 	}
 
 	// sarama config
-	config := sarama.NewConfig()
-	config.ClientID = viper.GetString("SERVICE_NAME")
+	saramaConfig := sarama.NewConfig()
+	saramaConfig.ClientID = mq.cfg.GetString("SERVICE_NAME")
 
-	strategy := viper.GetString("MQ_KAFKA_CONSUMER_GROUP_PARTITION_ASSIGNMENT_STRATEGY")
+	strategy := mq.cfg.GetString("MQ_KAFKA_CONSUMER_GROUP_PARTITION_ASSIGNMENT_STRATEGY")
 	switch strategy {
 	case sarama.StickyBalanceStrategyName:
-		config.Consumer.Group.Rebalance.GroupStrategies = []sarama.BalanceStrategy{sarama.NewBalanceStrategySticky()}
+		saramaConfig.Consumer.Group.Rebalance.GroupStrategies = []sarama.BalanceStrategy{sarama.NewBalanceStrategySticky()}
 	case sarama.RoundRobinBalanceStrategyName:
-		config.Consumer.Group.Rebalance.GroupStrategies = []sarama.BalanceStrategy{sarama.NewBalanceStrategyRoundRobin()}
+		saramaConfig.Consumer.Group.Rebalance.GroupStrategies = []sarama.BalanceStrategy{sarama.NewBalanceStrategyRoundRobin()}
 	case sarama.RangeBalanceStrategyName:
-		config.Consumer.Group.Rebalance.GroupStrategies = []sarama.BalanceStrategy{sarama.NewBalanceStrategyRange()}
+		saramaConfig.Consumer.Group.Rebalance.GroupStrategies = []sarama.BalanceStrategy{sarama.NewBalanceStrategyRange()}
 	default:
 		return nil, sarama.ErrConsumerCoordinatorNotAvailable
 	}
 
-	config.Consumer.Offsets.Initial = viper.GetInt64("MQ_KAFKA_CONSUMER_GROUP_OFFSET")
+	saramaConfig.Consumer.Offsets.Initial = mq.cfg.GetInt64("MQ_KAFKA_CONSUMER_GROUP_OFFSET")
 
-	config.Producer.Partitioner = sarama.NewRandomPartitioner
-	config.Producer.RequiredAcks = sarama.WaitForAll
-	config.Producer.Retry.Max = viper.GetInt("MQ_KAFKA_PRODUCER_RETRY_MAX")
-	config.Producer.Return.Successes = true
-	config.Consumer.Return.Errors = true
-	config.Producer.Compression = sarama.CompressionSnappy
+	saramaConfig.Producer.Partitioner = sarama.NewRandomPartitioner
+	saramaConfig.Producer.RequiredAcks = sarama.WaitForAll
+	saramaConfig.Producer.Retry.Max = mq.cfg.GetInt("MQ_KAFKA_PRODUCER_RETRY_MAX")
+	saramaConfig.Producer.Return.Successes = true
+	saramaConfig.Consumer.Return.Errors = true
+	saramaConfig.Producer.Compression = sarama.CompressionSnappy
 
 	// set sarama version for support redpanda
-	switch viper.GetString("MQ_KAFKA_SARAMA_VERSION") {
+	switch mq.cfg.GetString("MQ_KAFKA_SARAMA_VERSION") {
 	case "MAX":
-		config.Version = sarama.MaxVersion
+		saramaConfig.Version = sarama.MaxVersion
 	case "DEFAULT":
-		config.Version = sarama.DefaultVersion
+		saramaConfig.Version = sarama.DefaultVersion
 	}
 
 	// idempotent producer
-	config.Producer.Idempotent = true
-	if config.Producer.Idempotent {
-		if config.Producer.Retry.Max == 0 {
+	saramaConfig.Producer.Idempotent = true
+	if saramaConfig.Producer.Idempotent {
+		if saramaConfig.Producer.Retry.Max == 0 {
 			return nil, sarama.ErrInvalidConfig
 		}
-		if config.Producer.RequiredAcks != sarama.WaitForAll {
+		if saramaConfig.Producer.RequiredAcks != sarama.WaitForAll {
 			return nil, sarama.ErrInvalidConfig
 		}
 
-		config.Net.MaxOpenRequests = 1
+		saramaConfig.Net.MaxOpenRequests = 1
 	}
 
-	return config, nil
+	return saramaConfig, nil
 }

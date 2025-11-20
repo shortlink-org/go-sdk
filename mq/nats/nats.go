@@ -6,15 +6,16 @@ import (
 	"net/url"
 
 	"github.com/nats-io/nats.go"
-	"github.com/spf13/viper"
+	"github.com/shortlink-org/go-sdk/config"
 
 	"github.com/shortlink-org/go-sdk/logger"
 	"github.com/shortlink-org/go-sdk/mq/query"
 )
 
-func New() *MQ {
+func New(cfg *config.Config) *MQ {
 	return &MQ{
 		subscribes: make(map[string]chan *nats.Msg),
+		cfg:        cfg,
 	}
 }
 
@@ -118,13 +119,12 @@ func (mq *MQ) UnSubscribe(name string) error {
 
 // setConfig - set configuration
 func (mq *MQ) setConfig() error {
-	viper.AutomaticEnv()
-	viper.SetDefault("MQ_NATS_URI", "nats://localhost:4222") // NATS_URI
+	mq.cfg.SetDefault("MQ_NATS_URI", "nats://localhost:4222") // NATS_URI
 	//nolint:revive,mnd // ignore magics numbers
-	viper.SetDefault("MQ_NATS_CHANNEL_SIZE", 64) // NATS_CHANNEL_SIZE
+	mq.cfg.SetDefault("MQ_NATS_CHANNEL_SIZE", 64) // NATS_CHANNEL_SIZE
 
 	// parse uri
-	uri, err := url.Parse(viper.GetString("MQ_NATS_URI"))
+	uri, err := url.Parse(mq.cfg.GetString("MQ_NATS_URI"))
 	if err != nil {
 		return err
 	}
@@ -132,7 +132,7 @@ func (mq *MQ) setConfig() error {
 	// set config
 	mq.config = &Config{
 		URI:         uri,
-		ChannelSize: viper.GetInt("MQ_NATS_CHANNEL_SIZE"),
+		ChannelSize: mq.cfg.GetInt("MQ_NATS_CHANNEL_SIZE"),
 	}
 
 	return nil

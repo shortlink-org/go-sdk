@@ -6,9 +6,10 @@ import (
 	"context"
 	"testing"
 
-	"github.com/shortlink-org/go-sdk/logger"
-
 	"github.com/stretchr/testify/require"
+
+	"github.com/shortlink-org/go-sdk/config"
+	"github.com/shortlink-org/go-sdk/logger"
 )
 
 // TestLink ...
@@ -16,12 +17,15 @@ func TestLink(t *testing.T) {
 	ctx := context.Background()
 
 	// Init logger
-	conf := config.Configuration{}
-	log, err := logger.New(logger.Zap, conf)
+	conf := logger.Configuration{}
+	log, err := logger.New(conf)
 	require.NoError(t, err, "Error init a logger")
 
+	cfg, err := config.New()
+	require.NoError(t, err, "Error init config")
+
 	// Init db
-	s, err := New(ctx, log, nil, nil)
+	s, err := New(ctx, log, nil, nil, cfg)
 	require.NoError(t, err, "Error init a db")
 
 	// Init db

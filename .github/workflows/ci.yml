@@ -26,7 +26,61 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        module: [config, logger, specification]
+        include:
+          - module: auth
+            tags: unit
+          - module: batch
+            tags: unit
+          - module: cache
+            tags: unit
+          - module: concurrency
+            tags: unit
+          - module: config
+            tags: unit
+          - module: context
+            tags: unit
+          - module: db
+            tags: unit,database
+          - module: eventsourcing
+            tags: unit
+          - module: flags
+            tags: unit
+          - module: flight_trace
+            tags: unit
+          - module: freeport
+            tags: unit
+          - module: fsm
+            tags: unit
+          - module: graceful_shutdown
+            tags: unit
+          - module: grpc
+            tags: unit
+          - module: http
+            tags: unit
+          - module: logger
+            tags: unit
+          - module: mq
+            tags: unit
+          - module: notify
+            tags: unit
+          - module: observability
+            tags: unit
+          - module: protoc
+            tags: unit
+          - module: raft
+            tags: unit
+          - module: s3
+            tags: unit,media
+          - module: saga
+            tags: unit
+          - module: specification
+            tags: unit
+          - module: transactional_outbox
+            tags: unit
+          - module: types
+            tags: unit
+          - module: uow
+            tags: unit
 
     env:
       GOFLAGS: "-count=1" # Disable caching test results, helps find flaky tests
@@ -66,7 +120,13 @@ jobs:
       - name: Run tests (race + coverage)
         working-directory: ./${{ matrix.module }}
         run: |
-          go test -race -shuffle=on -coverprofile=coverage.out -covermode=atomic ./...
+          # Check if there are any test files
+          if find . -name "*_test.go" -type f | grep -q .; then
+            go test -tags="${{ matrix.tags }}" -race -shuffle=on -coverprofile=coverage.out -covermode=atomic ./...
+          else
+            echo "No test files found, skipping tests"
+            touch coverage.out
+          fi
 
       - name: Upload coverage artifact
         if: always()

@@ -3,6 +3,7 @@ package mq
 import (
 	"context"
 
+	"github.com/shortlink-org/go-sdk/config"
 	"github.com/shortlink-org/go-sdk/logger"
 	"github.com/shortlink-org/go-sdk/mq/query"
 )
@@ -22,4 +23,5 @@ type DataBus struct {
 	log    logger.Logger
 	mq     MQ
 	typeMQ string
+	cfg    *config.Config
 }

@@ -13,6 +13,9 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/goleak"
+
+	"github.com/shortlink-org/go-sdk/config"
+	"github.com/shortlink-org/go-sdk/logger"
 )
 
 func TestMain(m *testing.M) {
@@ -24,7 +27,18 @@ func TestMain(m *testing.M) {
 
 func TestDgraph(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
-	store := Store{}
+	cfg, err := config.New()
+	require.NoError(t, err)
+
+	logConf := logger.Configuration{
+		Level: logger.INFO_LEVEL,
+	}
+	log, err := logger.New(logConf)
+	require.NoError(t, err)
+	t.Cleanup(func() {
+		_ = log.Close()
+	})
+	store := New(log, cfg)
 
 	// uses a sensible default on windows (tcp/http) and linux/osx (socket)
 	pool, err := dockertest.NewPool("")

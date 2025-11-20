@@ -7,12 +7,7 @@ import (
 	"context"
 	"log/slog"
 
-	"github.com/spf13/viper"
-	"go.opentelemetry.io/otel/sdk/metric"
-	"go.opentelemetry.io/otel/trace"
-
-	"github.com/shortlink-org/go-sdk/logger"
-
+	"github.com/shortlink-org/go-sdk/config"
 	"github.com/shortlink-org/go-sdk/db/drivers/badger"
 	"github.com/shortlink-org/go-sdk/db/drivers/cockroachdb"
 	"github.com/shortlink-org/go-sdk/db/drivers/dgraph"
@@ -24,41 +19,46 @@ import (
 	"github.com/shortlink-org/go-sdk/db/drivers/ram"
 	"github.com/shortlink-org/go-sdk/db/drivers/redis"
 	"github.com/shortlink-org/go-sdk/db/drivers/sqlite"
+	"github.com/shortlink-org/go-sdk/logger"
+	"go.opentelemetry.io/otel/sdk/metric"
+	"go.opentelemetry.io/otel/trace"
 )
 
 // New - return implementation of db
-func New(ctx context.Context, log logger.Logger, tracer trace.TracerProvider, metrics *metric.MeterProvider) (DB, error) {
+func New(ctx context.Context, log logger.Logger, tracer trace.TracerProvider, metrics *metric.MeterProvider, cfg *config.Config) (DB, error) {
 	//nolint:exhaustruct // fix later, use constructor
-	store := &Store{}
+	store := &Store{
+		cfg: cfg,
+	}
 
 	// Set configuration
 	store.setConfig()
 
 	switch store.typeStore {
 	case "cockroachdb":
-		store.DB = &cockroachdb.Store{}
+		store.DB = cockroachdb.New(cfg)
 	case "postgres":
-		store.DB = postgres.New(tracer, metrics)
+		store.DB = postgres.New(tracer, metrics, cfg)
 	case "mysql":
-		store.DB = mysql.New(tracer, metrics)
+		store.DB = mysql.New(tracer, metrics, cfg)
 	case "mongo":
-		store.DB = &mongo.Store{}
+		store.DB = mongo.New(cfg)
 	case "redis":
-		store.DB = redis.New(tracer, metrics)
+		store.DB = redis.New(tracer, metrics, cfg)
 	case "dgraph":
-		store.DB = dgraph.New(log)
+		store.DB = dgraph.New(log, cfg)
 	case "leveldb":
-		store.DB = &leveldb.Store{}
+		store.DB = leveldb.New(cfg)
 	case "badger":
-		store.DB = &badger.Store{}
+		store.DB = badger.New(cfg)
 	case "ram":
-		store.DB = &ram.Store{}
+		store.DB = ram.New(cfg)
 	case "neo4j":
-		store.DB = &neo4j.Store{}
+		store.DB = neo4j.New(cfg)
 	case "sqlite":
-		store.DB = sqlite.New(tracer, metrics)
+		store.DB = sqlite.New(tracer, metrics, cfg)
 	default:
-		store.DB = &ram.Store{}
+		store.DB = ram.New(cfg)
 	}
 
 	if err := store.Init(ctx); err != nil {
@@ -74,8 +74,10 @@ func New(ctx context.Context, log logger.Logger, tracer trace.TracerProvider, me
 
 // setConfig - set configuration
 func (s *Store) setConfig() {
-	viper.AutomaticEnv()
-	viper.SetDefault("STORE_TYPE", "ram") // Select: postgres, mysql, mongo, redis, dgraph, sqlite, leveldb, badger, neo4j, ram, cockroachdb
+	s.cfg.SetDefault("STORE_TYPE", "ram") // Select: postgres, mysql, mongo, redis, dgraph, sqlite, leveldb, badger, neo4j, ram, cockroachdb
 
-	s.typeStore = viper.GetString("STORE_TYPE")
+	s.typeStore = s.cfg.GetString("STORE_TYPE")
+	if s.typeStore == "" {
+		s.typeStore = "ram"
+	}
 }

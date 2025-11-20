@@ -7,7 +7,8 @@ import (
 	"strconv"
 
 	aero "github.com/aerospike/aerospike-client-go"
-	"github.com/spf13/viper"
+
+	"github.com/shortlink-org/go-sdk/config"
 )
 
 // Config - config
@@ -20,6 +21,18 @@ type Config struct {
 type Store struct {
 	client *aero.Client
 	config Config
+	cfg    *config.Config
+}
+
+// New creates an Aerospike store configured via cfg.
+func New(cfg *config.Config) *Store {
+	return &Store{
+		config: Config{
+			host: "",
+			port: 0,
+		},
+		cfg: cfg,
+	}
 }
 
 // Init - initialize
@@ -35,14 +48,16 @@ func (s *Store) Init(ctx context.Context) error {
 	}
 
 	// Connect to Aerospike
-	s.client, err = aero.NewClient(s.config.host, s.config.port)
-	if err != nil {
+	client, clientErr := aero.NewClient(s.config.host, s.config.port)
+	if clientErr != nil {
 		return &StoreError{
 			Op:      "init",
-			Err:     fmt.Errorf("%w: %w", ErrClientConnection, err),
+			Err:     fmt.Errorf("%w: %w", ErrClientConnection, clientErr),
 			Details: fmt.Sprintf("unable to connect to Aerospike at %s:%d", s.config.host, s.config.port),
 		}
 	}
+
+	s.client = client
 
 	// Graceful shutdown
 	go func() {
@@ -61,10 +76,9 @@ func (s *Store) GetConn() any {
 
 // setConfig - set configuration
 func (s *Store) setConfig() error {
-	viper.AutomaticEnv()
-	viper.SetDefault("STORE_AEROSPIKE_URI", "tcp://localhost:3000") // Aerospike URI
+	s.cfg.SetDefault("STORE_AEROSPIKE_URI", "tcp://localhost:3000") // Aerospike URI
 
-	conf, err := url.Parse(viper.GetString("STORE_AEROSPIKE_URI"))
+	conf, err := url.Parse(s.cfg.GetString("STORE_AEROSPIKE_URI"))
 	if err != nil {
 		return &StoreError{
 			Op:      "setConfig",

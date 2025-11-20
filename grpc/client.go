@@ -5,12 +5,11 @@ import (
 	"fmt"
 	"log/slog"
 
-	"github.com/spf13/viper"
+	"github.com/shortlink-org/go-sdk/config"
+	"github.com/shortlink-org/go-sdk/logger"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/credentials/insecure"
-
-	"github.com/shortlink-org/go-sdk/logger"
 )
 
 type Client struct {
@@ -20,6 +19,7 @@ type Client struct {
 
 	port int
 	host string
+	cfg  *config.Config
 }
 
 func (c *Client) GetURI() string {
@@ -27,8 +27,8 @@ func (c *Client) GetURI() string {
 }
 
 // InitClient - set up a connection to the server.
-func InitClient(_ context.Context, log logger.Logger, options ...Option) (*grpc.ClientConn, func(), error) {
-	config, err := SetClientConfig(options...)
+func InitClient(_ context.Context, log logger.Logger, cfg *config.Config, options ...Option) (*grpc.ClientConn, func(), error) {
+	config, err := SetClientConfig(cfg, options...)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -55,18 +55,17 @@ func InitClient(_ context.Context, log logger.Logger, options ...Option) (*grpc.
 }
 
 // SetClientConfig - set configuration
-func SetClientConfig(options ...Option) (*Client, error) {
-	viper.AutomaticEnv()
+func SetClientConfig(cfg *config.Config, options ...Option) (*Client, error) {
+	cfg.SetDefault("GRPC_CLIENT_PORT", "50051") // gRPC port
+	grpcPort := cfg.GetInt("GRPC_CLIENT_PORT")
 
-	viper.SetDefault("GRPC_CLIENT_PORT", "50051") // gRPC port
-	grpcPort := viper.GetInt("GRPC_CLIENT_PORT")
-
-	viper.SetDefault("GRPC_CLIENT_HOST", "0.0.0.0") // gRPC host
-	grpcHost := viper.GetString("GRPC_CLIENT_HOST")
+	cfg.SetDefault("GRPC_CLIENT_HOST", "0.0.0.0") // gRPC host
+	grpcHost := cfg.GetString("GRPC_CLIENT_HOST")
 
 	config := &Client{
 		port: grpcPort,
 		host: grpcHost,
+		cfg:  cfg,
 	}
 
 	config.apply(options...)
@@ -94,11 +93,11 @@ func (c *Client) GetOptions() []grpc.DialOption {
 
 // withTLS - setup TLS
 func (c *Client) withTLS() error {
-	viper.SetDefault("GRPC_CLIENT_TLS_ENABLED", false) // gRPC TLS
-	isEnableTLS := viper.GetBool("GRPC_CLIENT_TLS_ENABLED")
+	c.cfg.SetDefault("GRPC_CLIENT_TLS_ENABLED", false) // gRPC TLS
+	isEnableTLS := c.cfg.GetBool("GRPC_CLIENT_TLS_ENABLED")
 
-	viper.SetDefault("GRPC_CLIENT_CERT_PATH", "ops/cert/intermediate_ca.pem") // gRPC Client cert
-	certFile := viper.GetString("GRPC_CLIENT_CERT_PATH")
+	c.cfg.SetDefault("GRPC_CLIENT_CERT_PATH", "ops/cert/intermediate_ca.pem") // gRPC Client cert
+	certFile := c.cfg.GetString("GRPC_CLIENT_CERT_PATH")
 
 	if isEnableTLS {
 		creds, err := credentials.NewClientTLSFromFile(certFile, "")

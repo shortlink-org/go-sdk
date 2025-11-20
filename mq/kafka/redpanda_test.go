@@ -9,7 +9,7 @@ import (
 
 	"github.com/ory/dockertest/v3"
 	"github.com/ory/dockertest/v3/docker"
-	"github.com/spf13/viper"
+	"github.com/shortlink-org/go-sdk/config"
 	"github.com/stretchr/testify/require"
 
 	"github.com/shortlink-org/go-sdk/logger"
@@ -17,14 +17,15 @@ import (
 )
 
 func TestRedPanda(t *testing.T) {
-	// Set configuration
-	viper.SetDefault("SERVICE_NAME", "shortlink")
-	t.Setenv("MQ_KAFKA_SARAMA_VERSION", "DEFAULT")
+	cfg, err := config.New()
+	require.NoError(t, err)
+	cfg.SetDefault("SERVICE_NAME", "shortlink")
+	cfg.Set("MQ_KAFKA_SARAMA_VERSION", "DEFAULT")
 
 	ctx, cancel := context.WithCancel(context.Background())
-	mq := Kafka{}
+	mq := New(cfg)
 
-	log, err := logger.New(logger.Zap, config.Configuration{})
+	log, err := logger.New(logger.Configuration{})
 	require.NoError(t, err, "Cannot create logger")
 
 	// uses a sensible default on windows (tcp/http) and linux/osx (socket)
@@ -74,10 +75,9 @@ func TestRedPanda(t *testing.T) {
 
 	// exponential backoff-retry, because the application in the container might not be ready to accept connections yet
 	if err := pool.Retry(func() error {
-		t.Setenv("MQ_KAFKA_URI", fmt.Sprintf("localhost:%s", RED_PANDA.GetPort("19092/tcp")))
+		cfg.Set("MQ_KAFKA_URI", fmt.Sprintf("localhost:%s", RED_PANDA.GetPort("19092/tcp")))
 
-		err = mq.Init(ctx, log)
-		if err != nil {
+		if err := mq.Init(ctx, log); err != nil {
 			return err
 		}
 

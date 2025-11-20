@@ -7,9 +7,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-
 	"go.opentelemetry.io/otel"
-	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	"go.opentelemetry.io/otel/sdk/trace/tracetest"
@@ -17,58 +15,16 @@ import (
 	"github.com/shortlink-org/go-sdk/logger/tracer"
 )
 
-func setupTracer(t *testing.T) (*tracetest.SpanRecorder, func()) {
-	t.Helper()
-
+//nolint:gocognit,funlen,maintidx // test function with multiple assertions
+func Test_NewTraceFromContext_EventOnActiveSpan_ERROR(t *testing.T) {
 	rec := tracetest.NewSpanRecorder()
 	tp := sdktrace.NewTracerProvider()
 	tp.RegisterSpanProcessor(rec)
 	otel.SetTracerProvider(tp)
-
-	cleanup := func() {
-		_ = tp.Shutdown(context.Background())
-	}
-
-	return rec, cleanup
-}
-
-// findAttr returns attribute value by key with type-safety.
-func findAttr[T any](attrs []attribute.KeyValue, key string) (T, bool) {
-	var zero T
-
-	for _, a := range attrs {
-		if string(a.Key) != key {
-			continue
-		}
-		// no unnecessary conversion
-		if v, ok := a.Value.AsInterface().(T); ok {
-			return v, true
-		}
-	}
-
-	return zero, false
-}
-
-// valueOf fetches a value from returned fields (slog.Attr).
-func valueOf[T any](fields []slog.Attr, key string) (T, bool) {
-	var zero T
-
-	for _, field := range fields {
-		if field.Key != key {
-			continue
-		}
-
-		if v, ok := field.Value.Any().(T); ok {
-			return v, true
-		}
-	}
-
-	return zero, false
-}
-
-func Test_NewTraceFromContext_EventOnActiveSpan_ERROR(t *testing.T) {
-	rec, cleanup := setupTracer(t)
-	defer cleanup()
+	t.Cleanup(func() {
+		err := tp.Shutdown(context.Background())
+		require.NoError(t, err)
+	})
 
 	// Active/root span
 	ctx, root := otel.Tracer("test").Start(context.Background(), "root")
@@ -82,8 +38,18 @@ func Test_NewTraceFromContext_EventOnActiveSpan_ERROR(t *testing.T) {
 	require.NoError(t, err)
 
 	// Check if traceID and spanID are present in fields
-	_, hasTraceID := valueOf[string](fields, "traceID")
-	_, hasSpanID := valueOf[string](fields, "spanID")
+	var hasTraceID, hasSpanID bool
+
+	for _, field := range fields {
+		if field.Key == "traceID" {
+			hasTraceID = true
+		}
+
+		if field.Key == "spanID" {
+			hasSpanID = true
+		}
+	}
+
 	require.True(t, hasTraceID)
 	require.True(t, hasSpanID)
 
@@ -114,29 +80,109 @@ func Test_NewTraceFromContext_EventOnActiveSpan_ERROR(t *testing.T) {
 
 	require.True(t, found, "expected event 'log.ERROR'")
 
-	if v, ok := findAttr[string](logEv.Attributes, "log.severity"); assert.True(t, ok) {
-		assert.Equal(t, "ERROR", v)
+	var (
+		severity   string
+		severityOK bool
+	)
+
+	for _, a := range logEv.Attributes {
+		if string(a.Key) == "log.severity" {
+			if v, ok := a.Value.AsInterface().(string); ok {
+				severity = v
+				severityOK = true
+
+				break
+			}
+		}
 	}
 
-	if v, ok := findAttr[string](logEv.Attributes, "log.message"); assert.True(t, ok) {
-		assert.Equal(t, "boom", v)
+	if assert.True(t, severityOK) {
+		assert.Equal(t, "ERROR", severity)
 	}
 
-	if v, ok := findAttr[string](logEv.Attributes, "exception.message"); assert.True(t, ok) {
-		assert.Equal(t, assert.AnError.Error(), v)
+	var (
+		message   string
+		messageOK bool
+	)
+
+	for _, a := range logEv.Attributes {
+		if string(a.Key) == "log.message" {
+			if v, ok := a.Value.AsInterface().(string); ok {
+				message = v
+				messageOK = true
+
+				break
+			}
+		}
 	}
 
-	_, ok := findAttr[string](logEv.Attributes, "exception.type")
-	assert.True(t, ok, "exception.type should be set")
+	if assert.True(t, messageOK) {
+		assert.Equal(t, "boom", message)
+	}
 
-	if v, ok := findAttr[bool](logEv.Attributes, "log.is_error"); assert.True(t, ok) {
-		assert.True(t, v)
+	var (
+		exceptionMessage   string
+		exceptionMessageOK bool
+	)
+
+	for _, a := range logEv.Attributes {
+		if string(a.Key) == "exception.message" {
+			if v, ok := a.Value.AsInterface().(string); ok {
+				exceptionMessage = v
+				exceptionMessageOK = true
+
+				break
+			}
+		}
+	}
+
+	if assert.True(t, exceptionMessageOK) {
+		assert.Equal(t, assert.AnError.Error(), exceptionMessage)
+	}
+
+	var exceptionTypeOK bool
+
+	for _, a := range logEv.Attributes {
+		if string(a.Key) == "exception.type" {
+			_, ok := a.Value.AsInterface().(string)
+			exceptionTypeOK = ok
+
+			break
+		}
+	}
+
+	assert.True(t, exceptionTypeOK, "exception.type should be set")
+
+	var (
+		isError   bool
+		isErrorOK bool
+	)
+
+	for _, a := range logEv.Attributes {
+		if string(a.Key) == "log.is_error" {
+			if v, ok := a.Value.AsInterface().(bool); ok {
+				isError = v
+				isErrorOK = true
+
+				break
+			}
+		}
+	}
+
+	if assert.True(t, isErrorOK) {
+		assert.True(t, isError)
 	}
 }
 
 func Test_NewTraceFromContext_NoActiveSpan_Info_NoSpan(t *testing.T) {
-	rec, cleanup := setupTracer(t)
-	defer cleanup()
+	rec := tracetest.NewSpanRecorder()
+	tp := sdktrace.NewTracerProvider()
+	tp.RegisterSpanProcessor(rec)
+	otel.SetTracerProvider(tp)
+	t.Cleanup(func() {
+		err := tp.Shutdown(context.Background())
+		require.NoError(t, err)
+	})
 
 	out, err := tracer.NewTraceFromContext(context.Background(), "INFO", "hello", nil, slog.String("a", "b"))
 	require.NoError(t, err)
@@ -148,8 +194,14 @@ func Test_NewTraceFromContext_NoActiveSpan_Info_NoSpan(t *testing.T) {
 }
 
 func Test_NewTraceFromContext_NoActiveSpan_Warn_CreatesShortSpan(t *testing.T) {
-	rec, cleanup := setupTracer(t)
-	defer cleanup()
+	rec := tracetest.NewSpanRecorder()
+	tp := sdktrace.NewTracerProvider()
+	tp.RegisterSpanProcessor(rec)
+	otel.SetTracerProvider(tp)
+	t.Cleanup(func() {
+		err := tp.Shutdown(context.Background())
+		require.NoError(t, err)
+	})
 
 	out, err := tracer.NewTraceFromContext(context.Background(), "WARN", "heads-up", nil, slog.Int("x", 1))
 	require.NoError(t, err)
@@ -161,26 +213,96 @@ func Test_NewTraceFromContext_NoActiveSpan_Warn_CreatesShortSpan(t *testing.T) {
 	ros := spans[0]
 
 	attrs := ros.Attributes()
-	if v, ok := findAttr[string](attrs, "log.severity"); assert.True(t, ok) {
-		assert.Equal(t, "WARN", v)
+
+	var (
+		severity   string
+		severityOK bool
+	)
+
+	for _, a := range attrs {
+		if string(a.Key) == "log.severity" {
+			if v, ok := a.Value.AsInterface().(string); ok {
+				severity = v
+				severityOK = true
+
+				break
+			}
+		}
 	}
 
-	if v, ok := findAttr[string](attrs, "log.message"); assert.True(t, ok) {
-		assert.Equal(t, "heads-up", v)
+	if assert.True(t, severityOK) {
+		assert.Equal(t, "WARN", severity)
+	}
+
+	var (
+		message   string
+		messageOK bool
+	)
+
+	for _, a := range attrs {
+		if string(a.Key) == "log.message" {
+			if v, ok := a.Value.AsInterface().(string); ok {
+				message = v
+				messageOK = true
+
+				break
+			}
+		}
+	}
+
+	if assert.True(t, messageOK) {
+		assert.Equal(t, "heads-up", message)
 	}
 
 	// returned fields include correlation ids equal to created span
-	traceID, ok := valueOf[string](out, "traceID")
-	require.True(t, ok)
-	spanID, ok := valueOf[string](out, "spanID")
-	require.True(t, ok)
+	var (
+		traceID   string
+		traceIDOK bool
+	)
+
+	for _, field := range out {
+		if field.Key == "traceID" {
+			if v, ok := field.Value.Any().(string); ok {
+				traceID = v
+				traceIDOK = true
+
+				break
+			}
+		}
+	}
+
+	require.True(t, traceIDOK)
+
+	var (
+		spanID   string
+		spanIDOK bool
+	)
+
+	for _, field := range out {
+		if field.Key == "spanID" {
+			if v, ok := field.Value.Any().(string); ok {
+				spanID = v
+				spanIDOK = true
+
+				break
+			}
+		}
+	}
+
+	require.True(t, spanIDOK)
 	assert.Equal(t, ros.SpanContext().TraceID().String(), traceID)
 	assert.Equal(t, ros.SpanContext().SpanID().String(), spanID)
 }
 
 func Test_NewTraceFromContext_Normalization_IsErrorAndStringErr_OnActiveSpan(t *testing.T) {
-	rec, cleanup := setupTracer(t)
-	defer cleanup()
+	rec := tracetest.NewSpanRecorder()
+	tp := sdktrace.NewTracerProvider()
+	tp.RegisterSpanProcessor(rec)
+	otel.SetTracerProvider(tp)
+	t.Cleanup(func() {
+		err := tp.Shutdown(context.Background())
+		require.NoError(t, err)
+	})
 
 	ctx, root := otel.Tracer("test").Start(context.Background(), "root")
 	_, err := tracer.NewTraceFromContext(
@@ -205,11 +327,43 @@ func Test_NewTraceFromContext_Normalization_IsErrorAndStringErr_OnActiveSpan(t *
 		}
 	}
 
-	if v, ok := findAttr[bool](logEv.Attributes, "log.is_error"); assert.True(t, ok) {
-		assert.True(t, v, "string 'true' should be coerced to bool true")
+	var (
+		isError   bool
+		isErrorOK bool
+	)
+
+	for _, a := range logEv.Attributes {
+		if string(a.Key) == "log.is_error" {
+			if v, ok := a.Value.AsInterface().(bool); ok {
+				isError = v
+				isErrorOK = true
+
+				break
+			}
+		}
 	}
 
-	if v, ok := findAttr[string](logEv.Attributes, "exception.message"); assert.True(t, ok) {
-		assert.Equal(t, "oops", v)
+	if assert.True(t, isErrorOK) {
+		assert.True(t, isError, "string 'true' should be coerced to bool true")
+	}
+
+	var (
+		exceptionMessage   string
+		exceptionMessageOK bool
+	)
+
+	for _, a := range logEv.Attributes {
+		if string(a.Key) == "exception.message" {
+			if v, ok := a.Value.AsInterface().(string); ok {
+				exceptionMessage = v
+				exceptionMessageOK = true
+
+				break
+			}
+		}
+	}
+
+	if assert.True(t, exceptionMessageOK) {
+		assert.Equal(t, "oops", exceptionMessage)
 	}
 }

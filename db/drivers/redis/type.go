@@ -2,6 +2,7 @@ package redis
 
 import (
 	"github.com/redis/rueidis"
+	"github.com/shortlink-org/go-sdk/config"
 	"go.opentelemetry.io/otel/sdk/metric"
 	"go.opentelemetry.io/otel/trace"
 )
@@ -21,4 +22,5 @@ type Store struct {
 	metrics *metric.MeterProvider
 
 	config Config
+	cfg    *config.Config
 }

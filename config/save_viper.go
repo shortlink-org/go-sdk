@@ -25,6 +25,22 @@ func (c *Config) Set(key string, value any) {
 	viper.Set(key, value)
 }
 
+// AutomaticEnv enables automatic environment variable bindings.
+func (c *Config) AutomaticEnv() {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	viper.AutomaticEnv()
+}
+
+// Reset clears all configuration values.
+func (c *Config) Reset() {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	viper.Reset()
+}
+
 // ----------------- Getters (read-locked) ------------------
 
 // GetString returns the value associated with the key as a string.
@@ -57,6 +73,14 @@ func (c *Config) GetInt64(key string) int64 {
 	defer c.mu.RUnlock()
 
 	return viper.GetInt64(key)
+}
+
+// GetUint64 returns the value associated with the key as a uint64.
+func (c *Config) GetUint64(key string) uint64 {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+
+	return viper.GetUint64(key)
 }
 
 // GetFloat64 returns the value associated with the key as a float64.

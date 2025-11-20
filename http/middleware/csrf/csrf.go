@@ -7,17 +7,17 @@ import (
 	"os"
 	"strings"
 
+	"github.com/shortlink-org/go-sdk/config"
 	"github.com/shortlink-org/go-sdk/logger"
-	"github.com/spf13/viper"
 )
 
 // Middleware creates a CSRF protection middleware using Go's built-in CrossOriginProtection
-func Middleware(loggerInstance logger.Logger) func(http.Handler) http.Handler {
+func Middleware(loggerInstance logger.Logger, cfg *config.Config) func(http.Handler) http.Handler {
 	// Initialize CrossOriginProtection
 	antiCSRF := http.NewCrossOriginProtection()
 
 	// Configure trusted origins from environment variables
-	configureTrustedOrigins(antiCSRF, loggerInstance)
+	configureTrustedOrigins(antiCSRF, loggerInstance, cfg)
 
 	// Return a middleware function that wraps the handler with CSRF protection
 	return func(next http.Handler) http.Handler {
@@ -26,18 +26,18 @@ func Middleware(loggerInstance logger.Logger) func(http.Handler) http.Handler {
 }
 
 // configureTrustedOrigins sets up trusted origins from environment variables
-func configureTrustedOrigins(antiCSRF *http.CrossOriginProtection, loggerInstance logger.Logger) {
+func configureTrustedOrigins(antiCSRF *http.CrossOriginProtection, loggerInstance logger.Logger, cfg *config.Config) {
 	// Set default environment variable names
-	viper.SetDefault("CSRF_TRUSTED_ORIGINS_ENV", "CSRF_TRUSTED_ORIGINS")
-	viper.SetDefault("CSRF_TRUSTED_ORIGINS", "")
+	cfg.SetDefault("CSRF_TRUSTED_ORIGINS_ENV", "CSRF_TRUSTED_ORIGINS")
+	cfg.SetDefault("CSRF_TRUSTED_ORIGINS", "")
 
 	// Get trusted origins from environment variable
-	envVarName := viper.GetString("CSRF_TRUSTED_ORIGINS_ENV")
+	envVarName := cfg.GetString("CSRF_TRUSTED_ORIGINS_ENV")
 	trustedOrigins := os.Getenv(envVarName)
 
 	// If not found in the direct env var, try viper config
 	if trustedOrigins == "" {
-		trustedOrigins = viper.GetString("CSRF_TRUSTED_ORIGINS")
+		trustedOrigins = cfg.GetString("CSRF_TRUSTED_ORIGINS")
 	}
 
 	if trustedOrigins != "" {

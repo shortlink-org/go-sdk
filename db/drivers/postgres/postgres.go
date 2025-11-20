@@ -8,7 +8,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	_ "github.com/jackc/pgx/v5/stdlib"
 	_ "github.com/lib/pq" // need for init PostgreSQL interface
-	"github.com/spf13/viper"
+	"github.com/shortlink-org/go-sdk/config"
 	"go.opentelemetry.io/otel/sdk/metric"
 	"go.opentelemetry.io/otel/trace"
 
@@ -16,12 +16,13 @@ import (
 )
 
 // New return new instance of Store
-func New(tracer trace.TracerProvider, metrics *metric.MeterProvider) *Store {
+func New(tracer trace.TracerProvider, metrics *metric.MeterProvider, cfg *config.Config) *Store {
 	return &Store{
 		tracer: Tracer{
 			TracerProvider: tracer,
 		},
 		metrics: metrics,
+		cfg:     cfg,
 	}
 }
 
@@ -30,7 +31,7 @@ func (s *Store) Init(ctx context.Context) error {
 	var err error
 
 	// Set configuration
-	s.config, err = getConfig(&s.tracer)
+	s.config, err = getConfig(&s.tracer, s.cfg)
 	if err != nil {
 		return &StoreError{
 			Op:      "init",
@@ -73,15 +74,14 @@ func (s *Store) GetConn() any {
 }
 
 // setConfig - set configuration
-func getConfig(tracer *Tracer) (*Config, error) {
+func getConfig(tracer *Tracer, cfg *config.Config) (*Config, error) {
 	dbinfo := fmt.Sprintf("postgres://%s:%s@localhost:5432/%s?sslmode=disable", "postgres", "shortlink", "shortlink")
 
-	viper.AutomaticEnv()
-	viper.SetDefault("STORE_POSTGRES_URI", dbinfo)                  // Postgres URI
-	viper.SetDefault("STORE_MODE_WRITE", options.MODE_SINGLE_WRITE) // mode write to db
+	cfg.SetDefault("STORE_POSTGRES_URI", dbinfo)                  // Postgres URI
+	cfg.SetDefault("STORE_MODE_WRITE", options.MODE_SINGLE_WRITE) // mode write to db
 
 	// Create pool config
-	cnfPool, err := pgxpool.ParseConfig(viper.GetString("STORE_POSTGRES_URI"))
+	cnfPool, err := pgxpool.ParseConfig(cfg.GetString("STORE_POSTGRES_URI"))
 	if err != nil {
 		return nil, &StoreError{
 			Op:      "ParseConfig",
@@ -102,6 +102,6 @@ func getConfig(tracer *Tracer) (*Config, error) {
 
 	return &Config{
 		config: cnfPool,
-		mode:   viper.GetInt("STORE_MODE_WRITE"),
+		mode:   cfg.GetInt("STORE_MODE_WRITE"),
 	}, nil
 }

@@ -3,7 +3,7 @@ package ram
 import (
 	"context"
 
-	"github.com/spf13/viper"
+	"github.com/shortlink-org/go-sdk/config"
 
 	"github.com/shortlink-org/go-sdk/db/options"
 )
@@ -16,6 +16,12 @@ type Config struct {
 // Store implementation of db interface
 type Store struct {
 	config Config
+	cfg    *config.Config
+}
+
+// New creates an in-memory store configured via cfg.
+func New(cfg *config.Config) *Store {
+	return &Store{cfg: cfg}
 }
 
 // Init - initialize
@@ -39,10 +45,9 @@ func (*Store) GetConn() any {
 
 // setConfig - set configuration
 func (s *Store) setConfig() {
-	viper.AutomaticEnv()
-	viper.SetDefault("STORE_MODE_WRITE", options.MODE_SINGLE_WRITE) // mode writes to db. Select: 0 (MODE_SINGLE_WRITE), 1 (MODE_BATCH_WRITE)
+	s.cfg.SetDefault("STORE_MODE_WRITE", options.MODE_SINGLE_WRITE) // mode writes to db. Select: 0 (MODE_SINGLE_WRITE), 1 (MODE_BATCH_WRITE)
 
 	s.config = Config{
-		mode: viper.GetInt("STORE_MODE_WRITE"),
+		mode: s.cfg.GetInt("STORE_MODE_WRITE"),
 	}
 }
