@@ -19,205 +19,205 @@ linters:
     - testpackage      # too restrictive for sdk code
     - gomoddirectives  # too noisy
 
-  exclusions:
-    paths:
-      - "ops"                    # Ops manifests, etc.
-      - ".*mocks.+"              # Generated mocks
-      - "wire_gen.go"            # Wire‑generated
+exclusions:
+  paths:
+    - "ops"                    # Ops manifests, etc.
+    - ".*mocks.+"              # Generated mocks
+    - "wire_gen.go"            # Wire‑generated
+  rules:
+    - path: "(.+)_test.go"
+      linters:
+        - wrapcheck
+        - varnamelen
+        - nilnil
+        - gochecknoinits
+        - err113
+  generated: strict              # Skip all generated files across linters/formatters
+
+# Per‑linter tuning ---------------------------------------------------------
+linters-settings:
+  wsl_v5:
+    allow-first-in-block: true
+    allow-whole-block: false
+    branch-max-lines: 2
+
+  cyclop:
+    max-complexity: 25
+
+  errcheck:
+    check-type-assertions: true
+    check-blank: true
+    disable-default-exclusions: false
+
+  errchkjson:
+    check-error-free-encoding: true
+    report-no-exported: true
+
+  exhaustive:
+    check: [switch, map]
+    default-signifies-exhaustive: true
+    package-scope-only: true
+    explicit-exhaustive-switch: true
+    explicit-exhaustive-map: true
+    default-case-required: true
+
+  funlen:
+    lines: 120
+    statements: 60
+
+  gocritic:
+    enable-all: true
+    disabled-checks: [unnamedResult]
+
+  godot:
+    scope: toplevel
+    exclude: ["^fixme:", "^todo:"]
+    period: false
+    capital: true
+
+  mnd:
+    checks: [argument, case, condition, operation, return, assign]
+    ignored-numbers: ["0666", "0755", "42", "3", "5", "100", "1000"]
+
+  gosec:
+    config:
+      G306: "0600"
+      G101:
+        pattern: "(?i)example"
+        ignore_entropy: false
+        entropy_threshold: "80.0"
+        per_char_threshold: "3.0"
+        truncate: "32"
+
+  govet:
+    enable-all: true
+    disable: [fieldalignment]
+
+  iface:
+    enable: [identical, unused, opaque]
+
+  lll:
+    line-length: 200
+
+  loggercheck:
+    slog: true
+    zap: false
+
+  maintidx:
+    under: 30
+
+  misspell:
+    locale: US
+
+  nestif:
+    min-complexity: 30
+
+  nlreturn:
+    block-size: 2
+
+  nolintlint:
+    allow-unused: true
+    require-explanation: true
+    require-specific: true
+
+  nonamedreturns:
+    report-error-in-defer: true
+
+  paralleltest:
+    ignore-missing: true
+    ignore-missing-subtests: true
+
+  perfsprint:
+    err-error: true
+
+  prealloc:
+    for-loops: true
+
+  promlinter:
+    strict: true
+
+  # ▶️ Revive — full ruleset (best‑practice Aug 2025) ----------------------
+  revive:
+    max-open-files: 2048
+    directives:
+      - name: specify-disable-reason
+        severity: error
+    # Only the rules listed below are active; everything else is off by default.
     rules:
-      - path: "(.+)_test.go"
-        linters:
-          - wrapcheck
-          - varnamelen
-          - nilnil
-          - gochecknoinits
-          - err113
-    generated: strict              # Skip all generated files across linters/formatters
+      - name: add-constant
+        severity: warning
+        arguments:
+          - maxLitCount: "15"
+            allowStrs: '"",":",": ",";",")",","'
+            allowInts: "0,1,2,3,5,10,100,1000,10000"
+            allowFloats: "0.0,0.,1.0,1.,2.0,2."
+      - name: line-length-limit
+        severity: warning
+        arguments: [160]
+      - name: cyclomatic
+        severity: warning
+        arguments: [30]
+      - name: cognitive-complexity
+        severity: warning
+        arguments: [40]
+      - name: import-alias-naming
+        severity: warning
+        arguments: ["^[a-zA-Z][a-zA-Z0-9_]{0,}$"]
+      - name: argument-limit
+        severity: warning
+        arguments: [4]
+      - name: function-length
+        severity: warning
+        arguments: [75, 0]
+      - name: enforce-switch-style   # new in revive v1.11
+        severity: warning           # requires a default as last case
+      # Disabled / noisy checks
+      - name: var-naming
+        disabled: true
+      - name: blank-imports
+        disabled: true
+      - name: unexported-naming
+        disabled: true
+      - name: increment-decrement
+        disabled: true
+      - name: empty-block
+        disabled: true
+      - name: confusing-naming
+        disabled: true
 
-  # Per‑linter tuning ---------------------------------------------------------
-  settings:
+  testifylint:
+    enable-all: true
 
-    wsl_v5:
-      allow-first-in-block: true
-      allow-whole-block: false
-      branch-max-lines: 2
+  usestdlibvars:
+    time-month: true
+    time-layout: true
+    crypto-hash: true
+    default-rpc-path: true
 
-    cyclop:
-      max-complexity: 25
+  varnamelen:
+    max-distance: 6
+    check-receiver: false
+    check-return: true
+    check-type-param: true
+    ignore-names: [err, wg, wp, rl, T, i, in]
 
-    errcheck:
-      check-type-assertions: true
-      check-blank: true
-      disable-default-exclusions: false
+  fatcontext:
+    check-struct-pointers: true
 
-    errchkjson:
-      check-error-free-encoding: true
-      report-no-exported: true
-
-    exhaustive:
-      check: [switch, map]
-      default-signifies-exhaustive: true
-      package-scope-only: true
-      explicit-exhaustive-switch: true
-      explicit-exhaustive-map: true
-      default-case-required: true
-
-    funlen:
-      lines: 120
-      statements: 60
-
-    gocritic:
-      enable-all: true
-      disabled-checks: [unnamedResult]
-
-    godot:
-      scope: toplevel
-      exclude: ["^fixme:", "^todo:"]
-      period: false
-      capital: true
-
-    mnd:
-      checks: [argument, case, condition, operation, return, assign]
-      ignored-numbers: ["0666", "0755", "42", "3", "5", "100", "1000"]
-
-    gosec:
-      config:
-        G306: "0600"
-        G101:
-          pattern: "(?i)example"
-          ignore_entropy: false
-          entropy_threshold: "80.0"
-          per_char_threshold: "3.0"
-          truncate: "32"
-
-    govet:
-      enable-all: true
-      disable: [fieldalignment]
-
-    iface:
-      enable: [identical, unused, opaque]
-
-    lll:
-      line-length: 200
-
-    loggercheck:
-      slog: true
-      zap: false
-
-    maintidx:
-      under: 30
-
-    misspell:
-      locale: US
-
-    nestif:
-      min-complexity: 30
-
-    nlreturn:
-      block-size: 2
-
-    nolintlint:
-      allow-unused: true
-      require-explanation: true
-      require-specific: true
-
-    nonamedreturns:
-      report-error-in-defer: true
-
-    paralleltest:
-      ignore-missing: true
-      ignore-missing-subtests: true
-
-    perfsprint:
-      err-error: true
-
-    prealloc:
-      for-loops: true
-
-    promlinter:
-      strict: true
-
-    # ▶️ Revive — full ruleset (best‑practice Aug 2025) ----------------------
-    revive:
-      max-open-files: 2048
-      directives:
-        - name: specify-disable-reason
-          severity: error
-      # Only the rules listed below are active; everything else is off by default.
-      rules:
-        - name: add-constant
-          severity: warning
-          arguments:
-            - maxLitCount: "15"
-              allowStrs: '"",":",": ",";",")",","'
-              allowInts: "0,1,2,3,5,10,100,1000,10000"
-              allowFloats: "0.0,0.,1.0,1.,2.0,2."
-        - name: line-length-limit
-          severity: warning
-          arguments: [160]
-        - name: cyclomatic
-          severity: warning
-          arguments: [30]
-        - name: cognitive-complexity
-          severity: warning
-          arguments: [40]
-        - name: import-alias-naming
-          severity: warning
-          arguments: ["^[a-zA-Z][a-zA-Z0-9_]{0,}$"]
-        - name: argument-limit
-          severity: warning
-          arguments: [4]
-        - name: function-length
-          severity: warning
-          arguments: [75, 0]
-        - name: enforce-switch-style   # new in revive v1.11
-          severity: warning           # requires a default as last case
-        # Disabled / noisy checks
-        - name: var-naming
-          disabled: true
-        - name: blank-imports
-          disabled: true
-        - name: unexported-naming
-          disabled: true
-        - name: increment-decrement
-          disabled: true
-        - name: empty-block
-          disabled: true
-        - name: confusing-naming
-          disabled: true
-
-    testifylint:
-      enable-all: true
-
-    usestdlibvars:
-      time-month: true
-      time-layout: true
-      crypto-hash: true
-      default-rpc-path: true
-
-    varnamelen:
-      max-distance: 6
-      check-receiver: false
-      check-return: true
-      check-type-param: true
-      ignore-names: [err, wg, wp, rl, T, i, in]
-
-    fatcontext:
-      check-struct-pointers: true
-
-    whitespace:
-      multi-if: true
-      multi-func: true
+  whitespace:
+    multi-if: true
+    multi-func: true
 
 formatters:
   enable: [gci, gofmt, gofumpt, goimports]
   exclusions:
     generated: strict
-  settings:
-    gci:
-      sections: [standard, default, prefix(github.com/shortlink-org/go-sdk), prefix(github.com/shortlink-org/shortlink)]
-      custom-order: true
-    gofumpt:
-      extra-rules: true
-    goimports:
-      local-prefixes: github.com/shortlink-org/go-sdk
+
+formatters-settings:
+  gci:
+    sections: [standard, default, prefix(github.com/shortlink-org/go-sdk), prefix(github.com/shortlink-org/shortlink)]
+    custom-order: true
+  gofumpt:
+    extra-rules: true
+  goimports:
+    local-prefixes: github.com/shortlink-org/go-sdk
