@@ -7,13 +7,12 @@ import (
 	"time"
 
 	grpc_middleware "github.com/grpc-ecosystem/go-grpc-middleware/v2"
+	"github.com/shortlink-org/go-sdk/logger"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/proto"
-
-	"github.com/shortlink-org/go-sdk/logger"
 )
 
 // UnaryServerInterceptor returns a new unary server interceptors that adds zap.Logger to the context.
@@ -27,6 +26,7 @@ func UnaryServerInterceptor(log logger.Logger) grpc.UnaryServerInterceptor {
 			if msg, ok := req.(proto.Message); ok {
 				span.SetAttributes(attribute.String("rpc.request", string(proto.MessageName(msg))))
 			}
+
 			if msg, ok := resp.(proto.Message); ok {
 				span.SetAttributes(attribute.String("rpc.response", string(proto.MessageName(msg))))
 			}

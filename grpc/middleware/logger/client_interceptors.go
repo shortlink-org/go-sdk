@@ -1,3 +1,4 @@
+// Package grpc_logger provides client-side logging interceptors for gRPC.
 package grpc_logger
 
 import (
@@ -6,18 +7,25 @@ import (
 	"path"
 	"time"
 
+	"github.com/shortlink-org/go-sdk/logger"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/proto"
-
-	"github.com/shortlink-org/go-sdk/logger"
 )
 
-// UnaryClientInterceptor returns a new unary client interceptor that optionally logs the execution of external gRPC calls.
+// UnaryClientInterceptor returns a new unary client interceptor that optionally
+// logs the execution of external gRPC calls.
 func UnaryClientInterceptor(log logger.Logger) grpc.UnaryClientInterceptor {
-	return func(ctx context.Context, method string, req, reply any, cc *grpc.ClientConn, invoker grpc.UnaryInvoker, opts ...grpc.CallOption) error {
+	return func(
+		ctx context.Context,
+		method string,
+		req, reply any,
+		cc *grpc.ClientConn,
+		invoker grpc.UnaryInvoker,
+		opts ...grpc.CallOption,
+	) error {
 		startTime := time.Now()
 		err := invoker(ctx, method, req, reply, cc, opts...)
 		duration := time.Since(startTime)
@@ -26,6 +34,7 @@ func UnaryClientInterceptor(log logger.Logger) grpc.UnaryClientInterceptor {
 			if msg, ok := req.(proto.Message); ok {
 				span.SetAttributes(attribute.String("rpc.request", string(proto.MessageName(msg))))
 			}
+
 			if msg, ok := reply.(proto.Message); ok {
 				span.SetAttributes(attribute.String("rpc.response", string(proto.MessageName(msg))))
 			}
@@ -46,7 +55,8 @@ func UnaryClientInterceptor(log logger.Logger) grpc.UnaryClientInterceptor {
 	}
 }
 
-// StreamClientInterceptor returns a new streaming client interceptor that optionally logs the execution of external gRPC calls.
+// StreamClientInterceptor returns a new streaming client interceptor that optionally
+// logs the execution of external gRPC calls.
 func StreamClientInterceptor(log logger.Logger) grpc.StreamClientInterceptor {
 	return func(
 		ctx context.Context,

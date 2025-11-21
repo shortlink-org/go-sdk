@@ -1,3 +1,6 @@
+// Package pprof_interceptor provides gRPC interceptors for pprof labels.
+//
+//nolint:revive // package name uses underscore for consistency with project structure
 package pprof_interceptor
 
 import (
@@ -20,9 +23,10 @@ func UnaryServerInterceptor() grpc.UnaryServerInterceptor {
 	}
 }
 
-// pprofWrappedServerStream overrides the Context() method to return the labeled ctx
+// pprofWrappedServerStream overrides the Context() method to return the labeled ctx.
 type pprofWrappedServerStream struct {
 	grpc.ServerStream
+
 	ctxFunc func() context.Context
 }
 

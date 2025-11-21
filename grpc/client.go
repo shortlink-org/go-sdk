@@ -1,3 +1,5 @@
+// Package grpc provides gRPC client and server implementations with
+// middleware support for logging, tracing, metrics, and session management.
 package grpc
 
 import (
@@ -12,6 +14,7 @@ import (
 	"google.golang.org/grpc/credentials/insecure"
 )
 
+// Client represents a gRPC client configuration.
 type Client struct {
 	interceptorUnaryClientList  []grpc.UnaryClientInterceptor
 	interceptorStreamClientList []grpc.StreamClientInterceptor
@@ -22,12 +25,18 @@ type Client struct {
 	cfg  *config.Config
 }
 
+// GetURI returns the connection URI in the format "host:port".
 func (c *Client) GetURI() string {
 	return fmt.Sprintf("%s:%d", c.host, c.port)
 }
 
-// InitClient - set up a connection to the server.
-func InitClient(_ context.Context, log logger.Logger, cfg *config.Config, options ...Option) (*grpc.ClientConn, func(), error) {
+// InitClient sets up a connection to the gRPC server.
+func InitClient(
+	_ context.Context,
+	log logger.Logger,
+	cfg *config.Config,
+	options ...Option,
+) (*grpc.ClientConn, func(), error) {
 	config, err := SetClientConfig(cfg, options...)
 	if err != nil {
 		return nil, nil, err
@@ -54,7 +63,7 @@ func InitClient(_ context.Context, log logger.Logger, cfg *config.Config, option
 	return conn, cleanup, nil
 }
 
-// SetClientConfig - set configuration
+// SetClientConfig - set configuration.
 func SetClientConfig(cfg *config.Config, options ...Option) (*Client, error) {
 	cfg.SetDefault("GRPC_CLIENT_PORT", "50051") // gRPC port
 	grpcPort := cfg.GetInt("GRPC_CLIENT_PORT")
@@ -70,7 +79,7 @@ func SetClientConfig(cfg *config.Config, options ...Option) (*Client, error) {
 
 	config.apply(options...)
 
-	// Initialize your gRPC server's interceptor.
+	// Initialize your gRPC client's interceptor.
 	config.optionsNewClient = append(
 		config.optionsNewClient,
 		grpc.WithChainUnaryInterceptor(config.interceptorUnaryClientList...),
@@ -91,7 +100,7 @@ func (c *Client) GetOptions() []grpc.DialOption {
 	return c.optionsNewClient
 }
 
-// withTLS - setup TLS
+// withTLS - setup TLS.
 func (c *Client) withTLS() error {
 	c.cfg.SetDefault("GRPC_CLIENT_TLS_ENABLED", false) // gRPC TLS
 	isEnableTLS := c.cfg.GetBool("GRPC_CLIENT_TLS_ENABLED")

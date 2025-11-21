@@ -27,6 +27,7 @@ import (
 	"google.golang.org/grpc/status"
 )
 
+// Server represents a configured gRPC server instance.
 type Server struct {
 	Run      func()
 	Server   *grpc.Server
@@ -46,52 +47,54 @@ type server struct {
 	cfg           *config.Config
 }
 
-// InitServer - initialize gRPC server
+// InitServer - initialize gRPC server.
 func InitServer(
 	ctx context.Context,
 	log logger.Logger,
 	tracer trace.TracerProvider,
 	prom *prometheus.Registry,
-	fr *flight_trace.Recorder,
+	flightRecorder *flight_trace.Recorder,
 	cfg *config.Config,
 ) (*Server, error) {
-	cfg.SetDefault("GRPC_SERVER_ENABLED", true) // gRPC grpServer enable
+	cfg.SetDefault("GRPC_SERVER_ENABLED", true) // gRPC server enable
 
 	if !cfg.GetBool("GRPC_SERVER_ENABLED") {
 		//nolint:nilnil // it's correct logic
 		return nil, nil
 	}
 
-	config, err := setServerConfig(log, tracer, prom, fr, cfg) //nolint:contextcheck // false positive
+	config, err := setServerConfig(log, tracer, prom, flightRecorder, cfg) //nolint:contextcheck // false positive
 	if err != nil {
 		return nil, err
 	}
 
 	endpoint := fmt.Sprintf("%s:%d", config.host, config.port)
 
-	lis, err := net.Listen("tcp", endpoint)
+	var lc net.ListenConfig
+
+	lis, err := lc.Listen(ctx, "tcp", endpoint)
 	if err != nil {
 		return nil, fmt.Errorf("failed to listen: %w", err)
 	}
 
-	// Initialize the gRPC grpServer.
-	rpc := grpc.NewServer(config.optionsNewServer...)
+	// Initialize the gRPC server.
+	grpcServer := grpc.NewServer(config.optionsNewServer...)
 
-	grpServer := &Server{
-		Server: rpc,
+	grpcServerInstance := &Server{
+		Server: grpcServer,
 		Run: func() {
-			// Register reflection service on gRPC grpServer.
-			reflection.Register(rpc)
+			// Register reflection service on gRPC server.
+			reflection.Register(grpcServer)
 
 			// After all your registrations, make sure all of the Prometheus metrics are initialized.
-			config.serverMetrics.InitializeMetrics(rpc)
+			config.serverMetrics.InitializeMetrics(grpcServer)
 
-			log.Info("Run gRPC grpServer",
+			log.Info("Run gRPC server",
 				slog.Int("port", config.port),
 				slog.String("host", config.host),
 			)
 
-			err = rpc.Serve(lis)
+			err = grpcServer.Serve(lis)
 			if err != nil {
 				log.Error(err.Error())
 			}
@@ -103,34 +106,30 @@ func InitServer(
 	go func() {
 		<-ctx.Done()
 
-		log.Info("Shutdown gRPC grpServer")
-		rpc.GracefulStop()
+		log.Info("Shutdown gRPC server")
+		grpcServer.GracefulStop()
 	}()
 
-	if err != nil {
-		return nil, fmt.Errorf("failed to serve: %w", err)
-	}
-
-	return grpServer, nil
+	return grpcServerInstance, nil
 }
 
-// setConfig - set configuration
+// setServerConfig - set configuration.
 func setServerConfig(
 	log logger.Logger,
 	tracer trace.TracerProvider,
 	monitor *prometheus.Registry,
-	fr *flight_trace.Recorder,
+	flightRecorder *flight_trace.Recorder,
 	cfg *config.Config,
 ) (*server, error) {
 	cfg.SetDefault("GRPC_SERVER_PORT", "50051") // gRPC port
-	grpc_port := cfg.GetInt("GRPC_SERVER_PORT")
+	grpcPort := cfg.GetInt("GRPC_SERVER_PORT")
 
 	cfg.SetDefault("GRPC_SERVER_HOST", "0.0.0.0") // gRPC host
-	grpc_host := cfg.GetString("GRPC_SERVER_HOST")
+	grpcHost := cfg.GetString("GRPC_SERVER_HOST")
 
 	config := &server{
-		port: grpc_port,
-		host: grpc_host,
+		port: grpcPort,
+		host: grpcHost,
 
 		log: log,
 		cfg: cfg,
@@ -138,9 +137,9 @@ func setServerConfig(
 
 	config.WithLogger(log)
 	config.WithTracer(tracer)
-	config.withSession()
-	config.withPprofLabels()
-	config.WithFlightTrace(fr, log)
+	config.WithSession()
+	config.WithPprofLabels()
+	config.WithFlightTrace(flightRecorder, log)
 
 	if monitor != nil {
 		config.WithMetrics(monitor)
@@ -173,11 +172,17 @@ func (s *server) WithMetrics(prom *prometheus.Registry) {
 
 	exemplarFromCtx := grpc_prometheus.WithExemplarFromContext(exemplarFromContext)
 
-	s.interceptorUnaryServerList = append(s.interceptorUnaryServerList, s.serverMetrics.UnaryServerInterceptor(exemplarFromCtx))
-	s.interceptorStreamServerList = append(s.interceptorStreamServerList, s.serverMetrics.StreamServerInterceptor(exemplarFromCtx))
+	s.interceptorUnaryServerList = append(
+		s.interceptorUnaryServerList,
+		s.serverMetrics.UnaryServerInterceptor(exemplarFromCtx),
+	)
+	s.interceptorStreamServerList = append(
+		s.interceptorStreamServerList,
+		s.serverMetrics.StreamServerInterceptor(exemplarFromCtx),
+	)
 }
 
-// WithTracer - setup tracing
+// WithTracer - setup tracing.
 func (s *server) WithTracer(tracer trace.TracerProvider) {
 	if tracer == nil {
 		return
@@ -188,37 +193,40 @@ func (s *server) WithTracer(tracer trace.TracerProvider) {
 	)
 }
 
-// WithRecovery - setup recovery
+// WithRecovery - setup recovery.
 func (s *server) WithRecovery(prom *prometheus.Registry) {
 	// Setup metric for panic recoveries.
 	panicsTotal := promauto.With(prom).NewCounter(prometheus.CounterOpts{
 		Name: "grpc_req_panics_recovered_total",
 		Help: "Total number of gRPC requests recovered from internal panic.",
 	})
-	grpcPanicRecoveryHandler := func(in any) error {
+	grpcPanicRecoveryHandler := func(panicValue any) error {
 		panicsTotal.Inc()
 		s.log.Error("recovered from panic",
-			slog.String("panic", fmt.Sprintf("%v", in)),
+			slog.String("panic", fmt.Sprintf("%v", panicValue)),
 			slog.String("stack", string(debug.Stack())),
 		)
 
-		return status.Errorf(codes.Internal, "%s", in)
+		return status.Errorf(codes.Internal, "%s", panicValue)
 	}
 
 	recoveryHandler := grpc_recovery.WithRecoveryHandler(grpcPanicRecoveryHandler)
 
-	// Create a server. Recovery handlers should typically be last in the chain so that other middleware
+	// Recovery handlers should typically be last in the chain so that other middleware
 	// (e.g., logging) can operate in the recovered state instead of being directly affected by any panic
-	s.interceptorUnaryServerList = append(s.interceptorUnaryServerList, grpc_recovery.UnaryServerInterceptor(recoveryHandler))
-
-	// Create a server. Recovery handlers should typically be last in the chain so that other middleware
-	// (e.g., logging) can operate in the recovered state instead of being directly affected by any panic
-	s.interceptorStreamServerList = append(s.interceptorStreamServerList, grpc_recovery.StreamServerInterceptor(recoveryHandler))
+	s.interceptorUnaryServerList = append(
+		s.interceptorUnaryServerList,
+		grpc_recovery.UnaryServerInterceptor(recoveryHandler),
+	)
+	s.interceptorStreamServerList = append(
+		s.interceptorStreamServerList,
+		grpc_recovery.StreamServerInterceptor(recoveryHandler),
+	)
 }
 
-// WithLogger - setup logger
+// WithLogger - setup logger.
 func (s *server) WithLogger(log logger.Logger) {
-	s.cfg.SetDefault("GRPC_SERVER_LOGGER_ENABLED", true) // Enable logging for gRPC-Client
+	s.cfg.SetDefault("GRPC_SERVER_LOGGER_ENABLED", true) // Enable logging for gRPC server
 	isEnableLogger := s.cfg.GetBool("GRPC_SERVER_LOGGER_ENABLED")
 
 	if isEnableLogger {
@@ -227,7 +235,7 @@ func (s *server) WithLogger(log logger.Logger) {
 	}
 }
 
-// WithTLS - setup TLS
+// WithTLS - setup TLS.
 func (s *server) WithTLS() error {
 	s.cfg.SetDefault("GRPC_SERVER_TLS_ENABLED", false) // gRPC tls
 	isEnableTLS := s.cfg.GetBool("GRPC_SERVER_TLS_ENABLED")
@@ -250,20 +258,32 @@ func (s *server) WithTLS() error {
 	return nil
 }
 
-// withSession - setup session
-func (s *server) withSession() {
-	s.interceptorUnaryServerList = append(s.interceptorUnaryServerList, session_interceptor.SessionUnaryServerInterceptor())
-	s.interceptorStreamServerList = append(s.interceptorStreamServerList, session_interceptor.SessionStreamServerInterceptor())
+// WithSession - setup session.
+func (s *server) WithSession() {
+	s.interceptorUnaryServerList = append(
+		s.interceptorUnaryServerList,
+		session_interceptor.SessionUnaryServerInterceptor(),
+	)
+	s.interceptorStreamServerList = append(
+		s.interceptorStreamServerList,
+		session_interceptor.SessionStreamServerInterceptor(),
+	)
 }
 
-// withPprofLabels - setup pprof labels
-func (s *server) withPprofLabels() {
+// WithPprofLabels - setup pprof labels.
+func (s *server) WithPprofLabels() {
 	s.interceptorUnaryServerList = append(s.interceptorUnaryServerList, pprof_interceptor.UnaryServerInterceptor())
 	s.interceptorStreamServerList = append(s.interceptorStreamServerList, pprof_interceptor.StreamServerInterceptor())
 }
 
-// WithFlightTrace - setup flight trace
-func (s *server) WithFlightTrace(fr *flight_trace.Recorder, log logger.Logger) {
-	s.interceptorUnaryServerList = append(s.interceptorUnaryServerList, flight_trace_interceptor.UnaryServerInterceptor(fr, log, s.cfg))
-	s.interceptorStreamServerList = append(s.interceptorStreamServerList, flight_trace_interceptor.StreamServerInterceptor(fr, log, s.cfg))
+// WithFlightTrace - setup flight trace.
+func (s *server) WithFlightTrace(flightRecorder *flight_trace.Recorder, log logger.Logger) {
+	s.interceptorUnaryServerList = append(
+		s.interceptorUnaryServerList,
+		flight_trace_interceptor.UnaryServerInterceptor(flightRecorder, log, s.cfg),
+	)
+	s.interceptorStreamServerList = append(
+		s.interceptorStreamServerList,
+		flight_trace_interceptor.StreamServerInterceptor(flightRecorder, log, s.cfg),
+	)
 }

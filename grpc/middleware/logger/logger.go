@@ -1,18 +1,17 @@
+//nolint:revive // package name uses underscore for consistency with project structure
 package grpc_logger
 
 import (
 	"context"
 	"log/slog"
 
+	"github.com/shortlink-org/go-sdk/logger"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
-
-	"github.com/shortlink-org/go-sdk/logger"
 )
 
 func printLog(ctx context.Context, log logger.Logger, err error, fields ...slog.Attr) {
 	switch status.Code(err) {
-	//nolint:lll // TODO: refactor
 	case
 		codes.OK,
 		codes.Canceled,
