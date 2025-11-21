@@ -11,13 +11,14 @@ import (
 
 	http_server "github.com/shortlink-org/go-sdk/http/server"
 	"github.com/shortlink-org/go-sdk/logger"
+	"go.opentelemetry.io/otel/trace"
 
 	"github.com/shortlink-org/go-sdk/config"
 )
 
 type PprofEndpoint *http.ServeMux
 
-func New(ctx context.Context, log logger.Logger, cfg *config.Config) (PprofEndpoint, error) {
+func New(ctx context.Context, log logger.Logger, tracer trace.TracerProvider, cfg *config.Config) (PprofEndpoint, error) {
 	cfg.SetDefault("PROFILING_PORT", 7071)
 	cfg.SetDefault("PROFILING_TIMEOUT", "30s")
 
@@ -44,7 +45,7 @@ func New(ctx context.Context, log logger.Logger, cfg *config.Config) (PprofEndpo
 			Timeout: cfg.GetDuration("PROFILING_TIMEOUT"),
 		}
 
-		server := http_server.New(ctx, mux, serverCfg, nil)
+		server := http_server.New(ctx, mux, serverCfg, tracer, cfg)
 		if err := server.ListenAndServe(); err != nil {
 			log.Error(err.Error())
 		}

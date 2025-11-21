@@ -1,0 +1,32 @@
+go 1.25.4
+
+use (
+	./auth
+	./batch
+	./cache
+	./concurrency
+	./config
+	./context
+	./db
+	./eventsourcing
+	./flags
+	./flight_trace
+	./freeport
+	./fsm
+	./golangci-lint
+	./graceful_shutdown
+	./grpc
+	./http
+	./logger
+	./mq
+	./notify
+	./observability
+	./protoc
+	./raft
+	./s3
+	./saga
+	./specification
+	./transactional_outbox
+	./types
+	./uow
+)
