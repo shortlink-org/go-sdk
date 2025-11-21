@@ -3,7 +3,7 @@ module github.com/shortlink-org/go-sdk/auth
 go 1.25.3
 
 require (
-	github.com/authzed/authzed-go v1.6.0
+	github.com/authzed/authzed-go v1.7.0
 	github.com/ory/client-go v1.22.11
 	github.com/shortlink-org/go-sdk/grpc v0.0.0-20251108145352-f59577605d0a
 	github.com/shortlink-org/go-sdk/logger v0.0.0-20251108203914-f363e5ad1155
@@ -13,8 +13,8 @@ require (
 )
 
 require (
-	buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go v1.36.8-20250717185734-6c6e0d3c608e.1 // indirect
-	github.com/Masterminds/semver/v3 v3.3.1 // indirect
+	buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go v1.36.10-20250912141014-52f32327d4b0.1 // indirect
+	github.com/Masterminds/semver/v3 v3.4.0 // indirect
 	github.com/Unleash/unleash-go-sdk/v5 v5.0.3 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/cenkalti/backoff/v4 v4.3.0 // indirect
@@ -45,7 +45,7 @@ require (
 	github.com/prometheus/otlptranslator v0.0.2 // indirect
 	github.com/prometheus/procfs v0.17.0 // indirect
 	github.com/sagikazarmark/locafero v0.11.0 // indirect
-	github.com/samber/lo v1.51.0 // indirect
+	github.com/samber/lo v1.52.0 // indirect
 	github.com/shortlink-org/go-sdk/config v0.0.0
 	github.com/shortlink-org/go-sdk/flight_trace v0.0.0-20251111173054-8c030dab4702 // indirect
 	github.com/shortlink-org/go-sdk/http v0.0.0-20251108145352-f59577605d0a // indirect
