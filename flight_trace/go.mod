@@ -2,7 +2,7 @@ module github.com/shortlink-org/go-sdk/flight_trace
 
 go 1.25.3
 
-require github.com/shortlink-org/go-sdk/config v0.0.0
+require github.com/shortlink-org/go-sdk/config v0.0.0-20211123025425-613501dd5deb
 
 require (
 	github.com/Masterminds/semver/v3 v3.3.1 // indirect

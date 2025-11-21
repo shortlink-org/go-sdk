@@ -9,7 +9,7 @@ require (
 	github.com/prometheus/client_golang v1.23.2
 	github.com/prometheus/client_model v0.6.2
 	github.com/shortlink-org/go-sdk/auth v0.0.0-00010101000000-000000000000
-	github.com/shortlink-org/go-sdk/config v0.0.0-00010101000000-000000000000
+	github.com/shortlink-org/go-sdk/config v0.0.0-20211123025425-613501dd5deb
 	github.com/shortlink-org/go-sdk/flight_trace v0.0.0-20251111173054-8c030dab4702
 	github.com/shortlink-org/go-sdk/logger v0.0.0-20251108203914-f363e5ad1155
 	github.com/stretchr/testify v1.11.1
@@ -20,7 +20,7 @@ require (
 )
 
 require (
-	github.com/Masterminds/semver/v3 v3.3.1 // indirect
+	github.com/Masterminds/semver/v3 v3.4.0 // indirect
 	github.com/Unleash/unleash-go-sdk/v5 v5.0.3 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
