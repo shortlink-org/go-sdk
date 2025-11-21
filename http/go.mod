@@ -11,7 +11,7 @@ require (
 	github.com/shortlink-org/go-sdk/auth v0.0.0-00010101000000-000000000000
 	github.com/shortlink-org/go-sdk/config v0.0.0-20211123025425-613501dd5deb
 	github.com/shortlink-org/go-sdk/flight_trace v0.0.0-20251111173054-8c030dab4702
-	github.com/shortlink-org/go-sdk/logger v0.0.0-20251108203914-f363e5ad1155
+	github.com/shortlink-org/go-sdk/logger 160ea5dd70ad
 	github.com/stretchr/testify v1.11.1
 	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.63.0
 	go.opentelemetry.io/otel v1.38.0
