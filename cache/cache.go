@@ -20,7 +20,7 @@ func New(ctx context.Context, tracer trace.TracerProvider, monitor *metrics.Moni
 	cfg.SetDefault("LOCAL_CACHE_COUNT", 1000)
 	cfg.SetDefault("LOCAL_CACHE_METRICS_ENABLED", true)
 
-	store := redis.New(tracer, monitor.Metrics)
+	store := redis.New(tracer, monitor.Metrics, cfg)
 
 	err := store.Init(ctx)
 	if err != nil {
