@@ -1,0 +1,15 @@
+dir: mocks
+structname: Mock{{.InterfaceName}}
+pkgname: mocks
+filename: "{{.InterfaceName | snakecase }}.go"
+template: testify
+template-data:
+  unroll-variadic: true
+packages:
+  github.com/shortlink-org/go-sdk/logger:
+    interfaces:
+      Logger:
+        config:
+          structname: MockLogger
+          filename: mock_logger.go
+
