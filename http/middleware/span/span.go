@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	"github.com/go-chi/chi/v5/middleware"
+	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/trace"
 )
 
@@ -30,6 +31,24 @@ func (s span) middleware(next http.Handler) http.Handler {
 		}
 
 		next.ServeHTTP(wrappedWriter, request)
+
+		// Set OTEL span status based on HTTP status code
+		span := trace.SpanFromContext(request.Context())
+		if span.IsRecording() {
+			statusCode := wrappedWriter.Status()
+
+			switch {
+			case statusCode >= 200 && statusCode < 400:
+				// 2xx, 3xx → OK/UNSET
+				span.SetStatus(codes.Ok, "")
+			case statusCode >= 400 && statusCode < 500:
+				// 4xx → ERROR with client error message
+				span.SetStatus(codes.Error, http.StatusText(statusCode))
+			case statusCode >= 500:
+				// 5xx → ERROR
+				span.SetStatus(codes.Error, http.StatusText(statusCode))
+			}
+		}
 	}
 
 	return http.HandlerFunc(handlerFunc)
