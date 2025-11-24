@@ -8,22 +8,23 @@ import (
 	"errors"
 
 	ory "github.com/ory/client-go"
-	"github.com/shortlink-org/go-sdk/auth/session"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"
+
+	"github.com/shortlink-org/go-sdk/auth/session"
 )
 
 const userIDKey = "user-id"
 
-var tracer = otel.Tracer("session.interceptor.client")
+var tracerClient = otel.Tracer("session.interceptor.client")
 
 // attachUserMetadata resolves and injects a stable user-id into outgoing gRPC metadata.
 // Priority: metadata → session.identity → context fallback.
 func attachUserMetadata(ctx context.Context) (context.Context, error) {
-	ctx, span := tracer.Start(ctx, "ResolveOutgoingUserID")
+	ctx, span := tracerClient.Start(ctx, "ResolveOutgoingUserID")
 	defer span.End()
 
 	// Load session once to avoid double calls
