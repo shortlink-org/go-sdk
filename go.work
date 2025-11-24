@@ -29,4 +29,5 @@ use (
 	./transactional_outbox
 	./types
 	./uow
+	./watermill
 )
