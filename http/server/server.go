@@ -6,9 +6,9 @@ import (
 	"net"
 	"net/http"
 
-	"github.com/shortlink-org/go-sdk/config"
-	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 	"go.opentelemetry.io/otel/trace"
+
+	"github.com/shortlink-org/go-sdk/config"
 )
 
 func New(ctx context.Context, h http.Handler, serverConfig Config, tracer trace.TracerProvider, cfg *config.Config) *http.Server {
@@ -17,15 +17,9 @@ func New(ctx context.Context, h http.Handler, serverConfig Config, tracer trace.
 	cfg.SetDefault("HTTP_SERVER_IDLE_TIMEOUT", "30s")       // the maximum amount of time to wait for the next request when keep-alive is enabled
 	cfg.SetDefault("HTTP_SERVER_READ_HEADER_TIMEOUT", "2s") // the amount of time allowed to read request headers
 
-	handler := http.TimeoutHandler(h, serverConfig.Timeout, fmt.Sprintf(`{"error": %q}`, TimeoutMessage))
-
-	if tracer != nil {
-		handler = otelhttp.NewHandler(handler, "")
-	}
-
 	server := &http.Server{} //nolint:gosec,exhaustruct // timeouts configured via viper immediately below
 	server.Addr = fmt.Sprintf(":%d", serverConfig.Port)
-	server.Handler = handler
+	server.Handler = http.TimeoutHandler(h, serverConfig.Timeout, fmt.Sprintf(`{"error": %q}`, TimeoutMessage))
 	server.BaseContext = func(_ net.Listener) context.Context { return ctx }
 	server.ReadTimeout = cfg.GetDuration("HTTP_SERVER_READ_TIMEOUT")
 	server.WriteTimeout = serverConfig.Timeout + cfg.GetDuration("HTTP_SERVER_WRITE_TIMEOUT")
