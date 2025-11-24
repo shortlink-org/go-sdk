@@ -6,12 +6,10 @@ import (
 	"net"
 	"net/http"
 
-	"go.opentelemetry.io/otel/trace"
-
 	"github.com/shortlink-org/go-sdk/config"
 )
 
-func New(ctx context.Context, h http.Handler, serverConfig Config, tracer trace.TracerProvider, cfg *config.Config) *http.Server {
+func New(ctx context.Context, h http.Handler, serverConfig Config, cfg *config.Config) *http.Server {
 	cfg.SetDefault("HTTP_SERVER_READ_TIMEOUT", "5s")        // the maximum duration for reading the entire request, including the body
 	cfg.SetDefault("HTTP_SERVER_WRITE_TIMEOUT", "5s")       // the maximum duration before timing out writes of the response
 	cfg.SetDefault("HTTP_SERVER_IDLE_TIMEOUT", "30s")       // the maximum amount of time to wait for the next request when keep-alive is enabled

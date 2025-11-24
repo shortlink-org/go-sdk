@@ -10,12 +10,13 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/collectors"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
-	"github.com/shortlink-org/go-sdk/config"
 	"go.opentelemetry.io/otel"
 	promExporter "go.opentelemetry.io/otel/exporters/prometheus"
 	api "go.opentelemetry.io/otel/sdk/metric"
 	"go.opentelemetry.io/otel/sdk/metric/exemplar"
 	"go.opentelemetry.io/otel/trace"
+
+	"github.com/shortlink-org/go-sdk/config"
 
 	http_server "github.com/shortlink-org/go-sdk/http/server"
 	"github.com/shortlink-org/go-sdk/logger"
@@ -53,7 +54,7 @@ func New(ctx context.Context, log logger.Logger, tracer trace.TracerProvider, cf
 			Port:    9090,             //nolint:mnd // port for Prometheus metrics
 			Timeout: 30 * time.Second, //nolint:mnd // timeout for Prometheus metrics
 		}
-		server := http_server.New(ctx, monitoring.Handler, serverConfig, tracer, cfg)
+		server := http_server.New(ctx, monitoring.Handler, serverConfig, cfg)
 
 		errListenAndServe := server.ListenAndServe()
 		if errListenAndServe != nil {

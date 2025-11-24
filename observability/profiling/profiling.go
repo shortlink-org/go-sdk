@@ -9,9 +9,10 @@ import (
 
 	"github.com/felixge/fgprof"
 
+	"go.opentelemetry.io/otel/trace"
+
 	http_server "github.com/shortlink-org/go-sdk/http/server"
 	"github.com/shortlink-org/go-sdk/logger"
-	"go.opentelemetry.io/otel/trace"
 
 	"github.com/shortlink-org/go-sdk/config"
 )
@@ -45,7 +46,7 @@ func New(ctx context.Context, log logger.Logger, tracer trace.TracerProvider, cf
 			Timeout: cfg.GetDuration("PROFILING_TIMEOUT"),
 		}
 
-		server := http_server.New(ctx, mux, serverCfg, tracer, cfg)
+		server := http_server.New(ctx, mux, serverCfg, cfg)
 		if err := server.ListenAndServe(); err != nil {
 			log.Error(err.Error())
 		}
