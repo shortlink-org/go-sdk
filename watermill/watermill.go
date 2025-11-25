@@ -8,6 +8,7 @@ import (
 	"github.com/hashicorp/go-multierror"
 	"github.com/shortlink-org/go-sdk/config"
 	"github.com/shortlink-org/go-sdk/logger"
+	watermilldlq "github.com/shortlink-org/go-sdk/watermill/dlq"
 	"go.opentelemetry.io/otel/metric"
 	"go.opentelemetry.io/otel/trace"
 )
@@ -37,22 +38,32 @@ func New(
 	backend Backend,
 	meterProvider metric.MeterProvider,
 	tracerProvider trace.TracerProvider,
+	options ...Option,
 ) (*Client, error) {
 	if backend == nil {
 		return nil, fmt.Errorf("backend is nil — must be provided explicitly")
 	}
 
 	wmLogger := NewWatermillLogger(log)
+	watermilldlq.SetLogger(log)
 
 	router, err := message.NewRouter(message.RouterConfig{}, wmLogger)
 	if err != nil {
 		return nil, err
 	}
 
-	// Global middleware (panic, retry, correlation)
-	configureBaseMiddlewares(router, cfg, log)
+	optsCfg := defaultOptions(cfg)
+	for _, opt := range options {
+		if opt == nil {
+			continue
+		}
+		opt(&optsCfg)
+	}
+
+	// Global middleware (panic, retry, correlation, timeout, circuit breaker)
+	configureBaseMiddlewares(router, log, wmLogger, optsCfg)
 	cfg.SetDefault("WATERMILL_DLQ_ENABLED", false)
-	cfg.SetDefault("WATERMILL_DLQ_MAX_RETRIES", 5)
+	cfg.SetDefault("WATERMILL_DLQ_TOPIC", "")
 
 	// OTEL tracing middleware
 	otelMW := NewOTELMiddleware(tracerProvider)
@@ -67,11 +78,8 @@ func New(
 	publisher := metricsMW.PublisherWrapper(backend.Publisher(), otelMW)
 
 	if cfg.GetBool("WATERMILL_DLQ_ENABLED") {
-		maxRetries := cfg.GetInt("WATERMILL_DLQ_MAX_RETRIES")
-		if maxRetries < 0 {
-			maxRetries = 0
-		}
-		router.AddMiddleware(DLQMiddleware(publisher, maxRetries))
+		dlqTopic := cfg.GetString("WATERMILL_DLQ_TOPIC")
+		router.AddMiddleware(NewShortlinkPoisonMiddleware(publisher, dlqTopic))
 	}
 
 	router.AddMiddleware(metricsMW.HandlerMiddleware())

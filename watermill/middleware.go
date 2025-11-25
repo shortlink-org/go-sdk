@@ -5,9 +5,9 @@ import (
 	"log/slog"
 	"time"
 
+	"github.com/ThreeDotsLabs/watermill"
 	"github.com/ThreeDotsLabs/watermill/message"
 	wmmid "github.com/ThreeDotsLabs/watermill/message/router/middleware"
-	"github.com/shortlink-org/go-sdk/config"
 	"github.com/shortlink-org/go-sdk/logger"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/metric"
@@ -16,36 +16,48 @@ import (
 
 // ----------- BASE MIDDLEWARE (panic, correlation, retry) ------------
 
-func configureBaseMiddlewares(router *message.Router, cfg *config.Config, log logger.Logger) {
+func configureBaseMiddlewares(router *message.Router, log logger.Logger, wmLogger watermill.LoggerAdapter, opts Options) {
 	router.AddMiddleware(wmmid.Recoverer)
 	router.AddMiddleware(wmmid.CorrelationID)
 
-	// Configure retry middleware from config
-	cfg.SetDefault("WATERMILL_RETRY_MAX_RETRIES", 3)
-	cfg.SetDefault("WATERMILL_RETRY_INITIAL_INTERVAL", "150ms")
-	cfg.SetDefault("WATERMILL_RETRY_MAX_INTERVAL", "2s")
-	cfg.SetDefault("WATERMILL_RETRY_MULTIPLIER", 2.0)
+	if opts.Timeout.Enabled {
+		router.AddMiddleware(wmmid.Timeout(opts.Timeout.Duration))
+		log.Info("Configured timeout middleware",
+			slog.String("duration", opts.Timeout.Duration.String()),
+		)
+	}
 
-	maxRetries := cfg.GetInt("WATERMILL_RETRY_MAX_RETRIES")
-	initialInterval := cfg.GetDuration("WATERMILL_RETRY_INITIAL_INTERVAL")
-	maxInterval := cfg.GetDuration("WATERMILL_RETRY_MAX_INTERVAL")
-	multiplier := cfg.GetFloat64("WATERMILL_RETRY_MULTIPLIER")
+	if opts.CircuitBreaker.Enabled {
+		cb := wmmid.NewCircuitBreaker(opts.CircuitBreaker.Settings)
+		router.AddMiddleware(cb.Middleware)
+		log.Info("Configured circuit breaker middleware",
+			slog.String("name", opts.CircuitBreaker.Settings.Name),
+			slog.String("timeout", opts.CircuitBreaker.Settings.Timeout.String()),
+			slog.Uint64("max_requests", uint64(opts.CircuitBreaker.Settings.MaxRequests)),
+		)
+	}
 
-	router.AddMiddleware(
-		wmmid.Retry{
-			MaxRetries:      maxRetries,
-			InitialInterval: initialInterval,
-			MaxInterval:     maxInterval,
-			Multiplier:      multiplier,
-		}.Middleware,
-	)
+	if opts.Retry.Enabled {
+		retryMiddleware := wmmid.Retry{
+			MaxRetries:        opts.Retry.MaxRetries,
+			InitialInterval:   opts.Retry.InitialInterval,
+			MaxInterval:       opts.Retry.MaxInterval,
+			Multiplier:        opts.Retry.Multiplier,
+			MaxElapsedTime:    opts.Retry.MaxElapsedTime,
+			RandomizationFactor: opts.Retry.Jitter,
+			ResetContextOnRetry: opts.Retry.ResetContextOnRetry,
+			Logger:             wmLogger,
+		}
+		router.AddMiddleware(retryMiddleware.Middleware)
 
-	log.Info("Configured retry middleware",
-		slog.Int("max_retries", maxRetries),
-		slog.String("initial_interval", initialInterval.String()),
-		slog.String("max_interval", maxInterval.String()),
-		slog.Float64("multiplier", multiplier),
-	)
+		log.Info("Configured retry middleware",
+			slog.Int("max_retries", opts.Retry.MaxRetries),
+			slog.String("initial_interval", opts.Retry.InitialInterval.String()),
+			slog.String("max_interval", opts.Retry.MaxInterval.String()),
+			slog.Float64("multiplier", opts.Retry.Multiplier),
+			slog.Float64("jitter", opts.Retry.Jitter),
+		)
+	}
 }
 
 // -------------------- METRICS MIDDLEWARE ---------------------------

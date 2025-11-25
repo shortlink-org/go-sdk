@@ -7,7 +7,7 @@ A lightweight wrapper around [ThreeDotsLabs/watermill](https://watermill.io) tha
 - **Ready-to-use `Client`**: internally sets up `message.Router`, configures logger, global middleware (panic/retry/correlation), metrics, and OTEL tracing.
 - **Metrics + exemplars**: publish/consume counters and histograms with automatic `topic`, `trace_id`, `span_id` attributes.
 - **Tracing**: middleware extracts context from Watermill metadata, creates `watermill.consume` span and propagates context. On publish, creates `watermill.publish` span and writes TraceID/SpanID to message metadata.
-- **DLQ**: optional configuration sends messages after N errors to `<topic>.DLQ` with `DLQMessage` body (payload + metadata + error text + retry counter).
+- **DLQ**: optional Watermill poison middleware wired to Shortlink DLQ formatter (JSON payload with original message snapshot + stacktrace) that can publish either to a fixed topic or `<received_topic>.DLQ`.
 - **Kafka backend**: `backends/kafka` contains a slight-fork wrapper of Watermill Kafka (publisher/subscriber + OTEL tracer). RabbitMQ is not yet implemented (stub).
 
 ## Installation
@@ -51,7 +51,7 @@ defer client.Close()
 
 ## Dependency Injection (google/wire)
 
-`watermill.New` and `backends/kafka.New` are ready-to-use provider functions, so they can be plugged straight into `google/wire` graphs. Если сервису нужны только публикация или только потребление, используйте `kafka.NewPublisherFromConfig` или `kafka.NewSubscriberFromConfig`.
+`watermill.New` and `backends/kafka.New` are ready-to-use provider functions, so they can be plugged straight into `google/wire` graphs. If a service needs only publishing or only consuming, use `kafka.NewPublisherFromConfig` or `kafka.NewSubscriberFromConfig`.
 
 ```go
 var WatermillSet = wire.NewSet(
@@ -83,12 +83,22 @@ Values are read from `github.com/shortlink-org/go-sdk/config.Config` (Viper). Im
 
 | Key | Default | Description |
 |-----|---------|-------------|
-| `WATERMILL_RETRY_MAX_RETRIES` | `3` | number of retries in retry middleware |
-| `WATERMILL_RETRY_INITIAL_INTERVAL` | `150ms` | initial retry interval |
-| `WATERMILL_RETRY_MAX_INTERVAL` | `2s` | maximum interval between retries |
-| `WATERMILL_RETRY_MULTIPLIER` | `2.0` | exponential backoff multiplier |
-| `WATERMILL_DLQ_ENABLED` | `false` | enable DLQ middleware |
-| `WATERMILL_DLQ_MAX_RETRIES` | `5` | number of errors allowed before sending to `<topic>.DLQ` |
+| `WATERMILL_RETRY_MAX_RETRIES` | `3` | number of attempts handled by the retry middleware |
+| `WATERMILL_RETRY_INITIAL_INTERVAL` | `150ms` | initial delay between retries |
+| `WATERMILL_RETRY_MAX_INTERVAL` | `2s` | maximum interval for exponential backoff |
+| `WATERMILL_RETRY_MULTIPLIER` | `2.0` | multiplier applied to each backoff step |
+| `WATERMILL_RETRY_JITTER` | `0.15` | randomization factor applied to the delay |
+| `WATERMILL_RETRY_MAX_ELAPSED` | `0s` | total time limit for retries (`0s` disables the limit) |
+| `WATERMILL_RETRY_RESET_CONTEXT` | `false` | reset the message context before each retry attempt |
+| `WATERMILL_HANDLER_TIMEOUT_ENABLED` | `true` | enable the timeout middleware |
+| `WATERMILL_HANDLER_TIMEOUT` | `20s` | per-message processing timeout |
+| `WATERMILL_CB_ENABLED` | `true` | enable the circuit breaker middleware |
+| `WATERMILL_CB_TIMEOUT` | `30s` | breaker open timeout before moving to half-open |
+| `WATERMILL_CB_INTERVAL` | `0s` | statistic reset interval (`0s` disables) |
+| `WATERMILL_CB_FAILURE_THRESHOLD` | `5` | consecutive failures required to open the breaker |
+| `WATERMILL_CB_HALFOPEN_MAX_REQUESTS` | `1` | allowed messages while the breaker is half-open |
+| `WATERMILL_DLQ_ENABLED` | `false` | enable the Shortlink DLQ (poison middleware) |
+| `WATERMILL_DLQ_TOPIC` | `""` | custom DLQ topic (empty means `<received_topic>.DLQ`) |
 
 ### Kafka backend configuration
 
@@ -111,20 +121,24 @@ Values are read from `github.com/shortlink-org/go-sdk/config.Config` (Viper). Im
 
 ## DLQ Message
 
-After exceeding `maxRetries`, a JSON message is sent to `<topic>.DLQ`:
+When the poison middleware fires, Shortlink publishes a JSON `DLQEvent`:
 
 ```json
 {
-  "topic": "my-topic",
-  "payload": "... base64 ...",
-  "metadata": {"received_topic": "my-topic", "watermill_dlq_retry_count": "5"},
-  "error": "handler error string",
-  "retry_count": 5,
-  "original_uuid": "<source message uuid>"
+  "failed_at": "2024-12-01T15:04:05Z",
+  "reason": "handler returned error",
+  "stacktrace": "…",
+  "service_name": "orders-service",
+  "original_message": {
+    "uuid": "88d81852-6a28-41d6-a93b-9a72a519b659",
+    "metadata": {"received_topic": "orders", "correlation_id": "abc"},
+    "payload": {"order_id": "123"},
+    "payload_base64": ""
+  }
 }
 ```
 
-TraceID/SpanID are preserved in metadata, so downstream consumers can continue the trace.
+Every original metadata key is copied into the DLQ message metadata using the `original_` prefix. Additional keys (`poison_reason`, `poison_stacktrace`, `service_name`, `dlq_version`) plus the trace context injected via the OTEL propagator (`traceparent` headers) make it easy to correlate the failure and continue distributed tracing.
 
 ## Observability
 
