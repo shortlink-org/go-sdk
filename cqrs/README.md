@@ -155,3 +155,49 @@ The buses publish protobuf payloads with tracing metadata, the router validates 
 ## Topic naming
 
 Topics reuse canonical names (e.g. `billing.command.create_invoice.v1`). Helper functions `TopicForCommand` and `TopicForEvent` can be used everywhere to keep publishers/subscribers aligned with Kafka settings declared in [`go-sdk/watermill`](../watermill/README.md).
+
+## Optional Outbox Forwarder
+
+`CommandBus` and `EventBus` can transparently enqueue messages into a transactional outbox and forward them to the “real” transport via Watermill’s forwarder. This is completely opt-in:
+
+```go
+cmdBus, err := bus.NewCommandBusWithOptions(
+    outboxPublisher, // e.g. watermill-sql publisher
+    marshaler,
+    namer,
+    bus.WithOutbox(bus.OutboxConfig{
+        DB:            sqlDB,          // or Pool: pgxPool
+        Subscriber:    outboxSubscriber,
+        RealPublisher: kafkaPublisher,
+        ForwarderName: "billing_outbox",
+        Logger:        appLogger,
+        MeterProvider: meterProvider,
+    }),
+)
+if err != nil {
+    log.Fatal(err)
+}
+
+go func() {
+    if err := cmdBus.RunForwarder(ctx); err != nil {
+        log.Fatal(err)
+    }
+}()
+defer cmdBus.CloseForwarder(shutdownCtx)
+```
+
+- The CQRS marshaler/metadata logic stays unchanged — the outbox simply overrides the Watermill publisher.
+- `RunForwarder` is blocking; start it inside your service lifecycle and call `CloseForwarder` during shutdown.
+- **No automatic schema management**: the SDK intentionally skips creating tables or indexes. Provision the outbox schema via your migrations or an explicit helper before wiring `WithOutbox`, for example:
+
+  ```sql
+  CREATE TABLE IF NOT EXISTS watermill_forwarder (
+      id BIGSERIAL PRIMARY KEY,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+      payload BYTEA NOT NULL,
+      metadata JSONB NOT NULL,
+      topic TEXT NOT NULL
+  );
+  ```
+
+  Adjust the DDL to match the Watermill SQL backend you are using. By keeping schema creation outside of the CQRS package you can reuse existing migration tooling and avoid surprising production deployments.
