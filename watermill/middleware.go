@@ -137,13 +137,13 @@ func (m *MetricsMiddleware) HandlerMiddleware() message.HandlerMiddleware {
 				ctx = context.Background()
 			}
 
-			attrs := metric.WithAttributes(attribute.String("topic", topic))
+			attrs := metric.WithAttributes(m.topicAttributes(ctx, topic)...)
 
 			msgs, err := h(msg)
 			lat := time.Since(start).Seconds()
 
 			if err != nil {
-				m.errors.Add(ctx, 1, metric.WithAttributes(m.errorAttributes(topic, "consume", err)...))
+				m.errors.Add(ctx, 1, metric.WithAttributes(m.errorAttributes(ctx, topic, "consume", err)...))
 				return msgs, err
 			}
 
@@ -204,13 +204,13 @@ func (pw *publisherWrapper) publishWithMetrics(topic string, msgs ...*message.Me
 	err := pw.pub.Publish(topic, msgs...)
 	lat := time.Since(start).Seconds()
 
-	attrs := metric.WithAttributes(attribute.String("topic", topic))
+	attrs := metric.WithAttributes(pw.metrics.topicAttributes(ctx, topic)...)
 
 	if err != nil {
 		if span != nil {
 			span.RecordError(err)
 		}
-		pw.metrics.errors.Add(ctx, 1, metric.WithAttributes(pw.metrics.errorAttributes(topic, "publish", err)...))
+		pw.metrics.errors.Add(ctx, 1, metric.WithAttributes(pw.metrics.errorAttributes(ctx, topic, "publish", err)...))
 		return err
 	}
 
@@ -239,11 +239,20 @@ func SpanID(ctx context.Context) string {
 
 const metricErrorMaxLen = 128
 
-func (m *MetricsMiddleware) errorAttributes(topic, stage string, err error) []attribute.KeyValue {
-	attrs := []attribute.KeyValue{
-		attribute.String("topic", topic),
-		attribute.String("stage", stage),
+func (m *MetricsMiddleware) topicAttributes(ctx context.Context, topic string) []attribute.KeyValue {
+	attrs := []attribute.KeyValue{attribute.String("topic", topic)}
+	if traceID := TraceID(ctx); traceID != "" {
+		attrs = append(attrs, attribute.String("trace_id", traceID))
 	}
+	if spanID := SpanID(ctx); spanID != "" {
+		attrs = append(attrs, attribute.String("span_id", spanID))
+	}
+	return attrs
+}
+
+func (m *MetricsMiddleware) errorAttributes(ctx context.Context, topic, stage string, err error) []attribute.KeyValue {
+	attrs := m.topicAttributes(ctx, topic)
+	attrs = append(attrs, attribute.String("stage", stage))
 	if err == nil {
 		return attrs
 	}

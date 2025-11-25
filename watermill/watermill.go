@@ -51,6 +51,8 @@ func New(
 
 	// Global middleware (panic, retry, correlation)
 	configureBaseMiddlewares(router, cfg, log)
+	cfg.SetDefault("WATERMILL_DLQ_ENABLED", false)
+	cfg.SetDefault("WATERMILL_DLQ_MAX_RETRIES", 5)
 
 	// OTEL tracing middleware
 	otelMW := NewOTELMiddleware(tracerProvider)
@@ -61,11 +63,22 @@ func New(
 	if err != nil {
 		return nil, fmt.Errorf("failed to create metrics middleware: %w", err)
 	}
+
+	publisher := metricsMW.PublisherWrapper(backend.Publisher(), otelMW)
+
+	if cfg.GetBool("WATERMILL_DLQ_ENABLED") {
+		maxRetries := cfg.GetInt("WATERMILL_DLQ_MAX_RETRIES")
+		if maxRetries < 0 {
+			maxRetries = 0
+		}
+		router.AddMiddleware(DLQMiddleware(publisher, maxRetries))
+	}
+
 	router.AddMiddleware(metricsMW.HandlerMiddleware())
 
 	client := &Client{
 		Router:     router,
-		Publisher:  metricsMW.PublisherWrapper(backend.Publisher(), otelMW),
+		Publisher:  publisher,
 		Subscriber: backend.Subscriber(),
 		backend:    backend,
 	}

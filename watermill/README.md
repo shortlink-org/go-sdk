@@ -49,6 +49,34 @@ go client.Router.Run(ctx)
 defer client.Close()
 ```
 
+## Dependency Injection (google/wire)
+
+`watermill.New` and `backends/kafka.New` are ready-to-use provider functions, so they can be plugged straight into `google/wire` graphs. Если сервису нужны только публикация или только потребление, используйте `kafka.NewPublisherFromConfig` или `kafka.NewSubscriberFromConfig`.
+
+```go
+var WatermillSet = wire.NewSet(
+    config.New,          // returns *config.Config
+    logger.New,          // returns logger.Logger
+    kafka.New,           // github.com/shortlink-org/go-sdk/watermill/backends/kafka
+    wire.Bind(new(watermill.Backend), new(*kafka.Backend)),
+    watermill.New,
+)
+
+var KafkaPublisherSet = wire.NewSet(
+    config.New,
+    logger.New,
+    kafka.NewPublisherFromConfig,
+)
+
+var KafkaSubscriberSet = wire.NewSet(
+    config.New,
+    logger.New,
+    kafka.NewSubscriberFromConfig,
+)
+```
+
+`kafka.New` configures Sarama clients from `config.Config`, enabling OTEL, retries, idempotent producer and other production defaults. Override any key via env vars or `.env` to adapt behaviour per service.
+
 ## Configuration
 
 Values are read from `github.com/shortlink-org/go-sdk/config.Config` (Viper). Important keys:
@@ -61,6 +89,25 @@ Values are read from `github.com/shortlink-org/go-sdk/config.Config` (Viper). Im
 | `WATERMILL_RETRY_MULTIPLIER` | `2.0` | exponential backoff multiplier |
 | `WATERMILL_DLQ_ENABLED` | `false` | enable DLQ middleware |
 | `WATERMILL_DLQ_MAX_RETRIES` | `5` | number of errors allowed before sending to `<topic>.DLQ` |
+
+### Kafka backend configuration
+
+| Key | Default | Description |
+|-----|---------|-------------|
+| `WATERMILL_KAFKA_BROKERS` | `localhost:9092` | comma-separated broker list or string slice |
+| `WATERMILL_KAFKA_CONSUMER_GROUP` | `SERVICE_NAME` | consumer group name |
+| `WATERMILL_KAFKA_CONSUMER_INITIAL_OFFSET` | `latest` | `latest` or `oldest` subscription offset |
+| `WATERMILL_KAFKA_REBALANCE_STRATEGY` | `range` | `range`, `roundrobin`, or `sticky` |
+| `WATERMILL_KAFKA_SUBSCRIBER_NACK_SLEEP` | `100ms` | delay before redelivering Nacked messages |
+| `WATERMILL_KAFKA_SUBSCRIBER_RECONNECT_SLEEP` | `1s` | delay before retrying failed connections |
+| `WATERMILL_KAFKA_WAIT_FOR_TOPIC_TIMEOUT` | `10s` | wait timeout when creating topics |
+| `WATERMILL_KAFKA_SKIP_TOPIC_INIT` | `false` | do not wait for topic readiness after creation |
+| `WATERMILL_KAFKA_OTEL_ENABLED` | `true` | wrap publisher/subscriber with OTEL instrumentation |
+| `WATERMILL_KAFKA_SARAMA_VERSION` | `max` | Sarama protocol version (`max`, `default`, or concrete) |
+| `WATERMILL_KAFKA_PRODUCER_RETRY_MAX` | `10` | max producer retries before failing publish |
+| `WATERMILL_KAFKA_PRODUCER_COMPRESSION` | `snappy` | compression codec (`none`, `gzip`, `lz4`, `snappy`, `zstd`) |
+| `WATERMILL_KAFKA_PRODUCER_IDEMPOTENT` | `true` | enable idempotent producer with `max.in.flight=1` |
+| `WATERMILL_KAFKA_CLIENT_ID` | `SERVICE_NAME` | Sarama client ID used for producer and consumer |
 
 ## DLQ Message
 

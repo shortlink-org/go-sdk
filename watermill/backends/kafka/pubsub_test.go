@@ -78,7 +78,7 @@ func newPubSub(
 				OverwriteSaramaConfig: saramaConfig,
 				ConsumerGroup:         consumerGroup,
 				InitializeTopicDetails: &sarama.TopicDetail{
-					NumPartitions:     50,
+					NumPartitions:     3,
 					ReplicationFactor: 1,
 				},
 			},
