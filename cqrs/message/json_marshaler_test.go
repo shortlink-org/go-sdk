@@ -1,6 +1,7 @@
 package message
 
 import (
+	"context"
 	"strings"
 	"testing"
 
@@ -26,7 +27,7 @@ func TestJSONMarshalerMarshal(t *testing.T) {
 		Amount:  99.99,
 	}
 
-	msg, err := m.Marshal(cmd)
+	msg, err := m.Marshal(context.Background(), cmd)
 	if err != nil {
 		t.Fatalf("Marshal failed: %v", err)
 	}
@@ -57,7 +58,7 @@ func TestJSONMarshalerUnmarshal(t *testing.T) {
 		Amount:  99.99,
 	}
 
-	msg, err := m.Marshal(original)
+	msg, err := m.Marshal(context.Background(), original)
 	if err != nil {
 		t.Fatalf("Marshal failed: %v", err)
 	}
@@ -78,7 +79,7 @@ func TestJSONMarshalerUnmarshal(t *testing.T) {
 
 func TestJSONMarshalerUnmarshalEmptyPayload(t *testing.T) {
 	m := NewJSONMarshaler(NewShortlinkNamer("svc"))
-	msg := wmmessage.NewMessage("id", nil)
+	msg := wmmessage.NewMessageWithContext(context.Background(), "id", nil)
 
 	var cmd testCommand
 	if err := m.Unmarshal(msg, &cmd); err == nil {
@@ -120,7 +121,7 @@ func TestJSONMarshalerNameFromMessage(t *testing.T) {
 	m := NewJSONMarshaler(namer)
 
 	cmd := &testCommand{OrderId: "123"}
-	msg, err := m.Marshal(cmd)
+	msg, err := m.Marshal(context.Background(), cmd)
 	if err != nil {
 		t.Fatalf("Marshal failed: %v", err)
 	}
@@ -159,5 +160,3 @@ func TestJSONMarshalerEventName(t *testing.T) {
 		t.Errorf("name should contain 'event', got %s", name)
 	}
 }
-
-

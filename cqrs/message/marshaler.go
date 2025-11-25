@@ -1,6 +1,7 @@
 package message
 
 import (
+	"context"
 	"fmt"
 	"strings"
 
@@ -11,7 +12,7 @@ import (
 
 // Marshaler serializes domain messages to Watermill messages.
 type Marshaler interface {
-	Marshal(v any) (*wmmessage.Message, error)
+	Marshal(ctx context.Context, v any) (*wmmessage.Message, error)
 	Unmarshal(msg *wmmessage.Message, v any) error
 	Name(v any) string
 	NameFromMessage(msg *wmmessage.Message) string
@@ -28,7 +29,7 @@ func NewProtoMarshaler(namer Namer) *ProtoMarshaler {
 }
 
 // Marshal encodes protobuf payload and enriches metadata.
-func (m *ProtoMarshaler) Marshal(v any) (*wmmessage.Message, error) {
+func (m *ProtoMarshaler) Marshal(ctx context.Context, v any) (*wmmessage.Message, error) {
 	msg, ok := toProto(v)
 	if !ok {
 		return nil, fmt.Errorf("value %T does not implement proto.Message", v)
@@ -39,7 +40,11 @@ func (m *ProtoMarshaler) Marshal(v any) (*wmmessage.Message, error) {
 		return nil, err
 	}
 
-	wmMsg := wmmessage.NewMessage(uuid.NewString(), payload)
+	if ctx == nil {
+		ctx = context.Background()
+	}
+
+	wmMsg := wmmessage.NewMessageWithContext(ctx, uuid.NewString(), payload)
 	ensureMetadata(wmMsg)
 
 	name := m.Name(v)

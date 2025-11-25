@@ -1,6 +1,7 @@
 package message
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"strings"
@@ -20,13 +21,17 @@ func NewJSONMarshaler(namer Namer) *JSONMarshaler {
 }
 
 // Marshal encodes JSON payload and enriches metadata.
-func (m *JSONMarshaler) Marshal(v any) (*wmmessage.Message, error) {
+func (m *JSONMarshaler) Marshal(ctx context.Context, v any) (*wmmessage.Message, error) {
 	payload, err := json.Marshal(v)
 	if err != nil {
 		return nil, fmt.Errorf("marshal json: %w", err)
 	}
 
-	wmMsg := wmmessage.NewMessage(uuid.NewString(), payload)
+	if ctx == nil {
+		ctx = context.Background()
+	}
+
+	wmMsg := wmmessage.NewMessageWithContext(ctx, uuid.NewString(), payload)
 	ensureMetadata(wmMsg)
 
 	name := m.Name(v)

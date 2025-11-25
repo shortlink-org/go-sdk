@@ -102,7 +102,7 @@ func (b *CommandBus) Send(ctx context.Context, cmd any) error {
 		topic = cqrsmessage.TopicForCommand(name)
 	}
 
-	msg, err := b.marshaler.Marshal(cmd)
+	msg, err := b.marshaler.Marshal(ctx, cmd)
 	if err != nil {
 		return fmt.Errorf("marshal command %T: %w", cmd, err)
 	}
@@ -113,8 +113,6 @@ func (b *CommandBus) Send(ctx context.Context, cmd any) error {
 	msg.Metadata.Set(cqrsmessage.MetadataMessageKind, string(cqrsmessage.KindCommand))
 
 	cqrsmessage.SetTrace(ctx, msg)
-
-	msg.SetContext(ctx)
 
 	return b.publisher.Publish(topic, msg)
 }

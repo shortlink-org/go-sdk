@@ -102,7 +102,7 @@ func (b *EventBus) Publish(ctx context.Context, evt any) error {
 		topic = cqrsmessage.TopicForEvent(name)
 	}
 
-	msg, err := b.marshaler.Marshal(evt)
+	msg, err := b.marshaler.Marshal(ctx, evt)
 	if err != nil {
 		return fmt.Errorf("marshal event %T: %w", evt, err)
 	}
@@ -113,8 +113,6 @@ func (b *EventBus) Publish(ctx context.Context, evt any) error {
 	msg.Metadata.Set(cqrsmessage.MetadataMessageKind, string(cqrsmessage.KindEvent))
 
 	cqrsmessage.SetTrace(ctx, msg)
-
-	msg.SetContext(ctx)
 
 	return b.publisher.Publish(topic, msg)
 }

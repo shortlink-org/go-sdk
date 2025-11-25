@@ -1,6 +1,7 @@
 package message
 
 import (
+	"context"
 	"testing"
 
 	wmmessage "github.com/ThreeDotsLabs/watermill/message"
@@ -42,7 +43,7 @@ func TestNameOfUsesMetadata(t *testing.T) {
 		t.Fatalf("expected metadata name, got %s", got)
 	}
 
-	msg := wmmessage.NewMessage("1", []byte("payload"))
+	msg := wmmessage.NewMessageWithContext(context.Background(), "1", []byte("payload"))
 	msg.Metadata.Set(MetadataTypeName, "billing.event.invoice_generated")
 	msg.Metadata.Set(MetadataTypeVersion, "v2")
 	if got := NameOf(msg); got != "billing.event.invoice_generated.v2" {

@@ -1,6 +1,7 @@
 package message
 
 import (
+	"context"
 	"testing"
 
 	wmmessage "github.com/ThreeDotsLabs/watermill/message"
@@ -19,7 +20,7 @@ func (*dummyProto) ProtoMessage()  {}
 
 func TestProtoMarshalerUnmarshalEmptyPayload(t *testing.T) {
 	m := NewProtoMarshaler(NewShortlinkNamer("svc"))
-	msg := wmmessage.NewMessage("id", nil)
+	msg := wmmessage.NewMessageWithContext(context.Background(), "id", nil)
 
 	if err := m.Unmarshal(msg, &dummyProto{}); err == nil {
 		t.Fatal("expected error for empty payload")
