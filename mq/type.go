@@ -9,6 +9,8 @@ import (
 )
 
 // MQ - common interface of DataBus
+//
+// Deprecated: Use github.com/shortlink-org/go-sdk/watermill instead.
 type MQ interface {
 	Init(ctx context.Context, log logger.Logger) error
 
@@ -19,6 +21,8 @@ type MQ interface {
 }
 
 // DataBus abstract type
+//
+// Deprecated: Use github.com/shortlink-org/go-sdk/watermill instead.
 type DataBus struct {
 	log    logger.Logger
 	mq     MQ

@@ -1,5 +1,7 @@
 /*
 Message Queue
+
+Deprecated: This package is deprecated. Use github.com/shortlink-org/go-sdk/watermill instead.
 */
 package mq
 
@@ -18,6 +20,8 @@ import (
 )
 
 // New creates a new MQ instance
+//
+// Deprecated: Use github.com/shortlink-org/go-sdk/watermill instead.
 //
 //nolint:ireturn // It's made by design
 func New(ctx context.Context, log logger.Logger, cfg *config.Config) (MQ, error) {
