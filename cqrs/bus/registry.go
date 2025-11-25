@@ -30,10 +30,18 @@ func NewTypeRegistry() *TypeRegistry {
 	}
 }
 
-// RegisterCommand registers command type.
-func (r *TypeRegistry) RegisterCommand(cmd any) error {
+// validateCommand checks that command is not nil.
+func (r *TypeRegistry) validateCommand(cmd any) error {
 	if cmd == nil {
 		return ErrNilCommandType
+	}
+	return nil
+}
+
+// RegisterCommand registers command type.
+func (r *TypeRegistry) RegisterCommand(cmd any) error {
+	if err := r.validateCommand(cmd); err != nil {
+		return err
 	}
 	r.mu.Lock()
 	defer r.mu.Unlock()
@@ -43,10 +51,18 @@ func (r *TypeRegistry) RegisterCommand(cmd any) error {
 	return nil
 }
 
-// RegisterEvent registers event type.
-func (r *TypeRegistry) RegisterEvent(evt any) error {
+// validateEvent checks that event is not nil.
+func (r *TypeRegistry) validateEvent(evt any) error {
 	if evt == nil {
 		return ErrNilEventType
+	}
+	return nil
+}
+
+// RegisterEvent registers event type.
+func (r *TypeRegistry) RegisterEvent(evt any) error {
+	if err := r.validateEvent(evt); err != nil {
+		return err
 	}
 	r.mu.Lock()
 	defer r.mu.Unlock()

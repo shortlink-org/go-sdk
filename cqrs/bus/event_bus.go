@@ -32,8 +32,8 @@ func NewEventBus(pub wmmessage.Publisher, marshaler cqrsmessage.Marshaler, namer
 	}
 }
 
-// Publish sends event using canonical topic name.
-func (b *EventBus) Publish(ctx context.Context, evt any) error {
+// validate checks that the event bus and its dependencies are properly initialized.
+func (b *EventBus) validate(evt any) error {
 	if b == nil {
 		return errEventBusUninitialized
 	}
@@ -45,6 +45,14 @@ func (b *EventBus) Publish(ctx context.Context, evt any) error {
 	}
 	if evt == nil {
 		return errEventPayloadNil
+	}
+	return nil
+}
+
+// Publish sends event using canonical topic name.
+func (b *EventBus) Publish(ctx context.Context, evt any) error {
+	if err := b.validate(evt); err != nil {
+		return err
 	}
 	if ctx == nil {
 		ctx = context.Background()

@@ -32,8 +32,8 @@ func NewCommandBus(pub wmmessage.Publisher, marshaler cqrsmessage.Marshaler, nam
 	}
 }
 
-// Send encodes and publishes command with Shortlink metadata and tracing context.
-func (b *CommandBus) Send(ctx context.Context, cmd any) error {
+// validate checks that the command bus and its dependencies are properly initialized.
+func (b *CommandBus) validate(cmd any) error {
 	if b == nil {
 		return errCommandBusUninitialized
 	}
@@ -45,6 +45,14 @@ func (b *CommandBus) Send(ctx context.Context, cmd any) error {
 	}
 	if cmd == nil {
 		return errCommandPayloadNil
+	}
+	return nil
+}
+
+// Send encodes and publishes command with Shortlink metadata and tracing context.
+func (b *CommandBus) Send(ctx context.Context, cmd any) error {
+	if err := b.validate(cmd); err != nil {
+		return err
 	}
 	if ctx == nil {
 		ctx = context.Background()

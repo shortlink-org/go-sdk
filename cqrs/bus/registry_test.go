@@ -5,6 +5,8 @@ import (
 	"sync"
 	"testing"
 
+	"github.com/stretchr/testify/require"
+
 	cqrsmessage "github.com/shortlink-org/go-sdk/cqrs/message"
 )
 
@@ -25,9 +27,8 @@ func TestTypeRegistryConcurrentAccess(t *testing.T) {
 					cqrsmessage.MetadataTypeVersion: "v1",
 				},
 			}
-			if err := reg.RegisterCommand(cmd); err != nil {
-				t.Errorf("register command %d: %v", i, err)
-			}
+			err := reg.RegisterCommand(cmd)
+			require.NoError(t, err, "register command %d", i)
 		}(i)
 
 		go func(i int) {
@@ -38,20 +39,18 @@ func TestTypeRegistryConcurrentAccess(t *testing.T) {
 					cqrsmessage.MetadataTypeVersion: "v1",
 				},
 			}
-			if err := reg.RegisterEvent(evt); err != nil {
-				t.Errorf("register event %d: %v", i, err)
-			}
+			err := reg.RegisterEvent(evt)
+			require.NoError(t, err, "register event %d", i)
 		}(i)
 	}
 
 	wg.Wait()
 
 	for i := 0; i < workers; i++ {
-		if _, ok := reg.ResolveCommand(fmt.Sprintf("billing.command.create_%d.v1", i)); !ok {
-			t.Fatalf("command %d not found", i)
-		}
-		if _, ok := reg.ResolveEvent(fmt.Sprintf("billing.aggregate.event_%d.v1", i)); !ok {
-			t.Fatalf("event %d not found", i)
-		}
+		_, ok := reg.ResolveCommand(fmt.Sprintf("billing.command.create_%d.v1", i))
+		require.True(t, ok, "command %d not found", i)
+
+		_, ok = reg.ResolveEvent(fmt.Sprintf("billing.aggregate.event_%d.v1", i))
+		require.True(t, ok, "event %d not found", i)
 	}
 }
