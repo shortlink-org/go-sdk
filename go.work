@@ -4,6 +4,7 @@ use (
 	./auth
 	./batch
 	./cache
+	./cqrs
 	./concurrency
 	./config
 	./context

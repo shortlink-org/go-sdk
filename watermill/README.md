@@ -2,6 +2,8 @@
 
 A lightweight wrapper around [ThreeDotsLabs/watermill](https://watermill.io) that integrates observability and is ready for production use in Shortlink services.
 
+> For CQRS abstractions on top of Watermill, see the [`cqrs`](../cqrs/README.md) package.
+
 ## Features
 
 - **Ready-to-use `Client`**: internally sets up `message.Router`, configures logger, global middleware (panic/retry/correlation), metrics, and OTEL tracing.
@@ -160,6 +162,10 @@ The `backends/kafka` directory contains a driver copied from Watermill with seve
 - helper functions for contexts (partition/offset/timestamp)
 
 Usage is similar to upstream Watermill. See tests in `backends/kafka/pubsub_test.go` and configuration via `SubscriberConfig`/`PublisherConfig`.
+
+## Related Packages
+
+- **[`cqrs`](../cqrs/README.md)** — CQRS abstraction layer with protobuf-first marshaling, canonical naming, and typed handlers
 
 ## Limitations
 
