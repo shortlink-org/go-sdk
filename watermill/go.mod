@@ -13,6 +13,7 @@ require (
 	github.com/shortlink-org/go-sdk/config v0.0.0-20251121191713-160ea5dd70ad
 	github.com/shortlink-org/go-sdk/logger v0.0.0-20251108203914-f363e5ad1155
 	github.com/sony/gobreaker v1.0.0
+	github.com/sony/gobreaker/v2 v2.3.0
 	github.com/stretchr/testify v1.11.1
 	github.com/testcontainers/testcontainers-go/modules/kafka v0.40.0
 	go.opentelemetry.io/otel v1.38.0
