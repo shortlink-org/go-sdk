@@ -21,15 +21,43 @@ type CommandBus struct {
 	publisher wmmessage.Publisher
 	marshaler cqrsmessage.Marshaler
 	namer     cqrsmessage.Namer
+	forwarder *forwarderState
 }
 
 // NewCommandBus builds a bus backed by Watermill publisher.
-func NewCommandBus(pub wmmessage.Publisher, marshaler cqrsmessage.Marshaler, namer cqrsmessage.Namer) *CommandBus {
-	return &CommandBus{
+func NewCommandBus(pub wmmessage.Publisher, marshaler cqrsmessage.Marshaler, namer cqrsmessage.Namer, opts ...Option) *CommandBus {
+	bus, err := NewCommandBusWithOptions(pub, marshaler, namer, opts...)
+	if err != nil {
+		panic(err)
+	}
+
+	return bus
+}
+
+// NewCommandBusWithOptions builds a bus and returns configuration errors instead of panicking.
+func NewCommandBusWithOptions(
+	pub wmmessage.Publisher,
+	marshaler cqrsmessage.Marshaler,
+	namer cqrsmessage.Namer,
+	opts ...Option,
+) (*CommandBus, error) {
+	cfg, err := applyOptions(opts)
+	if err != nil {
+		return nil, err
+	}
+
+	bus := &CommandBus{
 		publisher: pub,
 		marshaler: marshaler,
 		namer:     namer,
 	}
+
+	if cfg.outbox != nil {
+		bus.forwarder = newForwarderState(cfg.outbox)
+		bus.publisher = bus.forwarder.wrapPublisher(pub)
+	}
+
+	return bus, nil
 }
 
 // validate checks that the command bus and its dependencies are properly initialized.
@@ -89,4 +117,22 @@ func (b *CommandBus) Send(ctx context.Context, cmd any) error {
 	msg.SetContext(ctx)
 
 	return b.publisher.Publish(topic, msg)
+}
+
+// RunForwarder starts the optional outbox forwarder when configured.
+func (b *CommandBus) RunForwarder(ctx context.Context) error {
+	if b == nil || b.forwarder == nil {
+		return nil
+	}
+
+	return b.forwarder.Run(ctx)
+}
+
+// CloseForwarder attempts to stop previously started forwarder gracefully.
+func (b *CommandBus) CloseForwarder(ctx context.Context) error {
+	if b == nil || b.forwarder == nil {
+		return nil
+	}
+
+	return b.forwarder.Close(ctx)
 }

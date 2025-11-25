@@ -21,15 +21,43 @@ type EventBus struct {
 	publisher wmmessage.Publisher
 	marshaler cqrsmessage.Marshaler
 	namer     cqrsmessage.Namer
+	forwarder *forwarderState
 }
 
 // NewEventBus builds EventBus with required dependencies.
-func NewEventBus(pub wmmessage.Publisher, marshaler cqrsmessage.Marshaler, namer cqrsmessage.Namer) *EventBus {
-	return &EventBus{
+func NewEventBus(pub wmmessage.Publisher, marshaler cqrsmessage.Marshaler, namer cqrsmessage.Namer, opts ...Option) *EventBus {
+	bus, err := NewEventBusWithOptions(pub, marshaler, namer, opts...)
+	if err != nil {
+		panic(err)
+	}
+
+	return bus
+}
+
+// NewEventBusWithOptions builds EventBus and exposes configuration errors.
+func NewEventBusWithOptions(
+	pub wmmessage.Publisher,
+	marshaler cqrsmessage.Marshaler,
+	namer cqrsmessage.Namer,
+	opts ...Option,
+) (*EventBus, error) {
+	cfg, err := applyOptions(opts)
+	if err != nil {
+		return nil, err
+	}
+
+	bus := &EventBus{
 		publisher: pub,
 		marshaler: marshaler,
 		namer:     namer,
 	}
+
+	if cfg.outbox != nil {
+		bus.forwarder = newForwarderState(cfg.outbox)
+		bus.publisher = bus.forwarder.wrapPublisher(pub)
+	}
+
+	return bus, nil
 }
 
 // validate checks that the event bus and its dependencies are properly initialized.
@@ -89,4 +117,22 @@ func (b *EventBus) Publish(ctx context.Context, evt any) error {
 	msg.SetContext(ctx)
 
 	return b.publisher.Publish(topic, msg)
+}
+
+// RunForwarder starts the optional outbox forwarder when configured.
+func (b *EventBus) RunForwarder(ctx context.Context) error {
+	if b == nil || b.forwarder == nil {
+		return nil
+	}
+
+	return b.forwarder.Run(ctx)
+}
+
+// CloseForwarder stops the optional forwarder if it was started.
+func (b *EventBus) CloseForwarder(ctx context.Context) error {
+	if b == nil || b.forwarder == nil {
+		return nil
+	}
+
+	return b.forwarder.Close(ctx)
 }
