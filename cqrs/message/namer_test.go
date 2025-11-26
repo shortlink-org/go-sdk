@@ -19,14 +19,16 @@ func TestShortlinkNamerCommandName(t *testing.T) {
 	}
 
 	eventName := namer.EventName(&invoiceCreatedEvent{})
-	if eventName != "billing.event.invoice_created_event.v1" {
+	// Per ADR-0002: {service}.{aggregate}.{event}.{version}
+	// For events without protobuf, aggregate defaults to service name
+	if eventName != "billing.billing.invoice_created_event.v1" {
 		t.Fatalf("unexpected event name: %s", eventName)
 	}
 
 	if topic := namer.TopicForCommand(name); topic != "billing.command.create_invoice_command.v1" {
 		t.Fatalf("unexpected command topic: %s", topic)
 	}
-	if topic := namer.TopicForEvent(eventName); topic != "billing.event.invoice_created_event.v1" {
+	if topic := namer.TopicForEvent(eventName); topic != "billing.billing.invoice_created_event.v1" {
 		t.Fatalf("unexpected event topic: %s", topic)
 	}
 }

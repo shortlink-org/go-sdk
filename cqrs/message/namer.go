@@ -65,10 +65,27 @@ func (n *ShortlinkNamer) CommandName(v any) string {
 	return comps.String()
 }
 
-// EventName returns fully qualified event name.
+// EventName returns fully qualified event name following ADR-0002:
+// {service}.{aggregate}.{event}.{version}
 func (n *ShortlinkNamer) EventName(v any) string {
 	comps := buildNameComponents(v, n.serviceName, string(KindEvent), n.version)
-	comps.Kind = string(KindEvent)
+	// For events, Kind field is used as aggregate (ADR-0002 format)
+	// If aggregate is not set, use service name as aggregate
+	if comps.Kind == string(KindEvent) || comps.Kind == "" {
+		// Try to extract aggregate from protobuf package or use service name
+		if msg, ok := toProto(v); ok {
+			full := string(proto.MessageName(msg))
+			parts := strings.Split(full, ".")
+			// Extract aggregate from protobuf package (e.g., domain.link.v1 -> "link")
+			if len(parts) >= 3 {
+				comps.Kind = normalizeSegment(parts[1]) // Use as aggregate
+			}
+		}
+		// Fallback to service name as aggregate if not found
+		if comps.Kind == string(KindEvent) || comps.Kind == "" {
+			comps.Kind = n.serviceName
+		}
+	}
 	return comps.String()
 }
 
@@ -170,16 +187,36 @@ func assignComponentsFromProto(c *nameComponents, full string) {
 		return
 	}
 	parts := strings.Split(full, ".")
-	if len(parts) >= 4 && versionSegment.MatchString(parts[2]) {
-		c.Service = parts[0]
-		c.Kind = parts[1]
-		c.Version = parts[2]
-		c.Name = camelToSnake(parts[len(parts)-1])
-		return
+	
+	// Extract type name from protobuf package.
+	// Service is already set from namer (fallbackService), so we don't override it.
+	// For events, extract aggregate from protobuf package (e.g., domain.link.v1 -> "link").
+	// This ensures canonical naming per ADR-0002: {service}.{aggregate}.{event}.{version}
+	if len(parts) > 0 {
+		typeName := parts[len(parts)-1]
+		c.Name = camelToSnake(typeName)
+		
+		// For events, extract aggregate from protobuf package if Kind is still "event"
+		// Format: domain.{aggregate}.v1.TypeName -> aggregate = parts[1]
+		if c.Kind == string(KindEvent) && len(parts) >= 3 {
+			// Extract aggregate from protobuf package (second segment)
+			aggregate := normalizeSegment(parts[1])
+			if aggregate != "" {
+				c.Kind = aggregate
+			}
+			// Remove aggregate prefix from event name if present
+			// e.g., "LinkCreated" -> "created" (if aggregate is "link")
+			eventName := camelToSnake(typeName)
+			if strings.HasPrefix(strings.ToLower(eventName), strings.ToLower(aggregate)+"_") {
+				c.Name = strings.TrimPrefix(eventName, strings.ToLower(aggregate)+"_")
+			}
+		}
 	}
-
-	// Take last part as type name and keep previous inferred values.
-	c.Name = camelToSnake(parts[len(parts)-1])
+	
+	// Only extract version if it's not already set and protobuf package has version segment
+	if c.Version == "" && len(parts) >= 3 && versionSegment.MatchString(parts[len(parts)-2]) {
+		c.Version = parts[len(parts)-2]
+	}
 }
 
 func assignComponentsFromQualifiedName(c *nameComponents, qualified string) {
