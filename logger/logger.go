@@ -58,11 +58,11 @@ func convertLevel(level int) slog.Level {
 // levelString maps slog.Level to a severity string for tracer.
 func levelString(level slog.Level) string {
 	switch {
-	case level <= slog.LevelError:
+	case level >= slog.LevelError:
 		return "ERROR"
-	case level == slog.LevelWarn:
+	case level >= slog.LevelWarn:
 		return "WARN"
-	case level == slog.LevelInfo:
+	case level >= slog.LevelInfo:
 		return "INFO"
 	default:
 		return "DEBUG"
