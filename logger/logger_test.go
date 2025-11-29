@@ -13,6 +13,7 @@ import (
 	"github.com/segmentio/encoding/json"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.opentelemetry.io/otel/trace"
 	"go.uber.org/goleak"
 
 	"github.com/shortlink-org/go-sdk/logger"
@@ -293,7 +294,18 @@ func TestDebugWithContext(t *testing.T) {
 	log, err := logger.New(conf)
 	require.NoError(t, err)
 
-	ctx := context.WithValue(context.Background(), sessionIDKey, "sess-789")
+	traceID, err := trace.TraceIDFromHex("01020304050607080102030405060708")
+	require.NoError(t, err)
+	spanID, err := trace.SpanIDFromHex("0102030405060708")
+	require.NoError(t, err)
+
+	spanCtx := trace.NewSpanContext(trace.SpanContextConfig{
+		TraceID:    traceID,
+		SpanID:     spanID,
+		TraceFlags: trace.FlagsSampled,
+	})
+
+	ctx := context.WithValue(trace.ContextWithSpanContext(context.Background(), spanCtx), sessionIDKey, "sess-789")
 	log.DebugWithContext(ctx, "Processing step", slog.String("step", "validation"), slog.Int("data_size", 1024))
 
 	require.Contains(t, buffer.String(), `"level":"DEBUG"`)
