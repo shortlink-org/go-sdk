@@ -46,7 +46,7 @@ require (
 	github.com/prometheus/procfs v0.17.0 // indirect
 	github.com/sagikazarmark/locafero v0.11.0 // indirect
 	github.com/samber/lo v1.52.0 // indirect
-	github.com/shortlink-org/go-sdk/config v0.0.0-20251121191713-160ea5dd70ad
+	github.com/shortlink-org/go-sdk/config 4c6548ea718b
 	github.com/shortlink-org/go-sdk/flight_trace v0.0.0-20251111173054-8c030dab4702 // indirect
 	github.com/shortlink-org/go-sdk/http v0.0.0-20251108145352-f59577605d0a // indirect
 	github.com/sourcegraph/conc v0.3.1-0.20240121214520-5f936abd7ae8 // indirect
