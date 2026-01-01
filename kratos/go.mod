@@ -5,7 +5,7 @@ go 1.25.3
 require (
 	github.com/ory/client-go v1.22.16
 	github.com/shortlink-org/go-sdk/config 4c6548ea718b
-	github.com/shortlink-org/go-sdk/logger v0.0.0-20251108203914-f363e5ad1155
+	github.com/shortlink-org/go-sdk/logger 4e43e5a39586
 	github.com/spf13/viper v1.21.0
 )
 
