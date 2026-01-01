@@ -6,7 +6,7 @@ require (
 	github.com/go-redis/cache/v9 v9.0.0
 	github.com/ory/dockertest/v3 v3.12.0
 	github.com/redis/go-redis/v9 v9.17.2
-	github.com/redis/rueidis v1.0.68
+	github.com/redis/rueidis v1.0.70
 	github.com/redis/rueidis/rueidiscompat v1.0.68
 	github.com/shortlink-org/go-sdk/db v0.0.0-20251021172021-f38879dace30
 	github.com/shortlink-org/go-sdk/observability v0.0.0-20251108145352-f59577605d0a
@@ -90,7 +90,7 @@ require (
 	github.com/prometheus/procfs v0.17.0 // indirect
 	github.com/redis/rueidis/rueidisotel v1.0.68 // indirect
 	github.com/sagikazarmark/locafero v0.11.0 // indirect
-	github.com/shortlink-org/go-sdk/config 4c6548ea718b
+	github.com/shortlink-org/go-sdk/config v0.0.0-20251203170842-4c6548ea718b
 	github.com/shortlink-org/go-sdk/http v0.0.0-20251108115131-18dc85978c3b // indirect
 	github.com/shortlink-org/go-sdk/logger v0.0.0-20251108103956-0a3cbbf03637 // indirect
 	github.com/sirupsen/logrus v1.9.3 // indirect
@@ -124,11 +124,11 @@ require (
 	go.opentelemetry.io/proto/otlp v1.7.1 // indirect
 	go.yaml.in/yaml/v2 v2.4.2 // indirect
 	go.yaml.in/yaml/v3 v3.0.4 // indirect
-	golang.org/x/crypto v0.45.0 // indirect
-	golang.org/x/net v0.47.0 // indirect
-	golang.org/x/sync v0.18.0 // indirect
-	golang.org/x/sys v0.38.0 // indirect
-	golang.org/x/text v0.31.0 // indirect
+	golang.org/x/crypto v0.46.0 // indirect
+	golang.org/x/net v0.48.0 // indirect
+	golang.org/x/sync v0.19.0 // indirect
+	golang.org/x/sys v0.39.0 // indirect
+	golang.org/x/text v0.32.0 // indirect
 	golang.org/x/tools v0.39.0 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20251022142026-3a174f9686a8 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20251022142026-3a174f9686a8 // indirect
