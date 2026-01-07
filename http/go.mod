@@ -1,6 +1,6 @@
 module github.com/shortlink-org/go-sdk/http
 
-go 1.25.3
+go 1.25.5
 
 require (
 	github.com/go-chi/chi/v5 v5.2.3
@@ -9,7 +9,7 @@ require (
 	github.com/prometheus/client_golang v1.23.2
 	github.com/prometheus/client_model v0.6.2
 	github.com/shortlink-org/go-sdk/auth v0.0.0-00010101000000-000000000000
-	github.com/shortlink-org/go-sdk/config 4c6548ea718b
+	github.com/shortlink-org/go-sdk/config v0.0.0-20251203170842-4c6548ea718b
 	github.com/shortlink-org/go-sdk/flight_trace e726ce36c641
 	github.com/shortlink-org/go-sdk/logger v0.0.0-20251108203914-f363e5ad1155
 	github.com/stretchr/testify v1.11.1

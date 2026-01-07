@@ -1,3 +1,3 @@
 module github.com/shortlink-org/go-sdk/context
 
-go 1.25.3
+go 1.25.5

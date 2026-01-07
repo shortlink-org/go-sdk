@@ -1,13 +1,13 @@
 module github.com/shortlink-org/go-sdk/observability
 
-go 1.25.3
+go 1.25.5
 
 require (
 	github.com/felixge/fgprof v0.9.5
 	github.com/grafana/otel-profiling-go v0.5.1
 	github.com/heptiolabs/healthcheck v0.0.0-20211123025425-613501dd5deb
 	github.com/prometheus/client_golang v1.23.2
-	github.com/shortlink-org/go-sdk/config 4c6548ea718b
+	github.com/shortlink-org/go-sdk/config v0.0.0-20251203170842-4c6548ea718b
 	github.com/shortlink-org/go-sdk/http v0.0.0-20251108145352-f59577605d0a
 	github.com/shortlink-org/go-sdk/logger v0.0.0-20251108203914-f363e5ad1155
 	go.opentelemetry.io/otel v1.38.0

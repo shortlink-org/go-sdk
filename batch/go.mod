@@ -1,6 +1,6 @@
 module github.com/shortlink-org/go-sdk/batch
 
-go 1.25.3
+go 1.25.5
 
 require (
 	github.com/stretchr/testify v1.11.1

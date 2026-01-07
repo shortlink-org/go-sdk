@@ -1,6 +1,6 @@
 module github.com/shortlink-org/go-sdk/eventsourcing
 
-go 1.25.3
+go 1.25.5
 
 require (
 	github.com/Masterminds/squirrel v1.5.4
