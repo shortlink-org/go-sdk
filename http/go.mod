@@ -8,10 +8,9 @@ require (
 	github.com/ory/client-go v1.22.16
 	github.com/prometheus/client_golang v1.23.2
 	github.com/prometheus/client_model v0.6.2
-	github.com/shortlink-org/go-sdk/auth v0.0.0-00010101000000-000000000000
-	github.com/shortlink-org/go-sdk/config v0.0.0-20251203170842-4c6548ea718b
-	github.com/shortlink-org/go-sdk/flight_trace v0.0.0-20251111173054-8c030dab4702
-	github.com/shortlink-org/go-sdk/logger v0.0.0-20251108203914-f363e5ad1155
+	github.com/shortlink-org/go-sdk/config v0.0.0-20260107221410-70eee7409da1
+	github.com/shortlink-org/go-sdk/flight_trace v0.0.0-20260107221410-70eee7409da1
+	github.com/shortlink-org/go-sdk/logger v0.0.0-20260107221410-70eee7409da1
 	github.com/stretchr/testify v1.11.1
 	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.64.0
 	go.opentelemetry.io/otel v1.39.0
@@ -34,8 +33,8 @@ require (
 	github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 // indirect
 	github.com/pelletier/go-toml/v2 v2.2.4 // indirect
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
-	github.com/prometheus/common v0.66.1 // indirect
-	github.com/prometheus/procfs v0.17.0 // indirect
+	github.com/prometheus/common v0.67.4 // indirect
+	github.com/prometheus/procfs v0.19.2 // indirect
 	github.com/sagikazarmark/locafero v0.11.0 // indirect
 	github.com/sourcegraph/conc v0.3.1-0.20240121214520-5f936abd7ae8 // indirect
 	github.com/spf13/afero v1.15.0 // indirect
@@ -47,19 +46,17 @@ require (
 	github.com/twmb/murmur3 v1.1.8 // indirect
 	go.opentelemetry.io/auto/sdk v1.2.1 // indirect
 	go.opentelemetry.io/otel/metric v1.39.0 // indirect
-	go.yaml.in/yaml/v2 v2.4.2 // indirect
+	go.yaml.in/yaml/v2 v2.4.3 // indirect
 	go.yaml.in/yaml/v3 v3.0.4 // indirect
 	golang.org/x/oauth2 v0.34.0 // indirect
 	golang.org/x/sys v0.39.0 // indirect
 	golang.org/x/text v0.32.0 // indirect
-	google.golang.org/protobuf v1.36.10 // indirect
+	google.golang.org/protobuf v1.36.11 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
 
-replace github.com/shortlink-org/go-sdk/auth => ../auth //lint:ignore gomoddirectives local development dependency
-
-replace github.com/shortlink-org/go-sdk/logger => ../logger //lint:ignore gomoddirectives local development dependency
-
-replace github.com/shortlink-org/go-sdk/config => ../config
-
-replace github.com/shortlink-org/go-sdk/flight_trace => ../flight_trace
+replace (
+	github.com/shortlink-org/go-sdk/config => ../config
+	github.com/shortlink-org/go-sdk/flight_trace => ../flight_trace
+	github.com/shortlink-org/go-sdk/logger => ../logger //lint:ignore gomoddirectives local development dependency
+)

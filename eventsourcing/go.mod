@@ -8,12 +8,12 @@ require (
 	github.com/jackc/pgx/v5 v5.8.0
 	github.com/ory/dockertest/v3 v3.12.0
 	github.com/shortlink-org/go-sdk/db v0.0.0-20251021202009-dcc19c352b8b
-	github.com/shortlink-org/go-sdk/logger v0.0.0-20251108203914-f363e5ad1155
+	github.com/shortlink-org/go-sdk/logger v0.0.0-20260107221410-70eee7409da1
 	github.com/stretchr/testify v1.11.1
 	go.opentelemetry.io/otel v1.39.0
 	go.uber.org/atomic v1.11.0
 	go.uber.org/goleak v1.3.0
-	google.golang.org/protobuf v1.36.10
+	google.golang.org/protobuf v1.36.11
 )
 
 require (
@@ -78,7 +78,7 @@ require (
 	github.com/redis/rueidis v1.0.70 // indirect
 	github.com/redis/rueidis/rueidisotel v1.0.70 // indirect
 	github.com/sagikazarmark/locafero v0.11.0 // indirect
-	github.com/shortlink-org/go-sdk/config v0.0.0-20251203170842-4c6548ea718b
+	github.com/shortlink-org/go-sdk/config v0.0.0-20260107221410-70eee7409da1
 	github.com/sirupsen/logrus v1.9.3 // indirect
 	github.com/sourcegraph/conc v0.3.1-0.20240121214520-5f936abd7ae8 // indirect
 	github.com/spf13/afero v1.15.0 // indirect
