@@ -9,7 +9,7 @@ require (
 	github.com/spf13/viper v1.21.0
 	github.com/stretchr/testify v1.11.1
 	google.golang.org/grpc v1.78.0
-	google.golang.org/protobuf v1.36.10
+	google.golang.org/protobuf v1.36.11
 )
 
 require (
