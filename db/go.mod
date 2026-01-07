@@ -3,7 +3,7 @@ module github.com/shortlink-org/go-sdk/db
 go 1.25.3
 
 require (
-	github.com/XSAM/otelsql v0.40.0
+	github.com/XSAM/otelsql v0.41.0
 	github.com/aerospike/aerospike-client-go v4.5.2+incompatible
 	github.com/couchbase/gocb/v2 v2.11.1
 	github.com/dgraph-io/badger/v4 v4.8.0
