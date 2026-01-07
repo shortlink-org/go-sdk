@@ -7,9 +7,9 @@ require (
 	github.com/grpc-ecosystem/go-grpc-middleware/providers/prometheus v1.1.0
 	github.com/grpc-ecosystem/go-grpc-middleware/v2 v2.3.3
 	github.com/prometheus/client_golang v1.23.2
-	github.com/shortlink-org/go-sdk/auth v0.0.0-20260107221410-70eee7409da1
-	github.com/shortlink-org/go-sdk/flight_trace v0.0.0-20260107221410-70eee7409da1
-	github.com/shortlink-org/go-sdk/logger v0.0.0-20260107221410-70eee7409da1
+	github.com/shortlink-org/go-sdk/auth v0.0.0-20260107222411-453281b10921
+	github.com/shortlink-org/go-sdk/flight_trace v0.0.0-20260107222411-453281b10921
+	github.com/shortlink-org/go-sdk/logger v0.0.0-20260107222411-453281b10921
 	go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc v0.64.0
 	go.opentelemetry.io/otel v1.39.0
 	go.opentelemetry.io/otel/sdk/metric v1.39.0
@@ -44,7 +44,7 @@ require (
 	github.com/prometheus/common v0.67.4 // indirect
 	github.com/prometheus/procfs v0.19.2 // indirect
 	github.com/sagikazarmark/locafero v0.11.0 // indirect
-	github.com/shortlink-org/go-sdk/config v0.0.0-20260107221410-70eee7409da1
+	github.com/shortlink-org/go-sdk/config v0.0.0-20260107222411-453281b10921
 	github.com/sourcegraph/conc v0.3.1-0.20240121214520-5f936abd7ae8 // indirect
 	github.com/spf13/afero v1.15.0 // indirect
 	github.com/spf13/cast v1.10.0 // indirect

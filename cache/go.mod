@@ -8,8 +8,8 @@ require (
 	github.com/redis/go-redis/v9 v9.17.2
 	github.com/redis/rueidis v1.0.70
 	github.com/redis/rueidis/rueidiscompat v1.0.70
-	github.com/shortlink-org/go-sdk/db v0.0.0-20260107221410-70eee7409da1
-	github.com/shortlink-org/go-sdk/observability v0.0.0-20260107221410-70eee7409da1
+	github.com/shortlink-org/go-sdk/db v0.0.0-20260107222411-453281b10921
+	github.com/shortlink-org/go-sdk/observability v0.0.0-20260107222411-453281b10921
 	github.com/stretchr/testify v1.11.1
 	go.opentelemetry.io/otel/trace v1.39.0
 )
@@ -83,9 +83,9 @@ require (
 	github.com/prometheus/procfs v0.19.2 // indirect
 	github.com/redis/rueidis/rueidisotel v1.0.70 // indirect
 	github.com/sagikazarmark/locafero v0.11.0 // indirect
-	github.com/shortlink-org/go-sdk/config v0.0.0-20260107221410-70eee7409da1
-	github.com/shortlink-org/go-sdk/http v0.0.0-20260107221410-70eee7409da1 // indirect
-	github.com/shortlink-org/go-sdk/logger v0.0.0-20260107221410-70eee7409da1 // indirect
+	github.com/shortlink-org/go-sdk/config v0.0.0-20260107222411-453281b10921
+	github.com/shortlink-org/go-sdk/http v0.0.0-20260107222411-453281b10921 // indirect
+	github.com/shortlink-org/go-sdk/logger v0.0.0-20260107222411-453281b10921 // indirect
 	github.com/sirupsen/logrus v1.9.3 // indirect
 	github.com/sourcegraph/conc v0.3.1-0.20240121214520-5f936abd7ae8 // indirect
 	github.com/spf13/afero v1.15.0 // indirect

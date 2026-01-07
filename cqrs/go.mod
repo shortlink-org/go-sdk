@@ -11,7 +11,7 @@ require (
 	github.com/ThreeDotsLabs/watermill v1.5.1
 	github.com/google/uuid v1.6.0
 	github.com/jackc/pgx/v5 v5.8.0
-	github.com/shortlink-org/go-sdk/logger v0.0.0-20260107221410-70eee7409da1
+	github.com/shortlink-org/go-sdk/logger v0.0.0-20260107222411-453281b10921
 	github.com/shortlink-org/go-sdk/watermill v0.0.0-20260107120147-2c52d48b15f0
 	github.com/sony/gobreaker v1.0.0
 	github.com/stretchr/testify v1.11.1
@@ -42,7 +42,7 @@ require (
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
 	github.com/sagikazarmark/locafero v0.11.0 // indirect
-	github.com/shortlink-org/go-sdk/config v0.0.0-20260107221410-70eee7409da1 // indirect
+	github.com/shortlink-org/go-sdk/config v0.0.0-20260107222411-453281b10921 // indirect
 	github.com/sourcegraph/conc v0.3.1-0.20240121214520-5f936abd7ae8 // indirect
 	github.com/spf13/afero v1.15.0 // indirect
 	github.com/spf13/cast v1.10.0 // indirect

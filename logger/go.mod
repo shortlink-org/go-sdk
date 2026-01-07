@@ -31,7 +31,7 @@ require (
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
 	github.com/sagikazarmark/locafero v0.11.0 // indirect
 	github.com/segmentio/asm v1.2.0 // indirect
-	github.com/shortlink-org/go-sdk/config v0.0.0-20260107221410-70eee7409da1
+	github.com/shortlink-org/go-sdk/config v0.0.0-20260107222411-453281b10921
 	github.com/sourcegraph/conc v0.3.1-0.20240121214520-5f936abd7ae8 // indirect
 	github.com/spf13/afero v1.15.0 // indirect
 	github.com/spf13/cast v1.10.0 // indirect

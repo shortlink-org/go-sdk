@@ -4,8 +4,8 @@ go 1.25.5
 
 require (
 	github.com/ory/client-go v1.22.16
-	github.com/shortlink-org/go-sdk/config v0.0.0-20260107221410-70eee7409da1
-	github.com/shortlink-org/go-sdk/logger v0.0.0-20260107221410-70eee7409da1
+	github.com/shortlink-org/go-sdk/config v0.0.0-20260107222411-453281b10921
+	github.com/shortlink-org/go-sdk/logger v0.0.0-20260107222411-453281b10921
 	github.com/spf13/viper v1.21.0
 )
 
