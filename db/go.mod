@@ -17,6 +17,7 @@ require (
 	github.com/lib/pq v1.10.9
 	github.com/mattn/go-sqlite3 v1.14.33
 	github.com/neo4j/neo4j-go-driver/v5 v5.28.4
+	github.com/neo4j/neo4j-go-driver/v6 v6.0.0
 	github.com/ory/dockertest/v3 v3.12.0
 	github.com/redis/rueidis v1.0.70
 	github.com/redis/rueidis/rueidisotel v1.0.70
