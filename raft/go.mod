@@ -4,7 +4,7 @@ go 1.25.5
 
 require (
 	github.com/google/uuid v1.6.0
-	github.com/shortlink-org/go-sdk/grpc v0.0.0-20260107222411-453281b10921
+	github.com/shortlink-org/go-sdk/grpc v0.0.0-20260113015607-73d37017b4da
 	github.com/shortlink-org/go-sdk/logger v0.0.0-20260107222411-453281b10921
 	github.com/spf13/viper v1.21.0
 	github.com/stretchr/testify v1.11.1
@@ -33,7 +33,7 @@ require (
 	github.com/prometheus/common v0.67.4 // indirect
 	github.com/prometheus/procfs v0.19.2 // indirect
 	github.com/sagikazarmark/locafero v0.11.0 // indirect
-	github.com/shortlink-org/go-sdk/auth v0.0.0-20260107222411-453281b10921 // indirect
+	github.com/shortlink-org/go-sdk/auth v0.0.0-20260107222628-ad66d85c8a41 // indirect
 	github.com/shortlink-org/go-sdk/config v0.0.0-20260107222411-453281b10921 // indirect
 	github.com/shortlink-org/go-sdk/flight_trace v0.0.0-20260107222411-453281b10921 // indirect
 	github.com/sourcegraph/conc v0.3.1-0.20240121214520-5f936abd7ae8 // indirect
