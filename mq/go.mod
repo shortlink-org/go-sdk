@@ -73,7 +73,7 @@ require (
 	github.com/jcmturner/gokrb5/v8 v8.4.4 // indirect
 	github.com/jcmturner/rpc/v2 v2.0.3 // indirect
 	github.com/johejo/golang-migrate-extra v0.0.0-20211005021153-c17dd75f8b4a // indirect
-	github.com/klauspost/compress v1.18.1 // indirect
+	github.com/klauspost/compress v1.18.2 // indirect
 	github.com/lib/pq v1.10.9 // indirect
 	github.com/mattn/go-sqlite3 v1.14.33 // indirect
 	github.com/moby/docker-image-spec v1.3.1 // indirect
