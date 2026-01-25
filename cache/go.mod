@@ -5,7 +5,7 @@ go 1.25.5
 require (
 	github.com/go-redis/cache/v9 v9.0.0
 	github.com/ory/dockertest/v3 v3.12.0
-	github.com/redis/go-redis/v9 v9.17.2
+	github.com/redis/go-redis/v9 v9.17.3
 	github.com/redis/rueidis v1.0.70
 	github.com/redis/rueidis/rueidiscompat v1.0.70
 	github.com/shortlink-org/go-sdk/db v0.0.0-20260107222411-453281b10921
