@@ -79,3 +79,18 @@ func GetUserID(ctx context.Context) (string, error) {
 
 	return "", ErrUserIDNotFound
 }
+
+// GetEmail is a convenience method to get email from claims.
+func GetEmail(ctx context.Context) (string, error) {
+	claims, err := GetClaims(ctx)
+	if err != nil {
+		return "", err
+	}
+	return claims.Email, nil
+}
+
+// IsAuthenticated checks if the context has valid claims.
+func IsAuthenticated(ctx context.Context) bool {
+	_, err := GetClaims(ctx)
+	return err == nil
+}

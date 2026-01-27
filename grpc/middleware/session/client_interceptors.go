@@ -1,168 +1,92 @@
-// Package session_interceptor provides gRPC interceptors for session management.
-//
-
-package session_interceptor
+// Package sessioninterceptor provides gRPC interceptors for JWT token propagation.
+// This package forwards JWT tokens from HTTP requests to downstream gRPC services,
+// enabling end-to-end authentication through the service mesh.
+package sessioninterceptor
 
 import (
 	"context"
-	"errors"
 
-	ory "github.com/ory/client-go"
+	"github.com/shortlink-org/go-sdk/auth/session"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"
-
-	"github.com/shortlink-org/go-sdk/auth/session"
 )
 
-const userIDKey = "user-id"
+const (
+	// authorizationKey is the gRPC metadata key for the JWT token.
+	// Must be lowercase for gRPC metadata.
+	authorizationKey = "authorization"
+
+	// userIDKey is the gRPC metadata key for the user ID.
+	userIDKey = "user-id"
+
+	// initialPairsCapacity is the initial capacity for metadata pairs slice.
+	initialPairsCapacity = 4
+)
+
+type contextKey struct{ name string }
+
+// ContextAuthorizationKey is used to store the original Authorization header in context.
+var ContextAuthorizationKey = &contextKey{"authorization"}
 
 var tracerClient = otel.Tracer("session.interceptor.client")
 
-// attachUserMetadata resolves and injects a stable user-id into outgoing gRPC metadata.
-// Priority: metadata → session.identity → context fallback.
-func attachUserMetadata(ctx context.Context) (context.Context, error) {
-	ctx, span := tracerClient.Start(ctx, "ResolveOutgoingUserID")
+// WithAuthorization stores the Authorization header value in context.
+// Call this in your HTTP middleware to make it available for gRPC calls.
+func WithAuthorization(ctx context.Context, authHeader string) context.Context {
+	return context.WithValue(ctx, ContextAuthorizationKey, authHeader)
+}
+
+// GetAuthorization retrieves the Authorization header from context.
+func GetAuthorization(ctx context.Context) string {
+	if v, ok := ctx.Value(ContextAuthorizationKey).(string); ok {
+		return v
+	}
+
+	return ""
+}
+
+// attachAuthMetadata injects JWT token and user-id into outgoing gRPC metadata.
+func attachAuthMetadata(ctx context.Context) (context.Context, error) {
+	ctx, span := tracerClient.Start(ctx, "AttachAuthMetadata")
 	defer span.End()
 
-	// Load session once to avoid double calls
-	sess, sessErr := session.GetSession(ctx)
-	if sessErr != nil && !errors.Is(sessErr, session.ErrSessionNotFound) {
-		err := &SessionLoadError{Err: sessErr}
-		span.RecordError(err)
-		span.SetStatus(codes.Error, err.Error())
+	// Get Authorization header from context
+	auth := GetAuthorization(ctx)
 
-		return nil, err
+	// Get user ID from JWT claims
+	userID, _ := session.GetUserID(ctx)
+
+	// Build metadata
+	pairs := make([]string, 0, initialPairsCapacity)
+
+	if auth != "" {
+		pairs = append(pairs, authorizationKey, auth)
+
+		span.SetAttributes(attribute.Bool("auth.token_present", true))
+	} else {
+		span.SetAttributes(attribute.Bool("auth.token_present", false))
 	}
 
-	// Try metadata first if available and valid
-	uid, foundInMetadata, err := extractUserIDFromMetadata(ctx, sess)
-	if err != nil {
-		span.RecordError(err)
-		span.SetStatus(codes.Error, err.Error())
-
-		return nil, err
+	if userID != "" {
+		pairs = append(pairs, userIDKey, userID)
+		span.SetAttributes(attribute.String("auth.user_id", userID))
 	}
 
-	if foundInMetadata {
-		span.SetAttributes(attribute.String("auth.user_id.source", "metadata"))
-		span.SetAttributes(attribute.String("auth.user_id", uid))
-		span.SetStatus(codes.Ok, "user-id resolved from metadata")
+	if len(pairs) == 0 {
+		span.SetStatus(codes.Ok, "no auth metadata to attach")
 
-		return metadata.AppendToOutgoingContext(ctx, userIDKey, uid), nil
+		return ctx, nil
 	}
 
-	// Try session identity if available
-	uid, foundInSession := extractUserIDFromSession(sess)
-	if foundInSession {
-		span.SetAttributes(attribute.String("auth.user_id.source", "session"))
-		span.SetAttributes(attribute.String("auth.user_id", uid))
-		span.SetStatus(codes.Ok, "user-id resolved from session")
+	span.SetStatus(codes.Ok, "auth metadata attached")
 
-		return metadata.AppendToOutgoingContext(ctx, userIDKey, uid), nil
-	}
-
-	// Fallback to context-injected user-id
-	uid, err = extractUserIDFromContext(ctx)
-	if err != nil {
-		span.RecordError(err)
-		span.SetStatus(codes.Error, err.Error())
-
-		return nil, err
-	}
-
-	span.SetAttributes(attribute.String("auth.user_id.source", "context"))
-	span.SetAttributes(attribute.String("auth.user_id", uid))
-	span.SetStatus(codes.Ok, "user-id resolved from context")
-
-	return metadata.AppendToOutgoingContext(ctx, userIDKey, uid), nil
+	return metadata.AppendToOutgoingContext(ctx, pairs...), nil
 }
 
-// extractUserIDFromMetadata reads user-id from outgoing metadata and validates against session.
-func extractUserIDFromMetadata(ctx context.Context, sess *ory.Session) (string, bool, error) {
-	md, ok := metadata.FromOutgoingContext(ctx)
-	if !ok {
-		return "", false, nil
-	}
-
-	vals := md.Get(userIDKey)
-	if len(vals) == 0 {
-		return "", false, nil
-	}
-
-	uid := vals[0]
-	if uid == "" {
-		return "", false, nil
-	}
-
-	// Validate metadata UID matches session UID if session exists
-	err := validateUserIDConsistency(sess, uid)
-	if err != nil {
-		return "", false, err
-	}
-
-	return uid, true, nil
-}
-
-// extractUserIDFromSession derives user-id from session identity.
-func extractUserIDFromSession(sess *ory.Session) (string, bool) {
-	if sess == nil {
-		return "", false
-	}
-
-	identity, hasIdentity := sess.GetIdentityOk()
-	if !hasIdentity || identity == nil {
-		return "", false
-	}
-
-	uid := identity.GetId()
-	if uid == "" {
-		return "", false
-	}
-
-	return uid, true
-}
-
-// extractUserIDFromContext fallback resolver: derives user-id from context.
-func extractUserIDFromContext(ctx context.Context) (string, error) {
-	uid, err := session.GetUserID(ctx)
-	if err != nil {
-		return "", &UserIDNotFoundError{Err: err}
-	}
-
-	if uid == "" {
-		return "", ErrEmptyUserID
-	}
-
-	return uid, nil
-}
-
-// validateUserIDConsistency ensures metadata user-id matches session user-id.
-func validateUserIDConsistency(sess *ory.Session, metadataUID string) error {
-	if sess == nil {
-		return nil
-	}
-
-	identity, hasIdentity := sess.GetIdentityOk()
-	if !hasIdentity || identity == nil {
-		return nil
-	}
-
-	sessUID := identity.GetId()
-	if sessUID == "" {
-		return nil
-	}
-
-	if metadataUID != sessUID {
-		return UserIDMismatchError{MetadataID: metadataUID, SessionID: sessUID}
-	}
-
-	return nil
-}
-
-// SessionUnaryClientInterceptor attaches user-id to outgoing metadata for unary calls.
+// SessionUnaryClientInterceptor attaches JWT token and user-id to outgoing metadata for unary calls.
 func SessionUnaryClientInterceptor() grpc.UnaryClientInterceptor {
 	return func(
 		ctx context.Context,
@@ -173,7 +97,7 @@ func SessionUnaryClientInterceptor() grpc.UnaryClientInterceptor {
 		invoker grpc.UnaryInvoker,
 		opts ...grpc.CallOption,
 	) error {
-		ctx, err := attachUserMetadata(ctx)
+		ctx, err := attachAuthMetadata(ctx)
 		if err != nil {
 			return err
 		}
@@ -182,7 +106,7 @@ func SessionUnaryClientInterceptor() grpc.UnaryClientInterceptor {
 	}
 }
 
-// SessionStreamClientInterceptor attaches user-id to outgoing metadata for streaming calls.
+// SessionStreamClientInterceptor attaches JWT token and user-id to outgoing metadata for streaming calls.
 func SessionStreamClientInterceptor() grpc.StreamClientInterceptor {
 	return func(
 		ctx context.Context,
@@ -192,7 +116,7 @@ func SessionStreamClientInterceptor() grpc.StreamClientInterceptor {
 		streamer grpc.Streamer,
 		opts ...grpc.CallOption,
 	) (grpc.ClientStream, error) {
-		ctx, err := attachUserMetadata(ctx)
+		ctx, err := attachAuthMetadata(ctx)
 		if err != nil {
 			return nil, err
 		}

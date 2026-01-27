@@ -7,6 +7,7 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/shortlink-org/go-sdk/auth/session"
 	"github.com/shortlink-org/go-sdk/config"
+	session_interceptor "github.com/shortlink-org/go-sdk/grpc/middleware/session"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"
@@ -130,9 +131,13 @@ func (j jwtMiddleware) middleware(next http.Handler) http.Handler {
 			attribute.String("session.id", claims.SessionID),
 		)
 
-		// Enrich context with claims
+		// Enrich context with claims and user ID
 		ctx = session.WithClaims(ctx, claims)
 		ctx = session.WithUserID(ctx, claims.Subject)
+
+		// Store original Authorization header for gRPC propagation
+		authHeader := r.Header.Get("Authorization")
+		ctx = session_interceptor.WithAuthorization(ctx, authHeader)
 
 		next.ServeHTTP(w, r.WithContext(ctx))
 	})

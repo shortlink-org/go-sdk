@@ -1,0 +1,34 @@
+---
+description: Never downgrade Go version in go.mod or go.work files
+globs: "**/go.{mod,work}"
+alwaysApply: false
+---
+
+# Go Version Policy
+
+NEVER downgrade Go version in `go.mod` or `go.work` files.
+
+## Rules
+
+1. **Do not lower the `go` directive** — if `go.work` says `go 1.25.5`, never change it to `go 1.25.4` or lower
+2. **Upgrading is allowed** — increasing version is fine when explicitly requested
+3. **Toolchain compatibility** — if linter/tool fails due to version mismatch, suggest running with correct toolchain:
+   ```bash
+   GOTOOLCHAIN=go1.25.5 golangci-lint run ./...
+   ```
+
+## Why
+
+- Downgrading can break features that depend on newer Go
+- The project maintains version parity across all modules
+- CI/CD uses the declared Go version
+
+## If Version Conflict Occurs
+
+```bash
+# ❌ BAD - never do this
+# Changing go 1.25.5 -> go 1.25.4
+
+# ✅ GOOD - use explicit toolchain
+GOTOOLCHAIN=go1.25.5 <command>
+```

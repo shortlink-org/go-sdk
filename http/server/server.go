@@ -1,4 +1,4 @@
-package http_server
+package httpserver
 
 import (
 	"context"
@@ -9,15 +9,19 @@ import (
 	"github.com/shortlink-org/go-sdk/config"
 )
 
-func New(ctx context.Context, h http.Handler, serverConfig Config, cfg *config.Config) *http.Server {
-	cfg.SetDefault("HTTP_SERVER_READ_TIMEOUT", "5s")        // the maximum duration for reading the entire request, including the body
-	cfg.SetDefault("HTTP_SERVER_WRITE_TIMEOUT", "5s")       // the maximum duration before timing out writes of the response
-	cfg.SetDefault("HTTP_SERVER_IDLE_TIMEOUT", "30s")       // the maximum amount of time to wait for the next request when keep-alive is enabled
-	cfg.SetDefault("HTTP_SERVER_READ_HEADER_TIMEOUT", "2s") // the amount of time allowed to read request headers
+// New creates a new HTTP server with the given handler and configuration.
+// It sets up timeouts and wraps the handler with a timeout handler.
+func New(ctx context.Context, handler http.Handler, serverConfig Config, cfg *config.Config) *http.Server {
+	// Set default timeouts
+	cfg.SetDefault("HTTP_SERVER_READ_TIMEOUT", "5s")
+	cfg.SetDefault("HTTP_SERVER_WRITE_TIMEOUT", "5s")
+	cfg.SetDefault("HTTP_SERVER_IDLE_TIMEOUT", "30s")
+	cfg.SetDefault("HTTP_SERVER_READ_HEADER_TIMEOUT", "2s")
 
-	server := &http.Server{} //nolint:gosec,exhaustruct // timeouts configured via viper immediately below
+	//nolint:gosec,exhaustruct // timeouts configured via viper immediately below
+	server := &http.Server{}
 	server.Addr = fmt.Sprintf(":%d", serverConfig.Port)
-	server.Handler = http.TimeoutHandler(h, serverConfig.Timeout, fmt.Sprintf(`{"error": %q}`, TimeoutMessage))
+	server.Handler = http.TimeoutHandler(handler, serverConfig.Timeout, TimeoutMessage)
 	server.BaseContext = func(_ net.Listener) context.Context { return ctx }
 	server.ReadTimeout = cfg.GetDuration("HTTP_SERVER_READ_TIMEOUT")
 	server.WriteTimeout = serverConfig.Timeout + cfg.GetDuration("HTTP_SERVER_WRITE_TIMEOUT")

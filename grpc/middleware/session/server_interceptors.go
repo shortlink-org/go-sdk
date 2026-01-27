@@ -1,4 +1,4 @@
-package session_interceptor
+package sessioninterceptor
 
 import (
 	"context"
@@ -6,7 +6,6 @@ import (
 	"strings"
 	"time"
 
-	ory "github.com/ory/client-go"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	"github.com/shortlink-org/go-sdk/auth/session"
@@ -20,7 +19,18 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-const reflectionMethod = "/grpc.reflection.v1alpha.ServerReflection/ServerReflectionInfo"
+const (
+	// expectedMethodParts is the expected number of parts when splitting a gRPC method name.
+	expectedMethodParts = 3
+)
+
+// skipMethodPrefixes defines gRPC methods that should bypass session validation.
+// Includes health checks and reflection services (both v1 and v1alpha).
+var skipMethodPrefixes = []string{
+	"/grpc.health.v1.Health/",
+	"/grpc.reflection.v1.ServerReflection/",
+	"/grpc.reflection.v1alpha.ServerReflection/",
+}
 
 var (
 	tracerServer = otel.Tracer("session.interceptor.server")
@@ -43,11 +53,10 @@ var (
 	)
 )
 
-// SessionUnaryServerInterceptor ensures that every unary RPC request
-// contains a valid authenticated user identity resolved from:
-// 1) gRPC metadata
-// 2) Ory session
-// 3) context fallback
+// SessionUnaryServerInterceptor extracts user identity from incoming gRPC metadata.
+// It looks for:
+// 1) user-id in metadata (set by BFF).
+// 2) authorization header for JWT validation (optional).
 func SessionUnaryServerInterceptor() grpc.UnaryServerInterceptor {
 	return func(
 		ctx context.Context,
@@ -55,62 +64,70 @@ func SessionUnaryServerInterceptor() grpc.UnaryServerInterceptor {
 		info *grpc.UnaryServerInfo,
 		handler grpc.UnaryHandler,
 	) (any, error) {
-		if info.FullMethod == reflectionMethod {
+		if shouldSkipMethod(info.FullMethod) {
 			return handler(ctx, req)
 		}
 
-		svc, method := splitFullMethodName(info.FullMethod)
+		return handleUnarySession(ctx, req, info, handler)
+	}
+}
 
-		ctx, span := tracerServer.Start(ctx, "ResolveUserIdentity")
-		defer span.End()
+func handleUnarySession(
+	ctx context.Context,
+	req any,
+	info *grpc.UnaryServerInfo,
+	handler grpc.UnaryHandler,
+) (any, error) {
+	svc, method := splitFullMethodName(info.FullMethod)
+
+	ctx, span := tracerServer.Start(ctx, "ResolveUserIdentity")
+	defer span.End()
+
+	span.SetAttributes(
+		attribute.String("rpc.system", "grpc"),
+		attribute.String("rpc.service", svc),
+		attribute.String("rpc.method", method),
+	)
+
+	start := time.Now()
+	userID, source, err := resolveUserIdentity(ctx, span)
+
+	outcome := "success"
+	reason := "ok"
+
+	if err != nil {
+		code, reasonStr := classifyAuthError(err)
+		reason = reasonStr
+		outcome = "error"
 
 		span.SetAttributes(
-			attribute.String("rpc.system", "grpc"),
-			attribute.String("rpc.service", svc),
-			attribute.String("rpc.method", method),
+			attribute.Int("rpc.grpc.status_code", int(code)),
 		)
-
-		start := time.Now()
-		userID, source, err := resolveUserIdentity(ctx, span)
-
-		outcome := "success"
-		reason := "ok"
-
-		if err != nil {
-			code, r := classifyAuthError(err)
-			reason = r
-			outcome = "error"
-
-			// set rpc.grpc.status_code also for failed auth
-			span.SetAttributes(
-				attribute.Int("rpc.grpc.status_code", int(code)),
-			)
-
-			observeIdentityResolution(ctx, source, outcome, reason, start)
-
-			return nil, status.Error(code, err.Error())
-		}
 
 		observeIdentityResolution(ctx, source, outcome, reason, start)
 
-		span.SetAttributes(attribute.String("enduser.id", userID))
-		span.SetStatus(otelcodes.Ok, "user identity resolved")
-
-		ctx = session.WithUserID(ctx, userID)
-
-		resp, err := handler(ctx, req)
-
-		grpcCode := grpcCodes.OK
-		if err != nil {
-			grpcCode = status.Code(err)
-		}
-
-		span.SetAttributes(
-			attribute.Int("rpc.grpc.status_code", int(grpcCode)),
-		)
-
-		return resp, err
+		return nil, status.Error(code, err.Error())
 	}
+
+	observeIdentityResolution(ctx, source, outcome, reason, start)
+
+	span.SetAttributes(attribute.String("enduser.id", userID))
+	span.SetStatus(otelcodes.Ok, "user identity resolved")
+
+	ctx = session.WithUserID(ctx, userID)
+
+	resp, err := handler(ctx, req)
+
+	grpcCode := grpcCodes.OK
+	if err != nil {
+		grpcCode = status.Code(err)
+	}
+
+	span.SetAttributes(
+		attribute.Int("rpc.grpc.status_code", int(grpcCode)),
+	)
+
+	return resp, err
 }
 
 // SessionStreamServerInterceptor applies identity resolution for streaming RPCs.
@@ -121,84 +138,71 @@ func SessionStreamServerInterceptor() grpc.StreamServerInterceptor {
 		info *grpc.StreamServerInfo,
 		handler grpc.StreamHandler,
 	) error {
-		if info.FullMethod == reflectionMethod {
+		if shouldSkipMethod(info.FullMethod) {
 			return handler(srv, stream)
 		}
 
-		base := stream.Context()
-		svc, method := splitFullMethodName(info.FullMethod)
-
-		ctx, span := tracerServer.Start(base, "ResolveUserIdentityStream")
-		defer span.End()
-
-		span.SetAttributes(
-			attribute.String("rpc.system", "grpc"),
-			attribute.String("rpc.service", svc),
-			attribute.String("rpc.method", method),
-		)
-
-		start := time.Now()
-		userID, source, err := resolveUserIdentity(ctx, span)
-
-		outcome := "success"
-		reason := "ok"
-
-		if err != nil {
-			code, r := classifyAuthError(err)
-			reason = r
-			outcome = "error"
-
-			span.SetAttributes(
-				attribute.Int("rpc.grpc.status_code", int(code)),
-			)
-
-			observeIdentityResolution(ctx, source, outcome, reason, start)
-
-			return status.Error(code, err.Error())
-		}
-
-		observeIdentityResolution(ctx, source, outcome, reason, start)
-
-		span.SetAttributes(attribute.String("enduser.id", userID))
-		span.SetStatus(otelcodes.Ok, "user identity resolved")
-
-		ctx = session.WithUserID(ctx, userID)
-
-		err = handler(srv, wrapStreamWithContext(ctx, stream))
-
-		grpcCode := grpcCodes.OK
-		if err != nil {
-			grpcCode = status.Code(err)
-		}
-
-		span.SetAttributes(
-			attribute.Int("rpc.grpc.status_code", int(grpcCode)),
-		)
-
-		return err
+		return handleStreamSession(srv, stream, info, handler)
 	}
 }
 
-// resolveUserIdentity orchestrates the identity resolution flow.
-func resolveUserIdentity(ctx context.Context, span trace.Span) (string, string, error) {
-	sess, err := loadSession(ctx, span)
+func handleStreamSession(
+	srv any,
+	stream grpc.ServerStream,
+	info *grpc.StreamServerInfo,
+	handler grpc.StreamHandler,
+) error {
+	base := stream.Context()
+	svc, method := splitFullMethodName(info.FullMethod)
+
+	ctx, span := tracerServer.Start(base, "ResolveUserIdentityStream")
+	defer span.End()
+
+	span.SetAttributes(
+		attribute.String("rpc.system", "grpc"),
+		attribute.String("rpc.service", svc),
+		attribute.String("rpc.method", method),
+	)
+
+	start := time.Now()
+	userID, source, err := resolveUserIdentity(ctx, span)
+	outcome, reason := "success", "ok"
+
 	if err != nil {
-		return "", "unknown", err
+		code, reasonStr := classifyAuthError(err)
+		span.SetAttributes(attribute.Int("rpc.grpc.status_code", int(code)))
+		observeIdentityResolution(ctx, source, "error", reasonStr, start)
+
+		return status.Error(code, err.Error())
 	}
 
-	// 1. Metadata (primary)
-	if userID, ok, err := resolveFromMetadata(ctx, span, sess); err != nil {
-		return "", "metadata", err
-	} else if ok {
+	observeIdentityResolution(ctx, source, outcome, reason, start)
+	span.SetAttributes(attribute.String("enduser.id", userID))
+	span.SetStatus(otelcodes.Ok, "user identity resolved")
+
+	ctx = session.WithUserID(ctx, userID)
+	wrapped := &sessionWrappedServerStream{ServerStream: stream, wrappedCtx: ctx}
+	err = handler(srv, wrapped)
+
+	grpcCode := grpcCodes.OK
+	if err != nil {
+		grpcCode = status.Code(err)
+	}
+
+	span.SetAttributes(attribute.Int("rpc.grpc.status_code", int(grpcCode)))
+
+	return err
+}
+
+// resolveUserIdentity extracts user identity from gRPC metadata.
+// Priority: metadata user-id, then context fallback.
+func resolveUserIdentity(ctx context.Context, span trace.Span) (string, string, error) {
+	// 1. Try metadata first (user-id set by BFF)
+	if userID, ok := resolveFromMetadata(ctx, span); ok {
 		return userID, "metadata", nil
 	}
 
-	// 2. Session fallback
-	if userID, ok := resolveFromSession(span, sess); ok {
-		return userID, "session", nil
-	}
-
-	// 3. Context fallback
+	// 2. Fallback to context (if already set by upstream)
 	userID, err := resolveFromContext(ctx, span)
 	if err != nil {
 		return "", "context", err
@@ -207,73 +211,28 @@ func resolveUserIdentity(ctx context.Context, span trace.Span) (string, string, 
 	return userID, "context", nil
 }
 
-// loadSession reads Ory session from context.
-func loadSession(ctx context.Context, span trace.Span) (*ory.Session, error) {
-	sess, err := session.GetSession(ctx)
-	if err != nil && !errors.Is(err, session.ErrSessionNotFound) {
-		wrap := &SessionLoadError{Err: err}
-		span.RecordError(wrap)
-		span.SetStatus(otelcodes.Error, wrap.Error())
-		return nil, wrap
-	}
-	return sess, nil
-}
-
-// resolveFromMetadata reads user-id from gRPC metadata and validates it against the session.
-func resolveFromMetadata(ctx context.Context, span trace.Span, sess *ory.Session) (string, bool, error) {
-	userID, err := extractUserIDFromIncomingMetadata(ctx)
-	if err != nil {
-		if errors.Is(err, ErrServerMissingMetadata) || errors.Is(err, ErrServerMissingUserID) {
-			return "", false, nil
-		}
-		span.RecordError(err)
-		span.SetStatus(otelcodes.Error, err.Error())
-		return "", false, err
+// resolveFromMetadata reads user-id from gRPC metadata.
+func resolveFromMetadata(ctx context.Context, span trace.Span) (string, bool) {
+	incomingMD, ok := metadata.FromIncomingContext(ctx)
+	if !ok {
+		return "", false
 	}
 
-	span.SetAttributes(attribute.String("auth.user_id.metadata", userID))
+	// Try user-id key first
+	values := incomingMD.Get(userIDKey)
+	if len(values) > 0 {
+		userID := strings.TrimSpace(values[0])
+		if userID != "" {
+			span.SetAttributes(
+				attribute.String("auth.user_id.source", "metadata"),
+				attribute.String("auth.user_id", userID),
+			)
 
-	if sess != nil {
-		if identity, ok := sess.GetIdentityOk(); ok && identity != nil {
-			sessID := identity.GetId()
-			if sessID != "" && sessID != userID {
-				mismatch := UserIDMismatchError{MetadataID: userID, SessionID: sessID}
-				span.RecordError(mismatch)
-				span.SetStatus(otelcodes.Error, mismatch.Error())
-				return "", false, mismatch
-			}
+			return userID, true
 		}
 	}
 
-	span.SetAttributes(
-		attribute.String("auth.user_id.source", "metadata"),
-		attribute.String("auth.user_id", userID),
-	)
-
-	return userID, true, nil
-}
-
-func resolveFromSession(span trace.Span, sess *ory.Session) (string, bool) {
-	if sess == nil {
-		return "", false
-	}
-
-	identity, ok := sess.GetIdentityOk()
-	if !ok || identity == nil {
-		return "", false
-	}
-
-	sessID := identity.GetId()
-	if sessID == "" {
-		return "", false
-	}
-
-	span.SetAttributes(
-		attribute.String("auth.user_id.source", "session"),
-		attribute.String("auth.user_id", sessID),
-	)
-
-	return sessID, true
+	return "", false
 }
 
 func resolveFromContext(ctx context.Context, span trace.Span) (string, error) {
@@ -281,6 +240,7 @@ func resolveFromContext(ctx context.Context, span trace.Span) (string, error) {
 	if err != nil {
 		span.RecordError(err)
 		span.SetStatus(otelcodes.Error, err.Error())
+
 		return "", ErrServerMissingUserID
 	}
 
@@ -292,59 +252,25 @@ func resolveFromContext(ctx context.Context, span trace.Span) (string, error) {
 	return userID, nil
 }
 
-// extract user-id from gRPC metadata
-func extractUserIDFromIncomingMetadata(ctx context.Context) (string, error) {
-	md, ok := metadata.FromIncomingContext(ctx)
-	if !ok {
-		return "", ErrServerMissingMetadata
-	}
+// --- Stream Wrapper ---
 
-	values := md.Get(session.ContextUserIDKey.String())
-	if len(values) == 0 {
-		return "", ErrServerMissingUserID
-	}
-
-	userID := strings.TrimSpace(values[0])
-	if userID == "" {
-		return "", ErrServerMissingUserID
-	}
-
-	return userID, nil
-}
-
-// --- Stream Wrapper ----
-
+// sessionWrappedServerStream wraps a gRPC server stream with a custom context.
+//
+//nolint:containedctx // Required for grpc stream context override pattern
 type sessionWrappedServerStream struct {
 	grpc.ServerStream
-	ctx context.Context
-}
 
-func wrapStreamWithContext(ctx context.Context, stream grpc.ServerStream) grpc.ServerStream {
-	return &sessionWrappedServerStream{ServerStream: stream, ctx: ctx}
+	wrappedCtx context.Context
 }
 
 func (s *sessionWrappedServerStream) Context() context.Context {
-	return s.ctx
+	return s.wrappedCtx
 }
 
-// --- Error Mapping ----
-
-func toStatusErr(err error) error {
-	code, _ := classifyAuthError(err)
-	return status.Error(code, err.Error())
-}
+// --- Error Mapping ---
 
 func classifyAuthError(err error) (grpcCodes.Code, string) {
-	var mismatchErr *UserIDMismatchError
-	var sessionLoadErr *SessionLoadError
-
 	switch {
-	case errors.As(err, &mismatchErr):
-		return grpcCodes.PermissionDenied, "user_id_mismatch"
-
-	case errors.As(err, &sessionLoadErr):
-		return grpcCodes.Internal, "session_load_error"
-
 	case errors.Is(err, ErrServerMissingMetadata):
 		return grpcCodes.Unauthenticated, "missing_metadata"
 
@@ -356,7 +282,7 @@ func classifyAuthError(err error) (grpcCodes.Code, string) {
 	}
 }
 
-// --- Metrics (with exemplars) ----
+// --- Metrics (with exemplars) ---
 
 func observeIdentityResolution(ctx context.Context, source, outcome, reason string, start time.Time) {
 	duration := time.Since(start).Seconds()
@@ -373,6 +299,7 @@ func observeIdentityResolution(ctx context.Context, source, outcome, reason stri
 			eo.ObserveWithExemplar(duration, prometheus.Labels{
 				"trace_id": sc.TraceID().String(),
 			})
+
 			return
 		}
 	}
@@ -380,12 +307,23 @@ func observeIdentityResolution(ctx context.Context, source, outcome, reason stri
 	obs.Observe(duration)
 }
 
-// --- Utils ----
+// --- Utils ---
+
+func shouldSkipMethod(fullMethod string) bool {
+	for _, prefix := range skipMethodPrefixes {
+		if strings.HasPrefix(fullMethod, prefix) {
+			return true
+		}
+	}
+
+	return false
+}
 
 func splitFullMethodName(full string) (string, string) {
 	parts := strings.Split(full, "/")
-	if len(parts) != 3 {
+	if len(parts) != expectedMethodParts {
 		return "", ""
 	}
+
 	return parts[1], parts[2]
 }
