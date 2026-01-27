@@ -9,6 +9,8 @@ import (
 )
 
 func TestHostLimiterStateForPerHost(t *testing.T) {
+	t.Parallel()
+
 	limiter := newHostLimiter()
 
 	t.Cleanup(func() {
@@ -39,6 +41,8 @@ func TestHostLimiterStateForPerHost(t *testing.T) {
 }
 
 func TestHostLimiterCleanupTTL(t *testing.T) {
+	t.Parallel()
+
 	limiter := newHostLimiter()
 
 	t.Cleanup(func() {
@@ -67,6 +71,8 @@ func TestHostLimiterCleanupTTL(t *testing.T) {
 }
 
 func TestNextFromHeaders(t *testing.T) {
+	t.Parallel()
+
 	now := time.Now()
 	resp := new(http.Response)
 	resp.Header = make(http.Header)

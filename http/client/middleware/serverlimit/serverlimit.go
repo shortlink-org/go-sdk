@@ -1,6 +1,9 @@
+// Package serverlimit provides HTTP client middleware for respecting
+// server-specified rate limits via Retry-After and RateLimit-Reset headers.
 package serverlimit
 
 import (
+	"io"
 	"math/rand"
 	"net/http"
 	"runtime"
@@ -17,13 +20,27 @@ const (
 	hostCleanupInterval = time.Minute
 )
 
+// Config configures the server limit middleware.
 type Config struct {
 	JitterFraction float64
 	Metrics        *types.Metrics
 	Client         string
 }
 
-func Middleware(cfg Config) types.Middleware {
+// ServerLimiter manages rate limiting based on server response headers.
+// It tracks per-host rate limits and respects Retry-After/RateLimit-Reset headers.
+//
+// Important: Call Close() when done to stop the background cleanup goroutine.
+type ServerLimiter struct {
+	limiter        *hostLimiter
+	jitterFraction float64
+	metrics        *types.Metrics
+	clientName     string
+}
+
+// New creates a new ServerLimiter.
+// The caller must call Close() when done to prevent goroutine leaks.
+func New(cfg Config) *ServerLimiter {
 	jitterFraction := cfg.JitterFraction
 	if jitterFraction < 0 {
 		jitterFraction = 0
@@ -33,11 +50,26 @@ func Middleware(cfg Config) types.Middleware {
 		jitterFraction = 1
 	}
 
-	limiter := newHostLimiter()
+	return &ServerLimiter{
+		limiter:        newHostLimiter(),
+		jitterFraction: jitterFraction,
+		metrics:        cfg.Metrics,
+		clientName:     cfg.Client,
+	}
+}
 
+// Close stops the background cleanup goroutine and releases resources.
+// It's safe to call Close multiple times.
+// Implements io.Closer.
+func (s *ServerLimiter) Close() error {
+	return s.limiter.Close()
+}
+
+// Middleware returns the HTTP client middleware.
+func (s *ServerLimiter) Middleware() types.Middleware {
 	return func(next http.RoundTripper) http.RoundTripper {
 		return types.RoundTripperFunc(func(req *http.Request) (*http.Response, error) {
-			state := limiter.stateFor(req.URL.Host)
+			state := s.limiter.stateFor(req.URL.Host)
 
 			var wait time.Duration
 
@@ -51,12 +83,13 @@ func Middleware(cfg Config) types.Middleware {
 			state.mu.Unlock()
 
 			if wait > 0 {
-				wait = limiter.addJitter(wait, jitterFraction)
+				wait = s.limiter.addJitter(wait, s.jitterFraction)
 
 				timer := time.NewTimer(wait)
 				select {
 				case <-req.Context().Done():
 					timer.Stop()
+
 					return nil, req.Context().Err()
 				case <-timer.C:
 					timer.Stop()
@@ -64,9 +97,9 @@ func Middleware(cfg Config) types.Middleware {
 
 				otelwait.RecordWait(req.Context(), "server", wait)
 
-				if cfg.Metrics != nil {
-					cfg.Metrics.RateLimitWaitSeconds.
-						WithLabelValues(cfg.Client, req.URL.Host, req.Method, "server").
+				if s.metrics != nil {
+					s.metrics.RateLimitWaitSeconds.
+						WithLabelValues(s.clientName, req.URL.Host, req.Method, "server").
 						Observe(wait.Seconds())
 				}
 			}
@@ -92,42 +125,34 @@ func Middleware(cfg Config) types.Middleware {
 	}
 }
 
+// Ensure ServerLimiter implements io.Closer.
+var _ io.Closer = (*ServerLimiter)(nil)
+
 func nextFromHeaders(resp *http.Response, now time.Time) time.Time {
 	// Retry-After (seconds or HTTP-date)
-	if v := resp.Header.Get("Retry-After"); v != "" {
-		seconds, atoiErr := strconv.Atoi(v)
+	retryAfter := resp.Header.Get("Retry-After")
+	if retryAfter != "" {
+		seconds, atoiErr := strconv.Atoi(retryAfter)
 		if atoiErr == nil {
 			return now.Add(time.Duration(seconds) * time.Second)
 		}
 
-		parsedTime, parseErr := http.ParseTime(v)
+		parsedTime, parseErr := http.ParseTime(retryAfter)
 		if parseErr == nil {
 			return parsedTime
 		}
 	}
 
 	// RateLimit-Reset (seconds)
-	if v := resp.Header.Get("Ratelimit-Reset"); v != "" {
-		seconds, err := strconv.Atoi(v)
+	rateLimitReset := resp.Header.Get("Ratelimit-Reset")
+	if rateLimitReset != "" {
+		seconds, err := strconv.Atoi(rateLimitReset)
 		if err == nil {
 			return now.Add(time.Duration(seconds) * time.Second)
 		}
 	}
 
 	return time.Time{}
-}
-
-func (h *hostLimiter) addJitter(duration time.Duration, fraction float64) time.Duration {
-	jitterRange := int64(float64(duration) * fraction)
-	if jitterRange <= 0 {
-		return duration
-	}
-
-	h.muRand.Lock()
-	offset := h.rand.Int63n(2*jitterRange+1) - jitterRange
-	h.muRand.Unlock()
-
-	return duration + time.Duration(offset)
 }
 
 type hostState struct {
@@ -145,9 +170,11 @@ type hostLimiter struct {
 }
 
 func newHostLimiter() *hostLimiter {
-	hostLimiterInstance := new(hostLimiter)
-	hostLimiterInstance.stop = make(chan struct{})
-	hostLimiterInstance.rand = rand.New(rand.NewSource(time.Now().UnixNano())) //nolint:gosec // jitter does not require cryptographic randomness
+	hostLimiterInstance := &hostLimiter{
+		stop: make(chan struct{}),
+		//nolint:gosec // jitter does not require cryptographic randomness
+		rand: rand.New(rand.NewSource(time.Now().UnixNano())),
+	}
 
 	go hostLimiterInstance.cleanupLoop()
 
@@ -171,6 +198,19 @@ func (h *hostLimiter) Close() error {
 	return nil
 }
 
+func (h *hostLimiter) addJitter(duration time.Duration, fraction float64) time.Duration {
+	jitterRange := int64(float64(duration) * fraction)
+	if jitterRange <= 0 {
+		return duration
+	}
+
+	h.muRand.Lock()
+	offset := h.rand.Int63n(2*jitterRange+1) - jitterRange
+	h.muRand.Unlock()
+
+	return duration + time.Duration(offset)
+}
+
 func (h *hostLimiter) stateFor(host string) *hostState {
 	now := time.Now()
 
@@ -191,8 +231,7 @@ func (h *hostLimiter) stateFor(host string) *hostState {
 }
 
 func (h *hostLimiter) createState(now time.Time, host string) *hostState {
-	state := new(hostState)
-	state.lastUsed = now
+	state := &hostState{lastUsed: now}
 
 	actual, loaded := h.states.LoadOrStore(host, state)
 	if !loaded {
@@ -201,30 +240,11 @@ func (h *hostLimiter) createState(now time.Time, host string) *hostState {
 
 	existing, castOK := actual.(*hostState)
 	if !castOK {
-		// If cast failed, try to store our new state again
-		// This handles the rare case where the value type changed
-		actual2, loaded2 := h.states.LoadOrStore(host, state)
-		if !loaded2 {
-			return state
-		}
-
-		// If still loaded, use what's there
-		if existing2, ok := actual2.(*hostState); ok {
-			existing2.mu.Lock()
-			if existing2.lastUsed.Before(now) {
-				existing2.lastUsed = now
-			}
-			existing2.mu.Unlock()
-
-			return existing2
-		}
-
-		return state
+		return h.handleCastFailure(now, host, state)
 	}
 
 	existing.mu.Lock()
 
-	// Update lastUsed atomically to avoid race conditions
 	if existing.lastUsed.Before(now) {
 		existing.lastUsed = now
 	}
@@ -232,6 +252,28 @@ func (h *hostLimiter) createState(now time.Time, host string) *hostState {
 	existing.mu.Unlock()
 
 	return existing
+}
+
+func (h *hostLimiter) handleCastFailure(now time.Time, host string, state *hostState) *hostState {
+	actual2, loaded2 := h.states.LoadOrStore(host, state)
+	if !loaded2 {
+		return state
+	}
+
+	existing2, ok := actual2.(*hostState)
+	if !ok {
+		return state
+	}
+
+	existing2.mu.Lock()
+
+	if existing2.lastUsed.Before(now) {
+		existing2.lastUsed = now
+	}
+
+	existing2.mu.Unlock()
+
+	return existing2
 }
 
 func (h *hostLimiter) cleanupLoop() {
