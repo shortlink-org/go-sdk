@@ -5,7 +5,7 @@ go 1.25.5
 require (
 	github.com/minio/minio-go/v7 v7.0.98
 	github.com/ory/dockertest/v3 v3.12.0
-	github.com/shortlink-org/go-sdk/logger v0.0.0-20260107222411-453281b10921
+	github.com/shortlink-org/go-sdk/logger v0.0.0-20260127155416-b2559fb0922b
 	github.com/stretchr/testify v1.11.1
 	go.uber.org/goleak v1.3.0
 )

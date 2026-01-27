@@ -5,11 +5,13 @@ go 1.25.5
 require (
 	github.com/authzed/authzed-go v1.7.0
 	github.com/shortlink-org/go-sdk/grpc v0.0.0-20260107222411-453281b10921
-	github.com/shortlink-org/go-sdk/logger v0.0.0-20260107222411-453281b10921
+	github.com/shortlink-org/go-sdk/logger v0.0.0-20260127155416-b2559fb0922b
 	github.com/shortlink-org/go-sdk/observability v0.0.0-20260121215533-0995bc8d4d88
 	go.opentelemetry.io/otel/trace v1.39.0
 	google.golang.org/grpc v1.78.0
 )
+
+require github.com/golang-jwt/jwt/v5 v5.3.0 // indirect
 
 require (
 	buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go v1.36.10-20250912141014-52f32327d4b0.1 // indirect
