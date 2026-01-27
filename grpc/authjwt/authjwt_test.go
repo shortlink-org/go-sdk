@@ -81,6 +81,7 @@ func TestValidator_EmptyToken(t *testing.T) {
 
 	validator, err := NewValidator(ValidatorConfig{
 		Issuer:        "https://shortlink.best",
+		SkipAudience:  true,
 		CustomKeyfunc: mockKeyfunc,
 	})
 	require.NoError(t, err)
@@ -95,6 +96,7 @@ func TestValidator_InvalidTokenFormat(t *testing.T) {
 
 	validator, err := NewValidator(ValidatorConfig{
 		Issuer:        "https://shortlink.best",
+		SkipAudience:  true,
 		CustomKeyfunc: mockKeyfunc,
 	})
 	require.NoError(t, err)
@@ -134,6 +136,7 @@ func TestValidator_WrongIssuer(t *testing.T) {
 
 	validator, err := NewValidator(ValidatorConfig{
 		Issuer:        "https://shortlink.best",
+		SkipAudience:  true,
 		CustomKeyfunc: mockKeyfunc,
 	})
 	require.NoError(t, err)
@@ -262,6 +265,7 @@ func TestValidator_NoIssuer(t *testing.T) {
 	// Validator without issuer check
 	validator, err := NewValidator(ValidatorConfig{
 		SkipAudience:  true,
+		SkipIssuer:    true,
 		CustomKeyfunc: mockKeyfunc,
 	})
 	require.NoError(t, err)
@@ -277,6 +281,27 @@ func TestValidator_NoIssuer(t *testing.T) {
 
 	result := validator.Validate(context.Background(), token)
 	assert.True(t, result.Valid)
+}
+
+func TestNewValidator_RequiresIssuer(t *testing.T) {
+	t.Parallel()
+
+	_, err := NewValidator(ValidatorConfig{
+		Audience:      "shortlink-api",
+		SkipAudience:  true,
+		CustomKeyfunc: mockKeyfunc,
+	})
+	assert.ErrorIs(t, err, ErrIssuerRequired)
+}
+
+func TestNewValidator_RequiresAudience(t *testing.T) {
+	t.Parallel()
+
+	_, err := NewValidator(ValidatorConfig{
+		Issuer:        "https://shortlink.best",
+		CustomKeyfunc: mockKeyfunc,
+	})
+	assert.ErrorIs(t, err, ErrAudienceRequired)
 }
 
 func TestShouldSkip(t *testing.T) {

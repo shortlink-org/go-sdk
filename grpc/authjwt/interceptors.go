@@ -10,6 +10,7 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
+	"github.com/shortlink-org/go-sdk/auth/session"
 	"github.com/shortlink-org/go-sdk/logger"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
@@ -162,8 +163,36 @@ func validateRequest(ctx context.Context, validator *Validator, method string, l
 
 	// Store claims in context
 	ctx = WithClaims(ctx, result.Claims)
+	ctx = session.WithUserID(ctx, result.Claims.Subject)
+	ctx = session.WithClaims(ctx, toSessionClaims(result.Claims))
 
 	return ctx, nil
+}
+
+func toSessionClaims(claims *Claims) *session.Claims {
+	if claims == nil {
+		return nil
+	}
+
+	out := &session.Claims{
+		Subject:    claims.Subject,
+		Email:      claims.Email,
+		Name:       claims.Name,
+		IdentityID: claims.IdentityID,
+		SessionID:  claims.SessionID,
+		Metadata:   claims.Metadata,
+		Issuer:     claims.Issuer,
+	}
+
+	if claims.IssuedAt != nil {
+		out.IssuedAt = claims.IssuedAt.Unix()
+	}
+
+	if claims.ExpiresAt != nil {
+		out.ExpiresAt = claims.ExpiresAt.Unix()
+	}
+
+	return out
 }
 
 func classifyError(err error) string {

@@ -14,7 +14,7 @@ import (
 func New(log logger.Logger, tracer trace.TracerProvider, monitor *metrics.Monitoring, cfg *config.Config) (*authzed.Client, error) {
 	// Initialize gRPC Client's interceptor.
 	opts := []rpc.Option{
-		rpc.WithSession(),
+		rpc.WithAuthForward(),
 		rpc.WithMetrics(monitor.Prometheus),
 		rpc.WithTracer(tracer, monitor.Prometheus, monitor.Metrics),
 		rpc.WithTimeout(),

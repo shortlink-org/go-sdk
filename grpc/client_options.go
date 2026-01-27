@@ -4,8 +4,8 @@ import (
 	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-middleware/providers/prometheus"
 	"github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors/timeout"
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/shortlink-org/go-sdk/grpc/authforward"
 	grpc_logger "github.com/shortlink-org/go-sdk/grpc/middleware/logger"
-	session_interceptor "github.com/shortlink-org/go-sdk/grpc/middleware/session"
 	"github.com/shortlink-org/go-sdk/logger"
 	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
 	api "go.opentelemetry.io/otel/sdk/metric"
@@ -111,16 +111,16 @@ func WithMetrics(prom *prometheus.Registry) Option {
 	}
 }
 
-// WithSession adds session interceptors with optional ignore rules.
-func WithSession() Option {
+// WithAuthForward adds auth token forwarding interceptors.
+func WithAuthForward() Option {
 	return func(client *Client) {
 		client.interceptorUnaryClientList = append(
 			client.interceptorUnaryClientList,
-			session_interceptor.SessionUnaryClientInterceptor(),
+			authforward.UnaryClientInterceptor(),
 		)
 		client.interceptorStreamClientList = append(
 			client.interceptorStreamClientList,
-			session_interceptor.SessionStreamClientInterceptor(),
+			authforward.StreamClientInterceptor(),
 		)
 	}
 }

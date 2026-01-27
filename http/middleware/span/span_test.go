@@ -10,12 +10,13 @@ import (
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/sdk/trace"
 	"go.opentelemetry.io/otel/sdk/trace/tracetest"
+	"go.opentelemetry.io/otel/trace/noop"
 )
 
 func TestSpanMiddleware(t *testing.T) {
 	tp := trace.NewTracerProvider()
 	otel.SetTracerProvider(tp)
-	defer otel.SetTracerProvider(trace.NewNoopTracerProvider())
+	defer otel.SetTracerProvider(noop.NewTracerProvider())
 
 	// Test handler that does nothing
 	testHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -69,7 +70,7 @@ func TestSpanMiddleware_NoSpan(t *testing.T) {
 func TestSpanMiddleware_StatusCodes(t *testing.T) {
 	tp := trace.NewTracerProvider()
 	otel.SetTracerProvider(tp)
-	defer otel.SetTracerProvider(trace.NewNoopTracerProvider())
+	defer otel.SetTracerProvider(noop.NewTracerProvider())
 
 	exporter := tracetest.NewInMemoryExporter()
 	tp = trace.NewTracerProvider(trace.WithBatcher(exporter))
@@ -117,4 +118,3 @@ func TestSpanMiddleware_StatusCodes(t *testing.T) {
 		})
 	}
 }
-

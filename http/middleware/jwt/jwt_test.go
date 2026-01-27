@@ -21,7 +21,8 @@ func createTestToken(claims oathkeeperClaims) string {
 }
 
 func TestJWT_ValidToken(t *testing.T) {
-	cfg := config.New()
+	cfg, err := config.New()
+	require.NoError(t, err)
 
 	claims := oathkeeperClaims{
 		RegisteredClaims: jwt.RegisteredClaims{
@@ -64,7 +65,8 @@ func TestJWT_ValidToken(t *testing.T) {
 }
 
 func TestJWT_MissingToken(t *testing.T) {
-	cfg := config.New()
+	cfg, err := config.New()
+	require.NoError(t, err)
 
 	handler := JWT(cfg)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		t.Fatal("handler should not be called")
@@ -80,7 +82,8 @@ func TestJWT_MissingToken(t *testing.T) {
 }
 
 func TestJWT_InvalidToken(t *testing.T) {
-	cfg := config.New()
+	cfg, err := config.New()
+	require.NoError(t, err)
 
 	handler := JWT(cfg)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		t.Fatal("handler should not be called")
@@ -97,7 +100,8 @@ func TestJWT_InvalidToken(t *testing.T) {
 }
 
 func TestJWT_MissingSubject(t *testing.T) {
-	cfg := config.New()
+	cfg, err := config.New()
+	require.NoError(t, err)
 
 	claims := oathkeeperClaims{
 		RegisteredClaims: jwt.RegisteredClaims{
@@ -124,7 +128,8 @@ func TestJWT_MissingSubject(t *testing.T) {
 }
 
 func TestJWT_RedirectForBrowser(t *testing.T) {
-	cfg := config.New()
+	cfg, err := config.New()
+	require.NoError(t, err)
 	cfg.SetDefault("AUTH_LOGIN_URL", "/auth/login")
 
 	handler := JWT(cfg)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

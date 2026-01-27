@@ -7,6 +7,7 @@ import (
 	"context"
 
 	"github.com/shortlink-org/go-sdk/auth/session"
+	"github.com/shortlink-org/go-sdk/grpc/authforward"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"
@@ -22,6 +23,12 @@ const (
 	// userIDKey is the gRPC metadata key for the user ID.
 	userIDKey = "user-id"
 
+	// xUserIDKey is the metadata key populated by Istio outputClaimToHeaders.
+	xUserIDKey = "x-user-id"
+
+	// xUserEmailKey is the metadata key populated by Istio outputClaimToHeaders.
+	xUserEmailKey = "x-user-email"
+
 	// initialPairsCapacity is the initial capacity for metadata pairs slice.
 	initialPairsCapacity = 4
 )
@@ -36,7 +43,12 @@ var tracerClient = otel.Tracer("session.interceptor.client")
 // WithAuthorization stores the Authorization header value in context.
 // Call this in your HTTP middleware to make it available for gRPC calls.
 func WithAuthorization(ctx context.Context, authHeader string) context.Context {
-	return context.WithValue(ctx, ContextAuthorizationKey, authHeader)
+	ctx = context.WithValue(ctx, ContextAuthorizationKey, authHeader)
+	if authHeader != "" {
+		ctx = authforward.WithToken(ctx, authHeader)
+	}
+
+	return ctx
 }
 
 // GetAuthorization retrieves the Authorization header from context.
@@ -83,7 +95,18 @@ func attachAuthMetadata(ctx context.Context) (context.Context, error) {
 
 	span.SetStatus(codes.Ok, "auth metadata attached")
 
-	return metadata.AppendToOutgoingContext(ctx, pairs...), nil
+	// Replace, don't append, to avoid accumulating duplicates across hops.
+	outgoingMD, ok := metadata.FromOutgoingContext(ctx)
+	if !ok {
+		outgoingMD = metadata.MD{}
+	}
+
+	newMD := outgoingMD.Copy()
+	for i := 0; i < len(pairs); i += 2 {
+		newMD.Set(pairs[i], pairs[i+1])
+	}
+
+	return metadata.NewOutgoingContext(ctx, newMD), nil
 }
 
 // SessionUnaryClientInterceptor attaches JWT token and user-id to outgoing metadata for unary calls.

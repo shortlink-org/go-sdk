@@ -56,14 +56,22 @@ var (
 	)
 )
 
-// JWKSFetcher fetches and caches JWKS (JSON Web Key Set) from a remote URL.
+// JWKSFetcher fetches and caches JWKS keys for validation.
+type JWKSFetcher interface {
+	KeyFunc(ctx context.Context) jwt.Keyfunc
+	GetKey(ctx context.Context, kid string) (*rsa.PublicKey, error)
+	Close() error
+}
+
+// jwksFetcher fetches and caches JWKS (JSON Web Key Set) from a remote URL.
 // It is concurrency-safe and handles automatic refresh on cache miss.
-type JWKSFetcher struct {
+type jwksFetcher struct {
 	url        string
 	httpClient *http.Client
 	cacheTTL   time.Duration
 	backoffMin time.Duration
 	backoffMax time.Duration
+	clock      Clock
 
 	mu        sync.RWMutex
 	keys      map[string]*rsa.PublicKey
@@ -91,10 +99,12 @@ type JWKSConfig struct {
 	BackoffMin time.Duration
 	// BackoffMax is the maximum backoff after a failed JWKS fetch (default: 30s)
 	BackoffMax time.Duration
+	// Clock overrides the time source (default: real clock)
+	Clock Clock
 }
 
 // NewJWKSFetcher creates a new JWKS fetcher.
-func NewJWKSFetcher(cfg JWKSConfig) *JWKSFetcher {
+func NewJWKSFetcher(cfg JWKSConfig) JWKSFetcher {
 	if cfg.CacheTTL == 0 {
 		cfg.CacheTTL = DefaultJWKSCacheTTL
 	}
@@ -115,11 +125,16 @@ func NewJWKSFetcher(cfg JWKSConfig) *JWKSFetcher {
 		cfg.BackoffMax = cfg.BackoffMin
 	}
 
-	fetcher := &JWKSFetcher{
-		url:      cfg.URL,
-		cacheTTL: cfg.CacheTTL,
+	if cfg.Clock == nil {
+		cfg.Clock = realClock{}
+	}
+
+	fetcher := &jwksFetcher{
+		url:        cfg.URL,
+		cacheTTL:   cfg.CacheTTL,
 		backoffMin: cfg.BackoffMin,
 		backoffMax: cfg.BackoffMax,
+		clock:      cfg.Clock,
 		httpClient: &http.Client{
 			Timeout: cfg.HTTPTimeout,
 		},
@@ -132,11 +147,11 @@ func NewJWKSFetcher(cfg JWKSConfig) *JWKSFetcher {
 
 // GetKey retrieves a public key by key ID (kid).
 // If the key is not in cache, it will attempt to refresh from the JWKS URL.
-func (fetcher *JWKSFetcher) GetKey(ctx context.Context, kid string) (*rsa.PublicKey, error) {
+func (fetcher *jwksFetcher) GetKey(ctx context.Context, kid string) (*rsa.PublicKey, error) {
 	// Try cache first
 	fetcher.mu.RLock()
 	key, found := fetcher.keys[kid]
-	needsRefresh := time.Since(fetcher.fetchedAt) > fetcher.cacheTTL
+	needsRefresh := fetcher.clock.Now().Sub(fetcher.fetchedAt) > fetcher.cacheTTL
 	fetcher.mu.RUnlock()
 
 	if found && !needsRefresh {
@@ -170,7 +185,7 @@ func (fetcher *JWKSFetcher) GetKey(ctx context.Context, kid string) (*rsa.Public
 }
 
 // KeyFunc returns a jwt.Keyfunc for use with jwt.Parse.
-func (fetcher *JWKSFetcher) KeyFunc(ctx context.Context) jwt.Keyfunc {
+func (fetcher *jwksFetcher) KeyFunc(ctx context.Context) jwt.Keyfunc {
 	return func(token *jwt.Token) (any, error) {
 		// Validate algorithm
 		if _, isRSA := token.Method.(*jwt.SigningMethodRSA); !isRSA {
@@ -188,13 +203,13 @@ func (fetcher *JWKSFetcher) KeyFunc(ctx context.Context) jwt.Keyfunc {
 }
 
 // Close releases resources. Currently a no-op but included for future use.
-func (fetcher *JWKSFetcher) Close() error {
+func (fetcher *jwksFetcher) Close() error {
 	return nil
 }
 
 // refresh fetches the JWKS from the remote URL.
 // Uses a condition variable to prevent thundering herd.
-func (fetcher *JWKSFetcher) refresh(ctx context.Context) error {
+func (fetcher *jwksFetcher) refresh(ctx context.Context) error {
 	fetcher.fetchMu.Lock()
 
 	// If another goroutine is already fetching, wait for it
@@ -205,7 +220,7 @@ func (fetcher *JWKSFetcher) refresh(ctx context.Context) error {
 	// Check if cache was refreshed while we were waiting
 	fetcher.mu.RLock()
 
-	if time.Since(fetcher.fetchedAt) < fetcher.cacheTTL {
+	if fetcher.clock.Now().Sub(fetcher.fetchedAt) < fetcher.cacheTTL {
 		fetcher.mu.RUnlock()
 		fetcher.fetchMu.Unlock()
 
@@ -215,7 +230,7 @@ func (fetcher *JWKSFetcher) refresh(ctx context.Context) error {
 	fetcher.mu.RUnlock()
 
 	// Respect backoff after recent failures
-	if !fetcher.nextRetry.IsZero() && time.Now().Before(fetcher.nextRetry) {
+	if !fetcher.nextRetry.IsZero() && fetcher.clock.Now().Before(fetcher.nextRetry) {
 		fetcher.fetchMu.Unlock()
 		return ErrJWKSBackoff
 	}
@@ -235,8 +250,8 @@ func (fetcher *JWKSFetcher) refresh(ctx context.Context) error {
 	return fetcher.doFetch(ctx)
 }
 
-func (fetcher *JWKSFetcher) doFetch(ctx context.Context) error {
-	start := time.Now()
+func (fetcher *jwksFetcher) doFetch(ctx context.Context) error {
+	start := fetcher.clock.Now()
 
 	body, err := fetcher.fetchJWKSBody(ctx)
 	if err != nil {
@@ -252,15 +267,15 @@ func (fetcher *JWKSFetcher) doFetch(ctx context.Context) error {
 
 	fetcher.mu.Lock()
 	fetcher.keys = keys
-	fetcher.fetchedAt = time.Now()
+	fetcher.fetchedAt = fetcher.clock.Now()
 	fetcher.mu.Unlock()
 
-	fetcher.recordFetchSuccess(time.Since(start))
+	fetcher.recordFetchSuccess(fetcher.clock.Now().Sub(start))
 
 	return nil
 }
 
-func (fetcher *JWKSFetcher) recordFetchSuccess(duration time.Duration) {
+func (fetcher *jwksFetcher) recordFetchSuccess(duration time.Duration) {
 	jwksFetchTotal.WithLabelValues("success").Inc()
 	jwksFetchSeconds.Observe(duration.Seconds())
 
@@ -270,7 +285,7 @@ func (fetcher *JWKSFetcher) recordFetchSuccess(duration time.Duration) {
 	fetcher.fetchMu.Unlock()
 }
 
-func (fetcher *JWKSFetcher) recordFetchFailure(duration time.Duration) {
+func (fetcher *jwksFetcher) recordFetchFailure(duration time.Duration) {
 	jwksFetchTotal.WithLabelValues("failure").Inc()
 	jwksFetchSeconds.Observe(duration.Seconds())
 
@@ -283,11 +298,11 @@ func (fetcher *JWKSFetcher) recordFetchFailure(duration time.Duration) {
 			fetcher.backoff = fetcher.backoffMax
 		}
 	}
-	fetcher.nextRetry = time.Now().Add(fetcher.backoff)
+	fetcher.nextRetry = fetcher.clock.Now().Add(fetcher.backoff)
 	fetcher.fetchMu.Unlock()
 }
 
-func (fetcher *JWKSFetcher) fetchJWKSBody(ctx context.Context) ([]byte, error) {
+func (fetcher *jwksFetcher) fetchJWKSBody(ctx context.Context) ([]byte, error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, fetcher.url, nil)
 	if err != nil {
 		return nil, fmt.Errorf("create request: %w", err)
@@ -314,7 +329,7 @@ func (fetcher *JWKSFetcher) fetchJWKSBody(ctx context.Context) ([]byte, error) {
 	return body, nil
 }
 
-func (fetcher *JWKSFetcher) parseJWKS(body []byte) (map[string]*rsa.PublicKey, error) {
+func (fetcher *jwksFetcher) parseJWKS(body []byte) (map[string]*rsa.PublicKey, error) {
 	var jwks jwksResponse
 
 	err := json.Unmarshal(body, &jwks)

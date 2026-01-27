@@ -242,5 +242,19 @@ func TestForwardToken_DoesNotDuplicate(t *testing.T) {
 	values := outMD.Get("authorization")
 
 	require.Len(t, values, 1)
-	assert.Equal(t, "Bearer existing", values[0])
+	assert.Equal(t, "Bearer from-context", values[0])
+}
+
+func TestMetadataTokenExtractor_MultipleValues(t *testing.T) {
+	t.Parallel()
+
+	md := metadata.Pairs(
+		"authorization", "Bearer first",
+		"authorization", "Bearer second",
+	)
+	ctx := metadata.NewIncomingContext(context.Background(), md)
+
+	token, err := MetadataTokenExtractor{}.FromIncomingMetadata(ctx)
+	assert.Empty(t, token)
+	assert.ErrorIs(t, err, ErrMultipleAuthorizationValues)
 }

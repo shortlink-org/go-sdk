@@ -16,6 +16,7 @@ package authforward
 
 import (
 	"context"
+	"errors"
 	"strings"
 
 	"google.golang.org/grpc/metadata"
@@ -32,6 +33,38 @@ type contextKey struct{}
 
 // authContextKey is the context key for storing the authorization token.
 var authContextKey = contextKey{}
+
+// ErrMultipleAuthorizationValues indicates multiple authorization values in metadata.
+var ErrMultipleAuthorizationValues = errors.New("multiple authorization values")
+
+// TokenExtractor extracts authorization tokens from gRPC metadata.
+type TokenExtractor interface {
+	FromIncomingMetadata(ctx context.Context) (string, error)
+	FromOutgoingMetadata(ctx context.Context) (string, error)
+}
+
+// MetadataTokenExtractor extracts tokens from gRPC metadata.
+type MetadataTokenExtractor struct{}
+
+// FromIncomingMetadata extracts token from incoming metadata.
+func (MetadataTokenExtractor) FromIncomingMetadata(ctx context.Context) (string, error) {
+	md, ok := metadata.FromIncomingContext(ctx)
+	if !ok {
+		return "", nil
+	}
+
+	return tokenFromMetadata(md)
+}
+
+// FromOutgoingMetadata extracts token from outgoing metadata.
+func (MetadataTokenExtractor) FromOutgoingMetadata(ctx context.Context) (string, error) {
+	md, ok := metadata.FromOutgoingContext(ctx)
+	if !ok {
+		return "", nil
+	}
+
+	return tokenFromMetadata(md)
+}
 
 // WithToken stores the authorization token in context.
 // The token should include the "Bearer " prefix.
@@ -52,34 +85,15 @@ func TokenFromContext(ctx context.Context) string {
 // TokenFromIncomingMetadata extracts the authorization token from incoming gRPC metadata.
 // Returns empty string if not present or invalid.
 func TokenFromIncomingMetadata(ctx context.Context) string {
-	md, ok := metadata.FromIncomingContext(ctx)
-	if !ok {
-		return ""
-	}
-
-	values := md.Get(MetadataKey)
-	if len(values) != 1 {
-		return ""
-	}
-
-	// Take only the first value to prevent header injection
-	return strings.TrimSpace(values[0])
+	token, _ := MetadataTokenExtractor{}.FromIncomingMetadata(ctx)
+	return token
 }
 
 // TokenFromOutgoingMetadata extracts the authorization token from outgoing gRPC metadata.
 // Returns empty string if not present.
 func TokenFromOutgoingMetadata(ctx context.Context) string {
-	md, ok := metadata.FromOutgoingContext(ctx)
-	if !ok {
-		return ""
-	}
-
-	values := md.Get(MetadataKey)
-	if len(values) != 1 {
-		return ""
-	}
-
-	return strings.TrimSpace(values[0])
+	token, _ := MetadataTokenExtractor{}.FromOutgoingMetadata(ctx)
+	return token
 }
 
 // SetOutgoingToken sets (not appends) the authorization token in outgoing metadata.
@@ -116,6 +130,24 @@ func ExtractBearerToken(auth string) string {
 	}
 
 	return strings.TrimSpace(auth[len(BearerPrefix):])
+}
+
+func tokenFromMetadata(md metadata.MD) (string, error) {
+	values := md.Get(MetadataKey)
+	if len(values) == 0 {
+		return "", nil
+	}
+
+	if len(values) != 1 {
+		return "", ErrMultipleAuthorizationValues
+	}
+
+	token := strings.TrimSpace(values[0])
+	if token == "" {
+		return "", nil
+	}
+
+	return token, nil
 }
 
 // FormatBearerToken formats a token as "Bearer <token>".

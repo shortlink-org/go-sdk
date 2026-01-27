@@ -13,6 +13,8 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	"github.com/shortlink-org/go-sdk/config"
 	"github.com/shortlink-org/go-sdk/flight_trace"
+	"github.com/shortlink-org/go-sdk/grpc/authforward"
+	"github.com/shortlink-org/go-sdk/grpc/authjwt"
 	flight_trace_interceptor "github.com/shortlink-org/go-sdk/grpc/middleware/flight_trace"
 	grpc_logger "github.com/shortlink-org/go-sdk/grpc/middleware/logger"
 	pprof_interceptor "github.com/shortlink-org/go-sdk/grpc/middleware/pprof"
@@ -45,6 +47,7 @@ type server struct {
 	log           logger.Logger
 	serverMetrics *grpc_prometheus.ServerMetrics
 	cfg           *config.Config
+	authValidator *authjwt.Validator
 }
 
 // InitServer - initialize gRPC server.
@@ -106,6 +109,10 @@ func InitServer(
 	go func() {
 		<-ctx.Done()
 
+		if config.authValidator != nil {
+			_ = config.authValidator.Close()
+		}
+
 		log.Info("Shutdown gRPC server")
 		grpcServer.GracefulStop()
 	}()
@@ -137,7 +144,8 @@ func setServerConfig(
 
 	config.WithLogger(log)
 	config.WithTracer(tracer)
-	config.WithSession()
+	config.WithAuthHeaders()
+	config.WithAuthForward()
 	config.WithPprofLabels()
 	config.WithFlightTrace(flightRecorder, log)
 
@@ -258,8 +266,13 @@ func (s *server) WithTLS() error {
 	return nil
 }
 
-// WithSession - setup session.
-func (s *server) WithSession() {
+// WithAuthHeaders - map Istio outputClaimToHeaders into context.
+func (s *server) WithAuthHeaders() {
+	s.cfg.SetDefault("GRPC_AUTH_HEADERS_ENABLED", true)
+	if !s.cfg.GetBool("GRPC_AUTH_HEADERS_ENABLED") {
+		return
+	}
+
 	s.interceptorUnaryServerList = append(
 		s.interceptorUnaryServerList,
 		session_interceptor.SessionUnaryServerInterceptor(),
@@ -267,6 +280,62 @@ func (s *server) WithSession() {
 	s.interceptorStreamServerList = append(
 		s.interceptorStreamServerList,
 		session_interceptor.SessionStreamServerInterceptor(),
+	)
+}
+
+// WithAuthJWT - setup JWT validation for gRPC server.
+// Use only when Istio RequestAuthentication is not enforcing JWT.
+func (s *server) WithAuthJWT() error {
+	s.cfg.SetDefault("GRPC_AUTH_JWT_ENABLED", false)
+	if !s.cfg.GetBool("GRPC_AUTH_JWT_ENABLED") {
+		return nil
+	}
+
+	s.cfg.SetDefault("GRPC_AUTH_JWKS_CACHE_TTL", "1h")
+	s.cfg.SetDefault("GRPC_AUTH_JWKS_HTTP_TIMEOUT", "10s")
+	s.cfg.SetDefault("GRPC_AUTH_JWKS_BACKOFF_MIN", "500ms")
+	s.cfg.SetDefault("GRPC_AUTH_JWKS_BACKOFF_MAX", "30s")
+	s.cfg.SetDefault("GRPC_AUTH_JWT_LEEWAY", "30s")
+
+	validator, err := authjwt.NewValidator(authjwt.ValidatorConfig{
+		JWKSURL:         s.cfg.GetString("GRPC_AUTH_JWKS_URL"),
+		Issuer:          s.cfg.GetString("GRPC_AUTH_JWT_ISSUER"),
+		Audience:        s.cfg.GetString("GRPC_AUTH_JWT_AUDIENCE"),
+		SkipAudience:    s.cfg.GetBool("GRPC_AUTH_JWT_SKIP_AUDIENCE"),
+		SkipIssuer:      s.cfg.GetBool("GRPC_AUTH_JWT_SKIP_ISSUER"),
+		Leeway:          s.cfg.GetDuration("GRPC_AUTH_JWT_LEEWAY"),
+		JWKSCacheTTL:    s.cfg.GetDuration("GRPC_AUTH_JWKS_CACHE_TTL"),
+		JWKSHTTPTimeout: s.cfg.GetDuration("GRPC_AUTH_JWKS_HTTP_TIMEOUT"),
+		JWKSBackoffMin:  s.cfg.GetDuration("GRPC_AUTH_JWKS_BACKOFF_MIN"),
+		JWKSBackoffMax:  s.cfg.GetDuration("GRPC_AUTH_JWKS_BACKOFF_MAX"),
+	})
+	if err != nil {
+		return err
+	}
+
+	s.authValidator = validator
+
+	s.interceptorUnaryServerList = append(
+		s.interceptorUnaryServerList,
+		authjwt.UnaryServerInterceptor(validator, authjwt.InterceptorConfig{Logger: s.log}),
+	)
+	s.interceptorStreamServerList = append(
+		s.interceptorStreamServerList,
+		authjwt.StreamServerInterceptor(validator, authjwt.InterceptorConfig{Logger: s.log}),
+	)
+
+	return nil
+}
+
+// WithAuthForward - capture validated token for downstream forwarding.
+func (s *server) WithAuthForward() {
+	s.interceptorUnaryServerList = append(
+		s.interceptorUnaryServerList,
+		authforward.UnaryServerInterceptor(),
+	)
+	s.interceptorStreamServerList = append(
+		s.interceptorStreamServerList,
+		authforward.StreamServerInterceptor(),
 	)
 }
 

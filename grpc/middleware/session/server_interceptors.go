@@ -115,6 +115,9 @@ func handleUnarySession(
 	span.SetStatus(otelcodes.Ok, "user identity resolved")
 
 	ctx = session.WithUserID(ctx, userID)
+	if claims := claimsFromMetadata(ctx); claims != nil {
+		ctx = session.WithClaims(ctx, claims)
+	}
 
 	resp, err := handler(ctx, req)
 
@@ -181,6 +184,9 @@ func handleStreamSession(
 	span.SetStatus(otelcodes.Ok, "user identity resolved")
 
 	ctx = session.WithUserID(ctx, userID)
+	if claims := claimsFromMetadata(ctx); claims != nil {
+		ctx = session.WithClaims(ctx, claims)
+	}
 	wrapped := &sessionWrappedServerStream{ServerStream: stream, wrappedCtx: ctx}
 	err = handler(srv, wrapped)
 
@@ -218,18 +224,13 @@ func resolveFromMetadata(ctx context.Context, span trace.Span) (string, bool) {
 		return "", false
 	}
 
-	// Try user-id key first
-	values := incomingMD.Get(userIDKey)
-	if len(values) > 0 {
-		userID := strings.TrimSpace(values[0])
-		if userID != "" {
-			span.SetAttributes(
-				attribute.String("auth.user_id.source", "metadata"),
-				attribute.String("auth.user_id", userID),
-			)
+	if userID := firstNonEmptyMetadataValue(incomingMD, xUserIDKey, userIDKey); userID != "" {
+		span.SetAttributes(
+			attribute.String("auth.user_id.source", "metadata"),
+			attribute.String("auth.user_id", userID),
+		)
 
-			return userID, true
-		}
+		return userID, true
 	}
 
 	return "", false
@@ -250,6 +251,40 @@ func resolveFromContext(ctx context.Context, span trace.Span) (string, error) {
 	)
 
 	return userID, nil
+}
+
+func claimsFromMetadata(ctx context.Context) *session.Claims {
+	incomingMD, ok := metadata.FromIncomingContext(ctx)
+	if !ok {
+		return nil
+	}
+
+	userID := firstNonEmptyMetadataValue(incomingMD, xUserIDKey, userIDKey)
+	if userID == "" {
+		return nil
+	}
+
+	email := firstNonEmptyMetadataValue(incomingMD, xUserEmailKey)
+
+	return &session.Claims{
+		Subject: userID,
+		Email:   email,
+	}
+}
+
+func firstNonEmptyMetadataValue(md metadata.MD, keys ...string) string {
+	for _, key := range keys {
+		values := md.Get(key)
+		if len(values) == 0 {
+			continue
+		}
+		value := strings.TrimSpace(values[0])
+		if value != "" {
+			return value
+		}
+	}
+
+	return ""
 }
 
 // --- Stream Wrapper ---

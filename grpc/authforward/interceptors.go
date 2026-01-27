@@ -101,14 +101,6 @@ func forwardToken(ctx context.Context, method string) context.Context {
 	)
 	defer span.End()
 
-	// First check if token is already in outgoing metadata
-	if existing := TokenFromOutgoingMetadata(ctx); existing != "" {
-		span.SetAttributes(attribute.Bool("auth.token_exists", true))
-		span.SetStatus(codes.Ok, "token already in outgoing metadata")
-
-		return ctx
-	}
-
 	// Get token from context (captured by server interceptor)
 	token := TokenFromContext(ctx)
 	if token == "" {
@@ -116,6 +108,10 @@ func forwardToken(ctx context.Context, method string) context.Context {
 		span.SetStatus(codes.Ok, "no token to forward")
 
 		return ctx
+	}
+
+	if existing := TokenFromOutgoingMetadata(ctx); existing != "" {
+		span.SetAttributes(attribute.Bool("auth.token_replaced", true))
 	}
 
 	span.SetAttributes(attribute.Bool("auth.token_present", true))

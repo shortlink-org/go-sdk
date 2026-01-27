@@ -15,6 +15,7 @@ package authjwt
 import (
 	"context"
 	"errors"
+	"fmt"
 	"strings"
 	"time"
 
@@ -31,7 +32,7 @@ const (
 
 // Validator validates JWT tokens.
 type Validator struct {
-	jwks          *JWKSFetcher
+	jwks          JWKSFetcher
 	issuer        string
 	audience      string
 	skipAudience  bool
@@ -58,13 +59,21 @@ type ValidatorConfig struct {
 	JWKSCacheTTL time.Duration
 	// JWKSHTTPTimeout is the HTTP timeout for JWKS fetch (default: 10 seconds)
 	JWKSHTTPTimeout time.Duration
+	// JWKSBackoffMin is the minimum backoff after failed JWKS fetch (default: 500ms)
+	JWKSBackoffMin time.Duration
+	// JWKSBackoffMax is the maximum backoff after failed JWKS fetch (default: 30s)
+	JWKSBackoffMax time.Duration
+	// KeyFetcher overrides the default JWKS-based key lookup (for testing)
+	KeyFetcher JWKSFetcher
 	// CustomKeyfunc overrides the default JWKS-based key lookup (for testing)
 	CustomKeyfunc jwt.Keyfunc
+	// Clock overrides time source for JWKS (for testing)
+	Clock Clock
 }
 
 // NewValidator creates a new JWT validator.
 func NewValidator(cfg ValidatorConfig) (*Validator, error) {
-	if cfg.JWKSURL == "" && cfg.CustomKeyfunc == nil {
+	if cfg.JWKSURL == "" && cfg.CustomKeyfunc == nil && cfg.KeyFetcher == nil {
 		return nil, ErrJWKSURLRequired
 	}
 
@@ -89,11 +98,16 @@ func NewValidator(cfg ValidatorConfig) (*Validator, error) {
 		customKeyfunc: cfg.CustomKeyfunc,
 	}
 
-	if cfg.JWKSURL != "" {
+	if cfg.KeyFetcher != nil {
+		validator.jwks = cfg.KeyFetcher
+	} else if cfg.JWKSURL != "" {
 		validator.jwks = NewJWKSFetcher(JWKSConfig{
 			URL:         cfg.JWKSURL,
 			CacheTTL:    cfg.JWKSCacheTTL,
 			HTTPTimeout: cfg.JWKSHTTPTimeout,
+			BackoffMin:  cfg.JWKSBackoffMin,
+			BackoffMax:  cfg.JWKSBackoffMax,
+			Clock:       cfg.Clock,
 		})
 	}
 
@@ -154,8 +168,11 @@ func (v *Validator) Validate(ctx context.Context, tokenString string) ValidateRe
 
 	token, err := parser.ParseWithClaims(tokenString, claims, keyfunc)
 	if err != nil {
-		// Return error directly without wrapping to preserve errors.Is compatibility
-		return ValidateResult{Error: err}
+		if isKnownValidationError(err) {
+			return ValidateResult{Error: err}
+		}
+
+		return ValidateResult{Error: fmt.Errorf("%w: %v", ErrInvalidToken, err)}
 	}
 
 	if !token.Valid {

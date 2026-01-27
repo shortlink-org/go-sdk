@@ -13,6 +13,8 @@ import (
 var (
 	// ErrJWKSURLRequired is returned when neither JWKSURL nor CustomKeyfunc is provided.
 	ErrJWKSURLRequired = errors.New("JWKSURL or CustomKeyfunc is required")
+	// ErrInvalidToken is returned for unexpected token validation errors.
+	ErrInvalidToken = errors.New("invalid token")
 	// ErrIssuerRequired is returned when issuer validation is required but not configured.
 	ErrIssuerRequired = errors.New("issuer is required for JWT validation")
 	// ErrAudienceRequired is returned when audience validation is required but not configured.
@@ -41,6 +43,7 @@ var errorMappings = []struct {
 	code    codes.Code
 	message string
 }{
+	{ErrMissingToken, codes.Unauthenticated, "missing token"},
 	{jwt.ErrTokenExpired, codes.Unauthenticated, "token expired"},
 	{jwt.ErrTokenNotValidYet, codes.Unauthenticated, "token not yet valid"},
 	{jwt.ErrTokenMalformed, codes.InvalidArgument, "malformed token"},
@@ -51,9 +54,12 @@ var errorMappings = []struct {
 	{ErrKeyNotFound, codes.Unauthenticated, "unknown signing key"},
 	{ErrMissingKid, codes.InvalidArgument, "missing key id in token"},
 	{ErrUnexpectedSignMethod, codes.InvalidArgument, "unsupported signing method"},
-	{ErrNoValidKeys, codes.Internal, "authentication service unavailable"},
-	{ErrUnexpectedStatus, codes.Internal, "authentication service unavailable"},
-	{ErrJWKSBackoff, codes.Internal, "authentication service unavailable"},
+	{ErrNoValidKeys, codes.Unavailable, "authentication service unavailable"},
+	{ErrUnexpectedStatus, codes.Unavailable, "authentication service unavailable"},
+	{ErrJWKSBackoff, codes.Unavailable, "authentication service unavailable"},
+	{ErrInvalidToken, codes.Unauthenticated, "invalid token"},
+	{ErrIssuerRequired, codes.Internal, "authentication configuration error"},
+	{ErrAudienceRequired, codes.Internal, "authentication configuration error"},
 }
 
 // ToGRPCStatus converts a JWT validation error to an appropriate gRPC status.
@@ -70,4 +76,30 @@ func ToGRPCStatus(err error) error {
 	}
 
 	return status.Error(codes.Unauthenticated, "authentication failed")
+}
+
+func isKnownValidationError(err error) bool {
+	switch {
+	case errors.Is(err, ErrMissingToken),
+		errors.Is(err, ErrInvalidToken),
+		errors.Is(err, ErrMultipleAuthHeaders),
+		errors.Is(err, ErrKeyNotFound),
+		errors.Is(err, ErrMissingKid),
+		errors.Is(err, ErrUnexpectedSignMethod),
+		errors.Is(err, ErrNoValidKeys),
+		errors.Is(err, ErrUnexpectedStatus),
+		errors.Is(err, ErrJWKSBackoff),
+		errors.Is(err, ErrIssuerRequired),
+		errors.Is(err, ErrAudienceRequired),
+		errors.Is(err, jwt.ErrTokenExpired),
+		errors.Is(err, jwt.ErrTokenNotValidYet),
+		errors.Is(err, jwt.ErrTokenMalformed),
+		errors.Is(err, jwt.ErrTokenSignatureInvalid),
+		errors.Is(err, jwt.ErrTokenInvalidAudience),
+		errors.Is(err, jwt.ErrTokenInvalidIssuer),
+		errors.Is(err, jwt.ErrTokenInvalidClaims):
+		return true
+	default:
+		return false
+	}
 }
