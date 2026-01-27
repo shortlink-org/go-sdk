@@ -8,7 +8,7 @@ require (
 	github.com/redis/go-redis/v9 v9.17.3
 	github.com/redis/rueidis v1.0.70
 	github.com/redis/rueidis/rueidiscompat v1.0.70
-	github.com/shortlink-org/go-sdk/db v0.0.0-20260107222411-453281b10921
+	github.com/shortlink-org/go-sdk/db v0.0.0-20260127155416-b2559fb0922b
 	github.com/shortlink-org/go-sdk/observability v0.0.0-20260121215533-0995bc8d4d88
 	github.com/stretchr/testify v1.11.1
 	go.opentelemetry.io/otel/trace v1.39.0
