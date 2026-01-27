@@ -13,6 +13,8 @@ import (
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
 )
 
 const (
@@ -20,10 +22,38 @@ const (
 	DefaultJWKSCacheTTL = time.Hour
 	// DefaultJWKSHTTPTimeout is the default HTTP timeout for JWKS fetch.
 	DefaultJWKSHTTPTimeout = 10 * time.Second
+	// DefaultJWKSBackoffMin is the minimum backoff after JWKS fetch failures.
+	DefaultJWKSBackoffMin = 500 * time.Millisecond
+	// DefaultJWKSBackoffMax is the maximum backoff after JWKS fetch failures.
+	DefaultJWKSBackoffMax = 30 * time.Second
 	// maxJWKSBodySize is the maximum size of JWKS response body (1MB).
 	maxJWKSBodySize = 1 << 20
 	// exponentBitShift is used for RSA exponent parsing.
 	exponentBitShift = 8
+)
+
+var (
+	jwksCacheAccessTotal = promauto.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "jwks_cache_access_total",
+			Help: "Total JWKS cache accesses.",
+		},
+		[]string{"result"},
+	)
+	jwksFetchTotal = promauto.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "jwks_fetch_total",
+			Help: "Total JWKS fetch attempts.",
+		},
+		[]string{"outcome"},
+	)
+	jwksFetchSeconds = promauto.NewHistogram(
+		prometheus.HistogramOpts{
+			Name:    "jwks_fetch_seconds",
+			Help:    "Time spent fetching JWKS.",
+			Buckets: prometheus.DefBuckets,
+		},
+	)
 )
 
 // JWKSFetcher fetches and caches JWKS (JSON Web Key Set) from a remote URL.
@@ -32,6 +62,8 @@ type JWKSFetcher struct {
 	url        string
 	httpClient *http.Client
 	cacheTTL   time.Duration
+	backoffMin time.Duration
+	backoffMax time.Duration
 
 	mu        sync.RWMutex
 	keys      map[string]*rsa.PublicKey
@@ -41,6 +73,10 @@ type JWKSFetcher struct {
 	fetchMu   sync.Mutex
 	fetching  bool
 	fetchCond *sync.Cond
+
+	// backoff state (guarded by fetchMu)
+	backoff   time.Duration
+	nextRetry time.Time
 }
 
 // JWKSConfig configures the JWKS fetcher.
@@ -51,6 +87,10 @@ type JWKSConfig struct {
 	CacheTTL time.Duration
 	// HTTPTimeout is the timeout for HTTP requests (default: 10 seconds)
 	HTTPTimeout time.Duration
+	// BackoffMin is the minimum backoff after a failed JWKS fetch (default: 500ms)
+	BackoffMin time.Duration
+	// BackoffMax is the maximum backoff after a failed JWKS fetch (default: 30s)
+	BackoffMax time.Duration
 }
 
 // NewJWKSFetcher creates a new JWKS fetcher.
@@ -63,9 +103,23 @@ func NewJWKSFetcher(cfg JWKSConfig) *JWKSFetcher {
 		cfg.HTTPTimeout = DefaultJWKSHTTPTimeout
 	}
 
+	if cfg.BackoffMin == 0 {
+		cfg.BackoffMin = DefaultJWKSBackoffMin
+	}
+
+	if cfg.BackoffMax == 0 {
+		cfg.BackoffMax = DefaultJWKSBackoffMax
+	}
+
+	if cfg.BackoffMax < cfg.BackoffMin {
+		cfg.BackoffMax = cfg.BackoffMin
+	}
+
 	fetcher := &JWKSFetcher{
 		url:      cfg.URL,
 		cacheTTL: cfg.CacheTTL,
+		backoffMin: cfg.BackoffMin,
+		backoffMax: cfg.BackoffMax,
 		httpClient: &http.Client{
 			Timeout: cfg.HTTPTimeout,
 		},
@@ -86,8 +140,11 @@ func (fetcher *JWKSFetcher) GetKey(ctx context.Context, kid string) (*rsa.Public
 	fetcher.mu.RUnlock()
 
 	if found && !needsRefresh {
+		jwksCacheAccessTotal.WithLabelValues("hit").Inc()
 		return key, nil
 	}
+
+	jwksCacheAccessTotal.WithLabelValues("miss").Inc()
 
 	// Cache miss or expired - refresh
 	err := fetcher.refresh(ctx)
@@ -157,6 +214,12 @@ func (fetcher *JWKSFetcher) refresh(ctx context.Context) error {
 
 	fetcher.mu.RUnlock()
 
+	// Respect backoff after recent failures
+	if !fetcher.nextRetry.IsZero() && time.Now().Before(fetcher.nextRetry) {
+		fetcher.fetchMu.Unlock()
+		return ErrJWKSBackoff
+	}
+
 	// We're the one doing the fetch
 	fetcher.fetching = true
 	fetcher.fetchMu.Unlock()
@@ -173,13 +236,17 @@ func (fetcher *JWKSFetcher) refresh(ctx context.Context) error {
 }
 
 func (fetcher *JWKSFetcher) doFetch(ctx context.Context) error {
+	start := time.Now()
+
 	body, err := fetcher.fetchJWKSBody(ctx)
 	if err != nil {
+		fetcher.recordFetchFailure(time.Since(start))
 		return err
 	}
 
 	keys, err := fetcher.parseJWKS(body)
 	if err != nil {
+		fetcher.recordFetchFailure(time.Since(start))
 		return err
 	}
 
@@ -188,7 +255,36 @@ func (fetcher *JWKSFetcher) doFetch(ctx context.Context) error {
 	fetcher.fetchedAt = time.Now()
 	fetcher.mu.Unlock()
 
+	fetcher.recordFetchSuccess(time.Since(start))
+
 	return nil
+}
+
+func (fetcher *JWKSFetcher) recordFetchSuccess(duration time.Duration) {
+	jwksFetchTotal.WithLabelValues("success").Inc()
+	jwksFetchSeconds.Observe(duration.Seconds())
+
+	fetcher.fetchMu.Lock()
+	fetcher.backoff = 0
+	fetcher.nextRetry = time.Time{}
+	fetcher.fetchMu.Unlock()
+}
+
+func (fetcher *JWKSFetcher) recordFetchFailure(duration time.Duration) {
+	jwksFetchTotal.WithLabelValues("failure").Inc()
+	jwksFetchSeconds.Observe(duration.Seconds())
+
+	fetcher.fetchMu.Lock()
+	if fetcher.backoff == 0 {
+		fetcher.backoff = fetcher.backoffMin
+	} else {
+		fetcher.backoff *= 2
+		if fetcher.backoff > fetcher.backoffMax {
+			fetcher.backoff = fetcher.backoffMax
+		}
+	}
+	fetcher.nextRetry = time.Now().Add(fetcher.backoff)
+	fetcher.fetchMu.Unlock()
 }
 
 func (fetcher *JWKSFetcher) fetchJWKSBody(ctx context.Context) ([]byte, error) {

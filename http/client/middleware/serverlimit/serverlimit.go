@@ -27,6 +27,24 @@ type Config struct {
 	Client         string
 }
 
+var (
+	sharedLimiterOnce sync.Once
+	sharedLimiter     *hostLimiter
+)
+
+// Middleware returns a middleware that shares a process-wide limiter.
+// It avoids spawning a cleanup goroutine per client; use New() if you need explicit Close().
+func Middleware(cfg Config) types.Middleware {
+	limiter := &ServerLimiter{
+		limiter:        sharedHostLimiter(),
+		jitterFraction: normalizeJitter(cfg.JitterFraction),
+		metrics:        cfg.Metrics,
+		clientName:     cfg.Client,
+	}
+
+	return limiter.Middleware()
+}
+
 // ServerLimiter manages rate limiting based on server response headers.
 // It tracks per-host rate limits and respects Retry-After/RateLimit-Reset headers.
 //
@@ -41,18 +59,9 @@ type ServerLimiter struct {
 // New creates a new ServerLimiter.
 // The caller must call Close() when done to prevent goroutine leaks.
 func New(cfg Config) *ServerLimiter {
-	jitterFraction := cfg.JitterFraction
-	if jitterFraction < 0 {
-		jitterFraction = 0
-	}
-
-	if jitterFraction > 1 {
-		jitterFraction = 1
-	}
-
 	return &ServerLimiter{
 		limiter:        newHostLimiter(),
-		jitterFraction: jitterFraction,
+		jitterFraction: normalizeJitter(cfg.JitterFraction),
 		metrics:        cfg.Metrics,
 		clientName:     cfg.Client,
 	}
@@ -127,6 +136,26 @@ func (s *ServerLimiter) Middleware() types.Middleware {
 
 // Ensure ServerLimiter implements io.Closer.
 var _ io.Closer = (*ServerLimiter)(nil)
+
+func sharedHostLimiter() *hostLimiter {
+	sharedLimiterOnce.Do(func() {
+		sharedLimiter = newHostLimiter()
+	})
+
+	return sharedLimiter
+}
+
+func normalizeJitter(fraction float64) float64 {
+	if fraction < 0 {
+		return 0
+	}
+
+	if fraction > 1 {
+		return 1
+	}
+
+	return fraction
+}
 
 func nextFromHeaders(resp *http.Response, now time.Time) time.Time {
 	// Retry-After (seconds or HTTP-date)

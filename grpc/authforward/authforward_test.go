@@ -70,7 +70,7 @@ func TestTokenFromIncomingMetadata_MultipleValues(t *testing.T) {
 	ctx := metadata.NewIncomingContext(context.Background(), md)
 
 	got := TokenFromIncomingMetadata(ctx)
-	assert.Equal(t, "Bearer first", got)
+	assert.Empty(t, got)
 }
 
 func TestTokenFromIncomingMetadata_WhitespaceTrimmed(t *testing.T) {
@@ -167,7 +167,7 @@ func TestExtractBearerToken(t *testing.T) {
 		{"no prefix", "abc123", ""},
 		{"empty", "", ""},
 		{"wrong prefix", "Basic abc123", ""},
-		{"lowercase bearer", "bearer abc123", ""},
+		{"lowercase bearer", "bearer abc123", "abc123"},
 	}
 
 	for _, testCase := range tests {

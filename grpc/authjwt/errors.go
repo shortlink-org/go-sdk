@@ -13,14 +13,22 @@ import (
 var (
 	// ErrJWKSURLRequired is returned when neither JWKSURL nor CustomKeyfunc is provided.
 	ErrJWKSURLRequired = errors.New("JWKSURL or CustomKeyfunc is required")
+	// ErrIssuerRequired is returned when issuer validation is required but not configured.
+	ErrIssuerRequired = errors.New("issuer is required for JWT validation")
+	// ErrAudienceRequired is returned when audience validation is required but not configured.
+	ErrAudienceRequired = errors.New("audience is required for JWT validation")
 	// ErrKeyNotFound is returned when the requested kid is not in JWKS.
 	ErrKeyNotFound = errors.New("key not found in JWKS")
 	// ErrNoValidKeys is returned when JWKS contains no valid RSA keys.
 	ErrNoValidKeys = errors.New("no valid RSA keys in JWKS")
 	// ErrUnexpectedStatus is returned when JWKS endpoint returns non-200 status.
 	ErrUnexpectedStatus = errors.New("unexpected JWKS response status")
+	// ErrJWKSBackoff is returned when JWKS refresh is temporarily backed off.
+	ErrJWKSBackoff = errors.New("jwks refresh backoff in effect")
 	// ErrMissingKid is returned when token header doesn't contain kid.
 	ErrMissingKid = errors.New("missing kid in token header")
+	// ErrMultipleAuthHeaders is returned when multiple authorization values are present.
+	ErrMultipleAuthHeaders = errors.New("multiple authorization headers")
 	// ErrUnexpectedSignMethod is returned when token uses unexpected signing method.
 	ErrUnexpectedSignMethod = errors.New("unexpected signing method")
 )
@@ -39,11 +47,13 @@ var errorMappings = []struct {
 	{jwt.ErrTokenSignatureInvalid, codes.Unauthenticated, "invalid token signature"},
 	{jwt.ErrTokenInvalidAudience, codes.PermissionDenied, "invalid audience"},
 	{jwt.ErrTokenInvalidIssuer, codes.PermissionDenied, "invalid issuer"},
+	{ErrMultipleAuthHeaders, codes.InvalidArgument, "multiple authorization headers"},
 	{ErrKeyNotFound, codes.Unauthenticated, "unknown signing key"},
 	{ErrMissingKid, codes.InvalidArgument, "missing key id in token"},
 	{ErrUnexpectedSignMethod, codes.InvalidArgument, "unsupported signing method"},
 	{ErrNoValidKeys, codes.Internal, "authentication service unavailable"},
 	{ErrUnexpectedStatus, codes.Internal, "authentication service unavailable"},
+	{ErrJWKSBackoff, codes.Internal, "authentication service unavailable"},
 }
 
 // ToGRPCStatus converts a JWT validation error to an appropriate gRPC status.

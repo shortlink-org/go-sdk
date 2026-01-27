@@ -58,7 +58,7 @@ func TokenFromIncomingMetadata(ctx context.Context) string {
 	}
 
 	values := md.Get(MetadataKey)
-	if len(values) == 0 {
+	if len(values) != 1 {
 		return ""
 	}
 
@@ -75,7 +75,7 @@ func TokenFromOutgoingMetadata(ctx context.Context) string {
 	}
 
 	values := md.Get(MetadataKey)
-	if len(values) == 0 {
+	if len(values) != 1 {
 		return ""
 	}
 
@@ -107,11 +107,15 @@ func SetOutgoingToken(ctx context.Context, token string) context.Context {
 // ExtractBearerToken extracts the token value from a "Bearer <token>" string.
 // Returns empty string if the format is invalid.
 func ExtractBearerToken(auth string) string {
-	if !strings.HasPrefix(auth, BearerPrefix) {
+	if len(auth) < len(BearerPrefix) {
 		return ""
 	}
 
-	return strings.TrimPrefix(auth, BearerPrefix)
+	if !strings.EqualFold(auth[:len(BearerPrefix)], BearerPrefix) {
+		return ""
+	}
+
+	return strings.TrimSpace(auth[len(BearerPrefix):])
 }
 
 // FormatBearerToken formats a token as "Bearer <token>".

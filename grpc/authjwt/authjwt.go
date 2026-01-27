@@ -35,6 +35,7 @@ type Validator struct {
 	issuer        string
 	audience      string
 	skipAudience  bool
+	skipIssuer    bool
 	leeway        time.Duration
 	customKeyfunc jwt.Keyfunc
 }
@@ -49,6 +50,8 @@ type ValidatorConfig struct {
 	Audience string
 	// SkipAudience skips audience validation (not recommended)
 	SkipAudience bool
+	// SkipIssuer skips issuer validation (not recommended)
+	SkipIssuer bool
 	// Leeway is the clock skew tolerance (default: 30 seconds)
 	Leeway time.Duration
 	// JWKSCacheTTL is how long to cache JWKS (default: 1 hour)
@@ -65,6 +68,14 @@ func NewValidator(cfg ValidatorConfig) (*Validator, error) {
 		return nil, ErrJWKSURLRequired
 	}
 
+	if !cfg.SkipIssuer && cfg.Issuer == "" {
+		return nil, ErrIssuerRequired
+	}
+
+	if !cfg.SkipAudience && cfg.Audience == "" {
+		return nil, ErrAudienceRequired
+	}
+
 	if cfg.Leeway == 0 {
 		cfg.Leeway = DefaultLeeway
 	}
@@ -73,6 +84,7 @@ func NewValidator(cfg ValidatorConfig) (*Validator, error) {
 		issuer:        cfg.Issuer,
 		audience:      cfg.Audience,
 		skipAudience:  cfg.SkipAudience,
+		skipIssuer:    cfg.SkipIssuer,
 		leeway:        cfg.Leeway,
 		customKeyfunc: cfg.CustomKeyfunc,
 	}
@@ -101,8 +113,15 @@ func (v *Validator) Validate(ctx context.Context, tokenString string) ValidateRe
 		return ValidateResult{Error: ErrMissingToken}
 	}
 
-	// Remove Bearer prefix if present
-	tokenString = strings.TrimPrefix(tokenString, "Bearer ")
+	tokenString = strings.TrimSpace(tokenString)
+	if tokenString == "" {
+		return ValidateResult{Error: ErrMissingToken}
+	}
+
+	// Remove Bearer prefix if present (case-insensitive)
+	if parts := strings.Fields(tokenString); len(parts) == 2 && strings.EqualFold(parts[0], "bearer") {
+		tokenString = parts[1]
+	}
 
 	// Build parser options
 	opts := []jwt.ParserOption{
@@ -110,7 +129,7 @@ func (v *Validator) Validate(ctx context.Context, tokenString string) ValidateRe
 		jwt.WithValidMethods([]string{"RS256"}),
 	}
 
-	if v.issuer != "" {
+	if !v.skipIssuer && v.issuer != "" {
 		opts = append(opts, jwt.WithIssuer(v.issuer))
 	}
 

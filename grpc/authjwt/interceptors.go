@@ -3,12 +3,14 @@ package authjwt
 import (
 	"context"
 	"errors"
+	"log/slog"
 	"strings"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
+	"github.com/shortlink-org/go-sdk/logger"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"
@@ -49,6 +51,8 @@ type InterceptorConfig struct {
 	// SkipMethods is a list of method prefixes to skip authentication
 	// Default: /grpc.reflection, /grpc.health
 	SkipMethods []string
+	// Logger logs authentication failures (optional).
+	Logger logger.Logger
 }
 
 // UnaryServerInterceptor validates JWT tokens on incoming unary requests.
@@ -68,7 +72,7 @@ func UnaryServerInterceptor(validator *Validator, cfg InterceptorConfig) grpc.Un
 			return handler(ctx, req)
 		}
 
-		ctx, err := validateRequest(ctx, validator, info.FullMethod)
+		ctx, err := validateRequest(ctx, validator, info.FullMethod, cfg.Logger)
 		if err != nil {
 			return nil, err
 		}
@@ -92,7 +96,7 @@ func StreamServerInterceptor(validator *Validator, cfg InterceptorConfig) grpc.S
 			return handler(srv, stream)
 		}
 
-		ctx, err := validateRequest(stream.Context(), validator, info.FullMethod)
+		ctx, err := validateRequest(stream.Context(), validator, info.FullMethod, cfg.Logger)
 		if err != nil {
 			return err
 		}
@@ -101,7 +105,7 @@ func StreamServerInterceptor(validator *Validator, cfg InterceptorConfig) grpc.S
 	}
 }
 
-func validateRequest(ctx context.Context, validator *Validator, method string) (context.Context, error) {
+func validateRequest(ctx context.Context, validator *Validator, method string, log logger.Logger) (context.Context, error) {
 	start := time.Now()
 
 	ctx, span := tracer.Start(ctx, "authjwt.ValidateToken",
@@ -112,12 +116,21 @@ func validateRequest(ctx context.Context, validator *Validator, method string) (
 	defer span.End()
 
 	// Extract token from metadata
-	token := extractToken(ctx)
-	if token == "" {
-		recordMetrics("missing_token", method, start)
-		span.SetStatus(codes.Error, "missing token")
+	token, tokenErr := extractToken(ctx)
+	if tokenErr != nil {
+		outcome := classifyError(tokenErr)
+		recordMetrics(outcome, method, start)
+		span.RecordError(tokenErr)
+		span.SetStatus(codes.Error, tokenErr.Error())
 
-		return nil, ToGRPCStatus(ErrMissingToken)
+		if log != nil {
+			log.Warn("jwt validation failed",
+				slog.String("method", method),
+				slog.String("reason", outcome),
+			)
+		}
+
+		return nil, ToGRPCStatus(tokenErr)
 	}
 
 	// Validate token
@@ -127,6 +140,13 @@ func validateRequest(ctx context.Context, validator *Validator, method string) (
 		recordMetrics(outcome, method, start)
 		span.RecordError(result.Error)
 		span.SetStatus(codes.Error, result.Error.Error())
+
+		if log != nil {
+			log.Warn("jwt validation failed",
+				slog.String("method", method),
+				slog.String("reason", outcome),
+			)
+		}
 
 		return nil, ToGRPCStatus(result.Error)
 	}
@@ -148,6 +168,10 @@ func validateRequest(ctx context.Context, validator *Validator, method string) (
 
 func classifyError(err error) string {
 	switch {
+	case errors.Is(err, ErrMissingToken):
+		return "missing_token"
+	case errors.Is(err, ErrMultipleAuthHeaders):
+		return "multiple_auth_headers"
 	case errors.Is(err, jwt.ErrTokenExpired):
 		return "expired"
 	case errors.Is(err, jwt.ErrTokenMalformed):
@@ -158,23 +182,36 @@ func classifyError(err error) string {
 		return "invalid_audience"
 	case errors.Is(err, jwt.ErrTokenInvalidIssuer):
 		return "invalid_issuer"
+	case errors.Is(err, ErrKeyNotFound):
+		return "unknown_kid"
+	case errors.Is(err, ErrNoValidKeys), errors.Is(err, ErrUnexpectedStatus), errors.Is(err, ErrJWKSBackoff):
+		return "jwks_unavailable"
 	default:
 		return "invalid_token"
 	}
 }
 
-func extractToken(ctx context.Context) string {
+func extractToken(ctx context.Context) (string, error) {
 	md, ok := metadata.FromIncomingContext(ctx)
 	if !ok {
-		return ""
+		return "", ErrMissingToken
 	}
 
 	values := md.Get(authorizationKey)
 	if len(values) == 0 {
-		return ""
+		return "", ErrMissingToken
 	}
 
-	return strings.TrimSpace(values[0])
+	if len(values) > 1 {
+		return "", ErrMultipleAuthHeaders
+	}
+
+	token := strings.TrimSpace(values[0])
+	if token == "" {
+		return "", ErrMissingToken
+	}
+
+	return token, nil
 }
 
 func shouldSkip(method string, skipMethods []string) bool {
