@@ -543,8 +543,6 @@ go.etcd.io/etcd/client/v3 v3.6.6/go.mod h1:36Qv6baQ07znPR3+n7t+Rk5VHEzVYPvFfGmfF
 go.mongodb.org/mongo-driver v1.1.0/go.mod h1:u7ryQJ+DOzQmeO7zB6MHyr8jkEQvC8vH7qLUO4lqsUM=
 go.mongodb.org/mongo-driver v1.17.2 h1:gvZyk8352qSfzyZ2UMWcpDpMSGEr1eqE4T793SqyhzM=
 go.mongodb.org/mongo-driver v1.17.2/go.mod h1:Hy04i7O2kC4RS06ZrhPRqj/u4DTYkFDAAccj+rVKqgQ=
-go.mongodb.org/mongo-driver/v2 v2.4.1 h1:hGDMngUao03OVQ6sgV5csk+RWOIkF+CuLsTPobNMGNI=
-go.mongodb.org/mongo-driver/v2 v2.4.1/go.mod h1:jHeEDJHJq7tm6ZF45Issun9dbogjfnPySb1vXA7EeAI=
 go.mongodb.org/mongo-driver/v2 v2.4.2 h1:HrJ+Auygxceby9MLp3YITobef5a8Bv4HcPFIkml1U7U=
 go.mongodb.org/mongo-driver/v2 v2.4.2/go.mod h1:jHeEDJHJq7tm6ZF45Issun9dbogjfnPySb1vXA7EeAI=
 go.opencensus.io v0.21.0/go.mod h1:mSImk1erAIZhrmZN+AvHh14ztQfjbGwt4TtuofqLduU=

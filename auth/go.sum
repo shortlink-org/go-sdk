@@ -65,8 +65,6 @@ github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 h1:C3w9PqII01/Oq
 github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822/go.mod h1:+n7T8mK8HuQTcFwEeznm/DIxMOiR9yIdICNftLE1DvQ=
 github.com/nbio/st v0.0.0-20140626010706-e9e8d9816f32 h1:W6apQkHrMkS0Muv8G/TipAy/FJl/rCYT0+EuS8+Z0z4=
 github.com/nbio/st v0.0.0-20140626010706-e9e8d9816f32/go.mod h1:9wM+0iRr9ahx58uYLpLIr5fm8diHn0JbqRycJi6w0Ms=
-github.com/ory/client-go v1.22.16 h1:JNjTwJqIb/apOFLeYygrO48wJgZJrLeA01ltM5piMns=
-github.com/ory/client-go v1.22.16/go.mod h1:VJznBChrOG0Fg/nmplykTgTXWPYIfuC/rBvCcL60ukQ=
 github.com/ory/client-go v1.22.21 h1:qYyhozw1UcA94QWMqpetPY2Ir2wwDdv1Wh0Rn668eO0=
 github.com/ory/client-go v1.22.21/go.mod h1:VJznBChrOG0Fg/nmplykTgTXWPYIfuC/rBvCcL60ukQ=
 github.com/pelletier/go-toml/v2 v2.2.4 h1:mye9XuhQ6gvn5h28+VilKrrPoQVanw5PMw/TB0t5Ec4=
@@ -101,8 +99,6 @@ github.com/shortlink-org/go-sdk/http v0.0.0-20260107222411-453281b10921 h1:pJSw0
 github.com/shortlink-org/go-sdk/http v0.0.0-20260107222411-453281b10921/go.mod h1:Byc5mjbHKVrp4UFT0SOxYJfKM8B45K0utEl06fZ8K7Y=
 github.com/shortlink-org/go-sdk/logger v0.0.0-20260107222411-453281b10921 h1:mgUyseLj+kSW+R+lhB029ZS2rCJQZOkumRKKvHIFT7o=
 github.com/shortlink-org/go-sdk/logger v0.0.0-20260107222411-453281b10921/go.mod h1:26SEqudMpXAwKF7iNyfxhPoHUgJeHEzx8bw5kCultTQ=
-github.com/shortlink-org/go-sdk/observability v0.0.0-20260107222628-ad66d85c8a41 h1:xo1/NOyh9QHoN1A2je85Jfsy0bivohgf7yongeCWD6w=
-github.com/shortlink-org/go-sdk/observability v0.0.0-20260107222628-ad66d85c8a41/go.mod h1:dLjQilcHlTfVBzVeDK8QdwgiTq5x3sMijWoW7OeWzNo=
 github.com/shortlink-org/go-sdk/observability v0.0.0-20260121215533-0995bc8d4d88 h1:lTszkny6KLkXvLZ2IOC3Y0+aeH25YFLaODheDbakzSs=
 github.com/shortlink-org/go-sdk/observability v0.0.0-20260121215533-0995bc8d4d88/go.mod h1:71EjSBzc/rwe+xLYn1ZMlyQUkbFBFRLwqv/25s38IEQ=
 github.com/sourcegraph/conc v0.3.1-0.20240121214520-5f936abd7ae8 h1:+jumHNA0Wrelhe64i8F6HNlS8pkoyMv5sreGx2Ry5Rw=

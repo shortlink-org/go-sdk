@@ -4,7 +4,6 @@ go 1.25.5
 
 require (
 	github.com/authzed/authzed-go v1.7.0
-	github.com/ory/client-go v1.22.21
 	github.com/shortlink-org/go-sdk/grpc v0.0.0-20260107222411-453281b10921
 	github.com/shortlink-org/go-sdk/logger v0.0.0-20260107222411-453281b10921
 	github.com/shortlink-org/go-sdk/observability v0.0.0-20260121215533-0995bc8d4d88
@@ -12,7 +11,7 @@ require (
 	google.golang.org/grpc v1.78.0
 )
 
-require github.com/klauspost/compress v1.18.2 // indirect
+require github.com/ory/client-go v1.22.21 // indirect
 
 require (
 	buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go v1.36.10-20250912141014-52f32327d4b0.1 // indirect

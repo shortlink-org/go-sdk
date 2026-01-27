@@ -2,46 +2,71 @@ package session
 
 import (
 	"context"
-
-	ory "github.com/ory/client-go"
 )
 
 type Session string
 
 const (
-	// ContextSessionKey is the key used to store the session in the context.
-	contextSessionKey = Session("session")
+	// contextClaimsKey is the key used to store JWT claims in the context.
+	contextClaimsKey = Session("jwt-claims")
 
 	// ContextUserIDKey is the key used to store the user id in the context.
 	ContextUserIDKey = Session("user-id")
 )
+
+// Claims represents JWT claims from Oathkeeper id_token mutator.
+// These claims are set by Oathkeeper after validating the session with Kratos.
+type Claims struct {
+	// Subject is the user ID (from Kratos identity)
+	Subject string `json:"sub"`
+	// Email from identity traits
+	Email string `json:"email"`
+	// Name from identity traits
+	Name string `json:"name"`
+	// IdentityID is the Kratos identity ID
+	IdentityID string `json:"identity_id"`
+	// SessionID is the Kratos session ID
+	SessionID string `json:"session_id"`
+	// Metadata from identity metadata_public
+	Metadata map[string]any `json:"metadata"`
+	// Issuer of the token
+	Issuer string `json:"iss"`
+	// IssuedAt timestamp
+	IssuedAt int64 `json:"iat"`
+	// ExpiresAt timestamp
+	ExpiresAt int64 `json:"exp"`
+}
 
 // String returns the string representation of the session.
 func (s Session) String() string {
 	return string(s)
 }
 
-func WithSession(ctx context.Context, session *ory.Session) context.Context {
-	return context.WithValue(ctx, contextSessionKey, session)
+// WithClaims stores JWT claims in the context.
+func WithClaims(ctx context.Context, claims *Claims) context.Context {
+	return context.WithValue(ctx, contextClaimsKey, claims)
 }
 
-func GetSession(ctx context.Context) (*ory.Session, error) {
-	sess := ctx.Value(contextSessionKey)
-	if sess == nil {
+// GetClaims retrieves JWT claims from the context.
+func GetClaims(ctx context.Context) (*Claims, error) {
+	claims := ctx.Value(contextClaimsKey)
+	if claims == nil {
 		return nil, ErrSessionNotFound
 	}
 
-	if session, ok := sess.(*ory.Session); ok {
-		return session, nil
+	if c, ok := claims.(*Claims); ok {
+		return c, nil
 	}
 
 	return nil, ErrSessionNotFound
 }
 
+// WithUserID stores the user ID in the context.
 func WithUserID(ctx context.Context, userID string) context.Context {
 	return context.WithValue(ctx, ContextUserIDKey, userID)
 }
 
+// GetUserID retrieves the user ID from the context.
 func GetUserID(ctx context.Context) (string, error) {
 	userID := ctx.Value(ContextUserIDKey)
 	if userID == nil {

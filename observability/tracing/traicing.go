@@ -9,6 +9,7 @@ import (
 
 	otelpyroscope "github.com/grafana/otel-profiling-go"
 	"github.com/shortlink-org/go-sdk/config"
+	"go.opentelemetry.io/contrib/propagators/b3"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
 	"go.opentelemetry.io/otel/propagation"
@@ -119,11 +120,15 @@ func newTraceProvider(ctx context.Context, res *resource.Resource, uri string, c
 
 	otel.SetTracerProvider(otelpyroscope.NewTracerProvider(traceProviderService))
 
-	// Register the W3C trace context and baggage propagators so data is propagated across services/processes
+	// Register propagators for trace context propagation across services
+	// - TraceContext: W3C standard (traceparent header)
+	// - Baggage: W3C baggage propagation
+	// - B3: Zipkin/Istio/Envoy compatibility (b3, x-b3-* headers)
 	otel.SetTextMapPropagator(
 		propagation.NewCompositeTextMapPropagator(
 			propagation.TraceContext{},
 			propagation.Baggage{},
+			b3.New(b3.WithInjectEncoding(b3.B3MultipleHeader|b3.B3SingleHeader)),
 		),
 	)
 
