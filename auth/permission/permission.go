@@ -13,8 +13,9 @@ import (
 
 func New(log logger.Logger, tracer trace.TracerProvider, monitor *metrics.Monitoring, cfg *config.Config) (*authzed.Client, error) {
 	// Initialize gRPC Client's interceptor.
+	// NOTE: Do NOT use WithAuthForward() here - SpiceDB requires its own preshared key authentication,
+	// not forwarded user JWT tokens. The preshared key is set via grpc.WithPerRPCCredentials() in auth.New().
 	opts := []rpc.Option{
-		rpc.WithAuthForward(),
 		rpc.WithMetrics(monitor.Prometheus),
 		rpc.WithTracer(tracer, monitor.Prometheus, monitor.Metrics),
 		rpc.WithTimeout(),
