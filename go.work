@@ -27,6 +27,7 @@ use (
 	./s3
 	./saga
 	./specification
+	./temporal
 	./transactional_outbox
 	./types
 	./uow
