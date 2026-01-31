@@ -40,6 +40,9 @@ import (
 //   - GRPC_CLIENT_TLS_ENABLED: Enable TLS (default: false)
 //   - GRPC_CLIENT_TIMEOUT: Request timeout (default: 10s)
 //
+// Temporal-specific overrides:
+//   - TEMPORAL_TLS_ENABLED: Override TLS for Temporal connection (optional, uses GRPC_CLIENT_TLS_ENABLED if not set)
+//
 // Reference: https://docs.temporal.io/develop/go/temporal-client
 func New(
 	l logger.Logger,
@@ -54,6 +57,11 @@ func New(
 	host := cfg.GetString("TEMPORAL_HOST")
 	namespace := cfg.GetString("TEMPORAL_NAMESPACE")
 	identity := cfg.GetString("TEMPORAL_IDENTITY")
+
+	// Override TLS setting for Temporal if TEMPORAL_TLS_ENABLED is explicitly set
+	if cfg.IsSet("TEMPORAL_TLS_ENABLED") {
+		cfg.Set("GRPC_CLIENT_TLS_ENABLED", cfg.GetBool("TEMPORAL_TLS_ENABLED"))
+	}
 
 	// Build gRPC dial options using go-sdk/grpc
 	grpcOpts := []sdkgrpc.Option{
