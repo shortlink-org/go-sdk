@@ -16,14 +16,20 @@ import (
 )
 
 // New return new instance of Store
-func New(tracer trace.TracerProvider, metrics *metric.MeterProvider, cfg *config.Config) *Store {
-	return &Store{
+func New(tracer trace.TracerProvider, metrics *metric.MeterProvider, cfg *config.Config, opts ...Option) *Store {
+	s := &Store{
 		tracer: Tracer{
 			TracerProvider: tracer,
 		},
 		metrics: metrics,
 		cfg:     cfg,
 	}
+
+	for _, opt := range opts {
+		opt(s)
+	}
+
+	return s
 }
 
 // Init - initialize
@@ -38,6 +44,11 @@ func (s *Store) Init(ctx context.Context) error {
 			Err:     err,
 			Details: "failed to get postgres connection config",
 		}
+	}
+
+	// Apply AfterConnect if provided
+	if s.afterConnect != nil {
+		s.config.config.AfterConnect = s.afterConnect
 	}
 
 	// Connect to Postgres

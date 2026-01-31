@@ -25,7 +25,13 @@ import (
 )
 
 // New - return implementation of db
-func New(ctx context.Context, log logger.Logger, tracer trace.TracerProvider, metrics *metric.MeterProvider, cfg *config.Config) (DB, error) {
+func New(ctx context.Context, log logger.Logger, tracer trace.TracerProvider, metrics *metric.MeterProvider, cfg *config.Config, opts ...Option) (DB, error) {
+	// Apply options
+	options := &Options{}
+	for _, opt := range opts {
+		opt(options)
+	}
+
 	//nolint:exhaustruct // fix later, use constructor
 	store := &Store{
 		cfg: cfg,
@@ -38,7 +44,7 @@ func New(ctx context.Context, log logger.Logger, tracer trace.TracerProvider, me
 	case "cockroachdb":
 		store.DB = cockroachdb.New(cfg)
 	case "postgres":
-		store.DB = postgres.New(tracer, metrics, cfg)
+		store.DB = postgres.New(tracer, metrics, cfg, options.PostgresOptions...)
 	case "mysql":
 		store.DB = mysql.New(tracer, metrics, cfg)
 	case "mongo":
