@@ -6,7 +6,7 @@ require (
 	github.com/authzed/authzed-go v1.7.0
 	github.com/shortlink-org/go-sdk/grpc v0.0.0-20260107222411-453281b10921
 	github.com/shortlink-org/go-sdk/logger v0.0.0-20260107222411-453281b10921
-	github.com/shortlink-org/go-sdk/observability v0.0.0-20260121215533-0995bc8d4d88
+	github.com/shortlink-org/go-sdk/observability v0.0.0-20260131202010-0fe4bdf647bf
 	go.opentelemetry.io/otel/trace v1.39.0
 	google.golang.org/grpc v1.78.0
 )
