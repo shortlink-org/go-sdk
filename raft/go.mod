@@ -5,7 +5,7 @@ go 1.25.5
 require (
 	github.com/google/uuid v1.6.0
 	github.com/shortlink-org/go-sdk/grpc v0.0.0-20260107222411-453281b10921
-	github.com/shortlink-org/go-sdk/logger v0.0.0-20260107222411-453281b10921
+	github.com/shortlink-org/go-sdk/logger v0.0.0-20260131202010-0fe4bdf647bf
 	github.com/spf13/viper v1.21.0
 	github.com/stretchr/testify v1.11.1
 	google.golang.org/grpc v1.78.0
