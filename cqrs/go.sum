@@ -77,6 +77,8 @@ github.com/segmentio/encoding v0.5.3 h1:OjMgICtcSFuNvQCdwqMCv9Tg7lEOXGwm1J5RPQcc
 github.com/segmentio/encoding v0.5.3/go.mod h1:HS1ZKa3kSN32ZHVZ7ZLPLXWvOVIiZtyJnO1gPH1sKt0=
 github.com/shortlink-org/go-sdk/config v0.0.0-20260107222411-453281b10921 h1:NQvHpDjvz27jFpcQpjJPdbGOX2VJgOZIUQmx1zznyvw=
 github.com/shortlink-org/go-sdk/config v0.0.0-20260107222411-453281b10921/go.mod h1:WY8oEI8clVi+3QoNTC+4jcGQUVJmzNmO3D1fAcobayg=
+github.com/shortlink-org/go-sdk/uow v0.0.0-20260203153237-3fa1160b13a7 h1:5484NzxFM2yN/M0Vdyy6FmzpGywj0YmzKFVI5RDZ7Bs=
+github.com/shortlink-org/go-sdk/uow v0.0.0-20260203153237-3fa1160b13a7/go.mod h1:Ys0RSGeYJJTfNOxVEHL63cp/gizKfsoqj7lnNYSgTlM=
 github.com/sony/gobreaker v1.0.0 h1:feX5fGGXSl3dYd4aHZItw+FpHLvvoaqkawKjVNiFMNQ=
 github.com/sony/gobreaker v1.0.0/go.mod h1:ZKptC7FHNvhBz7dN2LGjPVBz2sZJmc0/PkyDJOjmxWY=
 github.com/sourcegraph/conc v0.3.1-0.20240121214520-5f936abd7ae8 h1:+jumHNA0Wrelhe64i8F6HNlS8pkoyMv5sreGx2Ry5Rw=
