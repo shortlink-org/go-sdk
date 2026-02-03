@@ -13,7 +13,7 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/jackc/pgx/v5 v5.8.0
 	github.com/shortlink-org/go-sdk/logger v0.0.0-20260107222411-453281b10921
-	github.com/shortlink-org/go-sdk/uow v0.0.0-20260203153237-3fa1160b13a7
+	github.com/shortlink-org/go-sdk/uow v0.0.0-20260203153906-1646eaf0a76a
 	github.com/shortlink-org/go-sdk/watermill v0.0.0-20260107120147-2c52d48b15f0
 	github.com/sony/gobreaker v1.0.0
 	github.com/stretchr/testify v1.11.1
