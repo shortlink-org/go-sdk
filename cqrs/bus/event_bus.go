@@ -11,10 +11,11 @@ import (
 )
 
 var (
-	errEventBusUninitialized = errors.New("cqrs/bus: event bus is not initialized")
-	errEventPublisherNil     = errors.New("cqrs/bus: publisher is required")
-	errEventMarshalerNil     = errors.New("cqrs/bus: marshaler is required")
-	errEventPayloadNil       = errors.New("cqrs/bus: event is nil")
+	errEventBusUninitialized  = errors.New("cqrs/bus: event bus is not initialized")
+	errEventPublisherNil      = errors.New("cqrs/bus: publisher is required")
+	errEventMarshalerNil      = errors.New("cqrs/bus: marshaler is required")
+	errEventPayloadNil        = errors.New("cqrs/bus: event is nil")
+	errEventPublishRequiresTx = errors.New("cqrs/bus: event publishing requires UoW transaction (use Publish inside UnitOfWork)")
 )
 
 // EventBus publishes domain events.
@@ -59,16 +60,18 @@ func NewEventBusWithOptions(
 		bus.forwarder = newForwarderState(cfg.outbox)
 		bus.publisher = bus.forwarder.wrapPublisher(pub)
 	}
+	// When only WithTxAwareOutbox is set, pub may be nil; Publish without tx will return errEventPublishRequiresTx.
 
 	return bus, nil
 }
 
 // validate checks that the event bus and its dependencies are properly initialized.
+// When only WithTxAwareOutbox is used (no forwarder), publisher may be nil.
 func (b *EventBus) validate(evt any) error {
 	if b == nil {
 		return errEventBusUninitialized
 	}
-	if b.publisher == nil {
+	if b.publisher == nil && (b.txOutbox == nil || b.forwarder != nil) {
 		return errEventPublisherNil
 	}
 	if b.marshaler == nil {
@@ -107,6 +110,9 @@ func (b *EventBus) Publish(ctx context.Context, evt any, opts ...PublishOption) 
 			return fmt.Errorf("tx-scoped publisher: %w", err)
 		}
 		publisher = txPub
+	}
+	if publisher == nil {
+		return errEventPublishRequiresTx
 	}
 	defer func() {
 		if txPub != nil {
