@@ -78,12 +78,24 @@ func (b *EventBus) validate(evt any) error {
 }
 
 // Publish sends event using canonical topic name.
-func (b *EventBus) Publish(ctx context.Context, evt any) error {
+// Optional PublishOption(s) apply to this call only; e.g. WithPublisher(txPublisher) for transactional outbox.
+func (b *EventBus) Publish(ctx context.Context, evt any, opts ...PublishOption) error {
 	if err := b.validate(evt); err != nil {
 		return err
 	}
 	if ctx == nil {
 		ctx = context.Background()
+	}
+
+	var po publishOptions
+	for _, opt := range opts {
+		if opt != nil {
+			opt(&po)
+		}
+	}
+	publisher := b.publisher
+	if po.publisher != nil {
+		publisher = po.publisher
 	}
 
 	var (
@@ -114,7 +126,7 @@ func (b *EventBus) Publish(ctx context.Context, evt any) error {
 
 	cqrsmessage.SetTrace(ctx, msg)
 
-	return b.publisher.Publish(topic, msg)
+	return publisher.Publish(topic, msg)
 }
 
 // RunForwarder starts the optional outbox forwarder when configured.
