@@ -97,15 +97,24 @@ func (b *EventBus) Publish(ctx context.Context, evt any, opts ...PublishOption) 
 		}
 	}
 	publisher := b.publisher
+	var txPub wmmessage.Publisher
 	if po.publisher != nil {
 		publisher = po.publisher
 	} else if b.txOutbox != nil && uow.HasTx(ctx) {
-		txPub, err := newTxPublisher(uow.FromContext(ctx), b.txOutbox)
+		var err error
+		txPub, err = newTxPublisher(uow.FromContext(ctx), b.txOutbox)
 		if err != nil {
 			return fmt.Errorf("tx-scoped publisher: %w", err)
 		}
 		publisher = txPub
 	}
+	defer func() {
+		if txPub != nil {
+			if c, ok := txPub.(interface{ Close() error }); ok {
+				_ = c.Close()
+			}
+		}
+	}()
 
 	var (
 		name    string
