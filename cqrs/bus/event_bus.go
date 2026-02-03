@@ -155,3 +155,20 @@ func (b *EventBus) CloseForwarder(ctx context.Context) error {
 
 	return b.forwarder.Close(ctx)
 }
+
+// EventPublisher exposes EventBus as Publish(ctx, event) for dependency injection.
+// Use it as ports.EventPublisher so apps (e.g. OMS) need no local adapter.
+type EventPublisher struct{ Bus *EventBus }
+
+// NewEventPublisher wraps EventBus for use as an EventPublisher interface.
+func NewEventPublisher(bus *EventBus) *EventPublisher {
+	return &EventPublisher{Bus: bus}
+}
+
+// Publish publishes the event; when ctx has a transaction (go-sdk/uow), writes to outbox in the same tx.
+func (p *EventPublisher) Publish(ctx context.Context, event any) error {
+	if p == nil || p.Bus == nil {
+		return nil
+	}
+	return p.Bus.Publish(ctx, event)
+}
