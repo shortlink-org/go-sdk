@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/ThreeDotsLabs/watermill"
 	wmmessage "github.com/ThreeDotsLabs/watermill/message"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/jackc/pgx/v5/stdlib"
@@ -19,8 +20,34 @@ const defaultForwarderTopic = "shortlink_cqrs_outbox"
 type Option func(*cqrsConfig)
 
 type cqrsConfig struct {
-	outbox *OutboxConfig
-	err    error
+	outbox   *OutboxConfig
+	txOutbox *txOutboxConfig
+	err      error
+}
+
+// txOutboxConfig configures Publish to write to outbox using a transaction from context (go-sdk/uow).
+type txOutboxConfig struct {
+	ForwarderTopic string
+	WMLogger       watermill.LoggerAdapter
+}
+
+// WithTxAwareOutbox makes Publish(ctx, evt) use the transaction from context when present (go-sdk/uow).
+// When uow.HasTx(ctx) is true, the event is written to the outbox in the same transaction.
+// ForwarderTopic and WMLogger are used to create a tx-scoped watermill-sql publisher wrapped with the forwarder.
+func WithTxAwareOutbox(forwarderTopic string, wmLogger watermill.LoggerAdapter) Option {
+	return func(c *cqrsConfig) {
+		if c.err != nil {
+			return
+		}
+		if forwarderTopic == "" {
+			c.err = errors.New("cqrs/bus: forwarder topic is required for WithTxAwareOutbox")
+			return
+		}
+		c.txOutbox = &txOutboxConfig{
+			ForwarderTopic: forwarderTopic,
+			WMLogger:       wmLogger,
+		}
+	}
 }
 
 // OutboxConfig wires transactional outbox pieces required by the Watermill forwarder.

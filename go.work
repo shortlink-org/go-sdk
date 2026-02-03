@@ -30,5 +30,6 @@ use (
 	./temporal
 	./transactional_outbox
 	./types
+	./uow
 	./watermill
 )

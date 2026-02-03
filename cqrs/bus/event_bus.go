@@ -7,6 +7,7 @@ import (
 
 	wmmessage "github.com/ThreeDotsLabs/watermill/message"
 	cqrsmessage "github.com/shortlink-org/go-sdk/cqrs/message"
+	"github.com/shortlink-org/go-sdk/uow"
 )
 
 var (
@@ -22,6 +23,7 @@ type EventBus struct {
 	marshaler cqrsmessage.Marshaler
 	namer     cqrsmessage.Namer
 	forwarder *forwarderState
+	txOutbox  *txOutboxConfig
 }
 
 // NewEventBus builds EventBus with required dependencies.
@@ -50,6 +52,7 @@ func NewEventBusWithOptions(
 		publisher: pub,
 		marshaler: marshaler,
 		namer:     namer,
+		txOutbox:  cfg.txOutbox,
 	}
 
 	if cfg.outbox != nil {
@@ -96,6 +99,12 @@ func (b *EventBus) Publish(ctx context.Context, evt any, opts ...PublishOption) 
 	publisher := b.publisher
 	if po.publisher != nil {
 		publisher = po.publisher
+	} else if b.txOutbox != nil && uow.HasTx(ctx) {
+		txPub, err := newTxPublisher(uow.FromContext(ctx), b.txOutbox)
+		if err != nil {
+			return fmt.Errorf("tx-scoped publisher: %w", err)
+		}
+		publisher = txPub
 	}
 
 	var (

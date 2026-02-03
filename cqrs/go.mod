@@ -4,14 +4,17 @@ go 1.25.5
 
 replace (
 	github.com/shortlink-org/go-sdk/logger => ../logger
+	github.com/shortlink-org/go-sdk/uow => ../uow
 	github.com/shortlink-org/go-sdk/watermill => ../watermill
 )
 
 require (
 	github.com/ThreeDotsLabs/watermill v1.5.1
+	github.com/ThreeDotsLabs/watermill-sql/v4 v4.1.2
 	github.com/google/uuid v1.6.0
 	github.com/jackc/pgx/v5 v5.8.0
 	github.com/shortlink-org/go-sdk/logger v0.0.0-20260107222411-453281b10921
+	github.com/shortlink-org/go-sdk/uow v0.0.0
 	github.com/shortlink-org/go-sdk/watermill v0.0.0-20260107120147-2c52d48b15f0
 	github.com/sony/gobreaker v1.0.0
 	github.com/stretchr/testify v1.11.1
@@ -36,6 +39,7 @@ require (
 	github.com/jackc/pgpassfile v1.0.0 // indirect
 	github.com/jackc/pgservicefile v0.0.0-20240606120523-5a60cdf6a761 // indirect
 	github.com/jackc/puddle/v2 v2.2.2 // indirect
+	github.com/lib/pq v1.10.9 // indirect
 	github.com/lithammer/shortuuid/v3 v3.0.7 // indirect
 	github.com/oklog/ulid v1.3.1 // indirect
 	github.com/pelletier/go-toml/v2 v2.2.4 // indirect
