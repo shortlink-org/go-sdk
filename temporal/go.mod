@@ -3,7 +3,7 @@ module github.com/shortlink-org/go-sdk/temporal
 go 1.25.5
 
 require (
-	github.com/shortlink-org/go-sdk/config v0.0.0-20260107222411-453281b10921
+	github.com/shortlink-org/go-sdk/config v0.0.0-20260228185005-29f3e1960429
 	github.com/shortlink-org/go-sdk/grpc v0.0.0-20260107222411-453281b10921
 	github.com/shortlink-org/go-sdk/logger v0.0.0-20260107222411-453281b10921
 	github.com/shortlink-org/go-sdk/observability v0.0.0-20260131202010-0fe4bdf647bf
