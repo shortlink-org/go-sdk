@@ -8,7 +8,7 @@ require (
 	github.com/heptiolabs/healthcheck v0.0.0-20211123025425-613501dd5deb
 	github.com/prometheus/client_golang v1.23.2
 	github.com/shortlink-org/go-sdk/config v0.0.0-20260107222411-453281b10921
-	github.com/shortlink-org/go-sdk/http v0.0.0-20260107222411-453281b10921
+	github.com/shortlink-org/go-sdk/http v0.0.0-20260228185005-29f3e1960429
 	github.com/shortlink-org/go-sdk/logger v0.0.0-20260107222411-453281b10921
 	go.opentelemetry.io/contrib/propagators/b3 v1.39.0
 	go.opentelemetry.io/otel v1.40.0
