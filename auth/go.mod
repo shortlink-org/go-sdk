@@ -4,7 +4,7 @@ go 1.25.5
 
 require (
 	github.com/authzed/authzed-go v1.7.0
-	github.com/shortlink-org/go-sdk/grpc v0.0.0-20260107222411-453281b10921
+	github.com/shortlink-org/go-sdk/grpc v0.0.0-20260228185005-29f3e1960429
 	github.com/shortlink-org/go-sdk/logger v0.0.0-20260107222411-453281b10921
 	github.com/shortlink-org/go-sdk/observability v0.0.0-20260131202010-0fe4bdf647bf
 	go.opentelemetry.io/otel/trace v1.40.0
@@ -60,8 +60,8 @@ require (
 	go.opentelemetry.io/otel v1.40.0 // indirect
 	go.opentelemetry.io/otel/exporters/prometheus v0.61.0 // indirect
 	go.opentelemetry.io/otel/metric v1.40.0 // indirect
-	go.opentelemetry.io/otel/sdk v1.39.0 // indirect
-	go.opentelemetry.io/otel/sdk/metric v1.39.0 // indirect
+	go.opentelemetry.io/otel/sdk v1.40.0 // indirect
+	go.opentelemetry.io/otel/sdk/metric v1.40.0 // indirect
 	go.yaml.in/yaml/v2 v2.4.3 // indirect
 	go.yaml.in/yaml/v3 v3.0.4 // indirect
 	golang.org/x/net v0.49.0 // indirect
