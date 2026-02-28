@@ -8,7 +8,7 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/prometheus/client_golang v1.23.2
 	github.com/prometheus/client_model v0.6.2
-	github.com/shortlink-org/go-sdk/auth v0.0.0-20260107222628-ad66d85c8a41
+	github.com/shortlink-org/go-sdk/auth v0.0.0-20260228185005-29f3e1960429
 	github.com/shortlink-org/go-sdk/config v0.0.0-20260107222411-453281b10921
 	github.com/shortlink-org/go-sdk/flight_trace v0.0.0-20260107222411-453281b10921
 	github.com/shortlink-org/go-sdk/grpc v0.0.0-20260107222411-453281b10921
