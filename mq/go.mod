@@ -10,7 +10,7 @@ require (
 	github.com/ory/dockertest/v3 v3.12.0
 	github.com/rabbitmq/amqp091-go v1.10.0
 	github.com/redis/rueidis v1.0.71
-	github.com/shortlink-org/go-sdk/db v0.0.0-20251021180704-1b5969f32d91
+	github.com/shortlink-org/go-sdk/db v0.0.0-20260228185005-29f3e1960429
 	github.com/shortlink-org/go-sdk/logger v0.0.0-20260107222411-453281b10921
 	github.com/stretchr/testify v1.11.1
 	go.opentelemetry.io/otel v1.40.0
