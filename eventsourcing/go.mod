@@ -8,7 +8,7 @@ require (
 	github.com/jackc/pgx/v5 v5.8.0
 	github.com/ory/dockertest/v3 v3.12.0
 	github.com/shortlink-org/go-sdk/db v0.0.0-20251021202009-dcc19c352b8b
-	github.com/shortlink-org/go-sdk/logger v0.0.0-20260107222411-453281b10921
+	github.com/shortlink-org/go-sdk/logger v0.0.0-20260228185005-29f3e1960429
 	github.com/stretchr/testify v1.11.1
 	go.opentelemetry.io/otel v1.40.0
 	go.uber.org/atomic v1.11.0

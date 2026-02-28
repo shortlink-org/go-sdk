@@ -99,6 +99,8 @@ github.com/shortlink-org/go-sdk/http v0.0.0-20260107222411-453281b10921 h1:pJSw0
 github.com/shortlink-org/go-sdk/http v0.0.0-20260107222411-453281b10921/go.mod h1:Byc5mjbHKVrp4UFT0SOxYJfKM8B45K0utEl06fZ8K7Y=
 github.com/shortlink-org/go-sdk/logger v0.0.0-20260107222411-453281b10921 h1:mgUyseLj+kSW+R+lhB029ZS2rCJQZOkumRKKvHIFT7o=
 github.com/shortlink-org/go-sdk/logger v0.0.0-20260107222411-453281b10921/go.mod h1:26SEqudMpXAwKF7iNyfxhPoHUgJeHEzx8bw5kCultTQ=
+github.com/shortlink-org/go-sdk/logger v0.0.0-20260228185005-29f3e1960429 h1:dKUS+p6SJmcmurlmyCBrgjXPI04Fsv7DuyO+J7CoZ9I=
+github.com/shortlink-org/go-sdk/logger v0.0.0-20260228185005-29f3e1960429/go.mod h1:VyWzxGMvQuwcyANLMgPqG0Nm/FXxBXd0oo/nySvN654=
 github.com/shortlink-org/go-sdk/observability v0.0.0-20260131202010-0fe4bdf647bf h1:Gs3n0DnBLBNkCL3wQhYoQG2GH5wg4uyrtzx9M2epnho=
 github.com/shortlink-org/go-sdk/observability v0.0.0-20260131202010-0fe4bdf647bf/go.mod h1:rbZcMwPujU2VPIqsx2ts/EbY4zZ7hBEbC4uFkCW7RGY=
 github.com/sourcegraph/conc v0.3.1-0.20240121214520-5f936abd7ae8 h1:+jumHNA0Wrelhe64i8F6HNlS8pkoyMv5sreGx2Ry5Rw=
@@ -135,8 +137,12 @@ go.opentelemetry.io/otel/metric v1.40.0 h1:rcZe317KPftE2rstWIBitCdVp89A2HqjkxR3c
 go.opentelemetry.io/otel/metric v1.40.0/go.mod h1:ib/crwQH7N3r5kfiBZQbwrTge743UDc7DTFVZrrXnqc=
 go.opentelemetry.io/otel/sdk v1.39.0 h1:nMLYcjVsvdui1B/4FRkwjzoRVsMK8uL/cj0OyhKzt18=
 go.opentelemetry.io/otel/sdk v1.39.0/go.mod h1:vDojkC4/jsTJsE+kh+LXYQlbL8CgrEcwmt1ENZszdJE=
+go.opentelemetry.io/otel/sdk v1.40.0 h1:KHW/jUzgo6wsPh9At46+h4upjtccTmuZCFAc9OJ71f8=
+go.opentelemetry.io/otel/sdk v1.40.0/go.mod h1:Ph7EFdYvxq72Y8Li9q8KebuYUr2KoeyHx0DRMKrYBUE=
 go.opentelemetry.io/otel/sdk/metric v1.39.0 h1:cXMVVFVgsIf2YL6QkRF4Urbr/aMInf+2WKg+sEJTtB8=
 go.opentelemetry.io/otel/sdk/metric v1.39.0/go.mod h1:xq9HEVH7qeX69/JnwEfp6fVq5wosJsY1mt4lLfYdVew=
+go.opentelemetry.io/otel/sdk/metric v1.40.0 h1:mtmdVqgQkeRxHgRv4qhyJduP3fYJRMX4AtAlbuWdCYw=
+go.opentelemetry.io/otel/sdk/metric v1.40.0/go.mod h1:4Z2bGMf0KSK3uRjlczMOeMhKU2rhUqdWNoKcYrtcBPg=
 go.opentelemetry.io/otel/trace v1.39.0 h1:2d2vfpEDmCJ5zVYz7ijaJdOF59xLomrvj7bjt6/qCJI=
 go.opentelemetry.io/otel/trace v1.39.0/go.mod h1:88w4/PnZSazkGzz/w84VHpQafiU4EtqqlVdxWy+rNOA=
 go.opentelemetry.io/otel/trace v1.40.0 h1:WA4etStDttCSYuhwvEa8OP8I5EWu24lkOzp+ZYblVjw=
