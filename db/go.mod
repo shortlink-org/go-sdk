@@ -18,7 +18,7 @@ require (
 	github.com/mattn/go-sqlite3 v1.14.33
 	github.com/neo4j/neo4j-go-driver/v6 v6.0.0
 	github.com/ory/dockertest/v3 v3.12.0
-	github.com/redis/rueidis v1.0.71
+	github.com/redis/rueidis v1.0.72
 	github.com/redis/rueidis/rueidisotel v1.0.71
 	github.com/shortlink-org/go-sdk/logger v0.0.0-20260107222411-453281b10921
 	github.com/stretchr/testify v1.11.1
