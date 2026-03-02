@@ -9,7 +9,7 @@ require (
 	github.com/shortlink-org/go-sdk/observability v0.0.0-20260228185005-29f3e1960429
 	go.opentelemetry.io/otel v1.40.0
 	go.opentelemetry.io/otel/trace v1.40.0
-	go.temporal.io/sdk v1.39.0
+	go.temporal.io/sdk v1.40.0
 	go.temporal.io/sdk/contrib/opentelemetry v0.7.0
 )
 
