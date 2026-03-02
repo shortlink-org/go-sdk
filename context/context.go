@@ -4,12 +4,8 @@ import (
 	"context"
 )
 
-func New() (context.Context, func(), error) {
-	ctx, cancel := context.WithCancel(context.Background())
+func New() (context.Context, context.CancelCauseFunc, error) {
+	ctx, cancel := context.WithCancelCause(context.Background())
 
-	cb := func() {
-		cancel()
-	}
-
-	return ctx, cb, nil
+	return ctx, cancel, nil
 }
