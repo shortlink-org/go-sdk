@@ -443,6 +443,8 @@ github.com/redis/rueidis/mock v1.0.71 h1:6hZG6GWfQatOwhmATpaIuH+bGvrU/cAFwOf3ntG
 github.com/redis/rueidis/mock v1.0.71/go.mod h1:B38Te25JMMav86Uw6CDUX4rE6GyOIH/XcHPqzYHrkbY=
 github.com/redis/rueidis/rueidiscompat v1.0.71 h1:wNZ//kEjMZgBM0KCk7ncOX8KmAgROU2kDdDNpwheG4w=
 github.com/redis/rueidis/rueidiscompat v1.0.71/go.mod h1:esmCLJvaRzZoKlgB82G1bY7Iky5TnO9Rz+NlhbEccFI=
+github.com/redis/rueidis/rueidiscompat v1.0.72 h1:qNiAmTMVyX2OBiitxJJHz25P7OiI1cBQqDgHB5o/IpY=
+github.com/redis/rueidis/rueidiscompat v1.0.72/go.mod h1:Eb14f7cCnm/+WIbNKS2thZja/KhYSovgF+fSy5iBoRw=
 github.com/redis/rueidis/rueidisotel v1.0.72 h1:QuqBIdGEd2OsT4fLccpdM5pVDtgXmD1+bs/Jlz4sXfw=
 github.com/redis/rueidis/rueidisotel v1.0.72/go.mod h1:MzJc6dxhDVJpOWjwKlDvVdcsHMo8l1tB17tCK3jy0+k=
 github.com/remyoudompheng/bigfft v0.0.0-20190728182440-6a916e37a237/go.mod h1:qqbHyh8v60DhA7CoWK5oRCqLrMHRGoxYCSS9EjAz6Eo=
