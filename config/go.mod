@@ -4,6 +4,7 @@ go 1.25.5
 
 require (
 	github.com/Unleash/unleash-go-sdk/v5 v5.1.0
+	github.com/Unleash/unleash-go-sdk/v6 v6.2.0
 	github.com/spf13/viper v1.21.0
 )
 
