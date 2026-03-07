@@ -3,6 +3,7 @@ package migrate
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"io/fs"
 	"strings"
 
@@ -23,12 +24,15 @@ func Migration(ctx context.Context, store db.DB, fsys fs.FS, tableName string) e
 		return db.ErrGetConnection
 	}
 
+	var retErr error
+
 	driverMigrations, err := iofs.New(fsys, "migrations")
 	if err != nil {
-		return &MigrationError{
+		retErr = &MigrationError{
 			Err:         err,
 			Description: "failed to create migration source",
 		}
+		return retErr
 	}
 
 	// Get connection string from pool config
@@ -37,49 +41,57 @@ func Migration(ctx context.Context, store db.DB, fsys fs.FS, tableName string) e
 	// Open separate sql.DB connection for migrations
 	conn, err := sql.Open("pgx", connStr)
 	if err != nil {
-		return &MigrationError{
+		retErr = &MigrationError{
 			Err:         err,
 			Description: "failed to open migration connection",
 		}
+		return retErr
 	}
-	defer conn.Close()
+	defer func() {
+		retErr = errors.Join(retErr, conn.Close())
+	}()
 
 	// Verify connection
 	if err := conn.PingContext(ctx); err != nil {
-		return &MigrationError{
+		retErr = &MigrationError{
 			Err:         err,
 			Description: "failed to ping migration connection",
 		}
+		return retErr
 	}
 
 	driverDB, err := pgx.WithInstance(conn, &pgx.Config{
 		MigrationsTable: "schema_migrations_" + strings.ReplaceAll(tableName, "-", "_"),
 	})
 	if err != nil {
-		return &MigrationError{
+		retErr = &MigrationError{
 			Err:         err,
 			Description: "failed to create migration driver",
 		}
+		return retErr
 	}
 
 	migration, err := migrate.NewWithInstance("iofs", driverMigrations, "postgres", driverDB)
 	if err != nil {
-		return &MigrationError{
+		retErr = &MigrationError{
 			Err:         err,
 			Description: "failed to create migration instance",
 		}
+		return retErr
 	}
 
 	defer func() {
-		migration.Close()
+		sourceErr, dbErr := migration.Close()
+		retErr = errors.Join(retErr, sourceErr, dbErr)
 	}()
 
 	if err := migration.Up(); err != nil && err != migrate.ErrNoChange {
-		return &MigrationError{
+		retErr = &MigrationError{
 			Err:         err,
 			Description: "failed to apply migration",
 		}
+		return retErr
 	}
 
-	return nil
+	return retErr
 }
