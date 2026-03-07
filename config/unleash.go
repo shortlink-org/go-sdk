@@ -2,12 +2,13 @@ package config
 
 import (
 	"fmt"
+	"time"
 
-	"github.com/Unleash/unleash-go-sdk/v5"
+	"github.com/Unleash/unleash-go-sdk/v6"
 	"github.com/spf13/viper"
 )
 
-const REFRESH_INTERVAL = 10000
+const REFRESH_INTERVAL = 10 * time.Second
 
 func (*Config) FeatureToogleRun() error {
 	viper.SetDefault("FEATURE_TOGGLE_ENABLE", false)
