@@ -7,12 +7,12 @@ require (
 	github.com/shortlink-org/go-sdk/grpc v0.0.0-20260107222411-453281b10921
 	github.com/shortlink-org/go-sdk/logger v0.0.0-20260107222411-453281b10921
 	github.com/shortlink-org/go-sdk/observability v0.0.0-20260228185005-29f3e1960429
-	go.opentelemetry.io/otel/trace v1.42.0
+	go.opentelemetry.io/otel/trace v1.43.0
 	google.golang.org/grpc v1.79.3
 )
 
 require (
-	github.com/Unleash/unleash-go-sdk/v6 v6.2.0 // indirect
+	github.com/Unleash/unleash-go-sdk/v6 v6.4.0 // indirect
 	github.com/golang-jwt/jwt/v5 v5.3.1 // indirect
 	github.com/hashicorp/golang-lru/v2 v2.0.7 // indirect
 	github.com/klauspost/compress v1.18.4 // indirect
@@ -61,9 +61,9 @@ require (
 	github.com/twmb/murmur3 v1.1.8 // indirect
 	go.opentelemetry.io/auto/sdk v1.2.1 // indirect
 	go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc v0.67.0 // indirect
-	go.opentelemetry.io/otel v1.42.0 // indirect
+	go.opentelemetry.io/otel v1.43.0 // indirect
 	go.opentelemetry.io/otel/exporters/prometheus v0.64.0 // indirect
-	go.opentelemetry.io/otel/metric v1.42.0 // indirect
+	go.opentelemetry.io/otel/metric v1.43.0 // indirect
 	go.opentelemetry.io/otel/sdk v1.42.0 // indirect
 	go.opentelemetry.io/otel/sdk/metric v1.42.0 // indirect
 	go.yaml.in/yaml/v2 v2.4.3 // indirect
