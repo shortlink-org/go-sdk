@@ -5,7 +5,7 @@ go 1.25.5
 require (
 	github.com/XSAM/otelsql v0.42.0
 	github.com/aerospike/aerospike-client-go v4.5.2+incompatible
-	github.com/couchbase/gocb/v2 v2.12.0
+	github.com/couchbase/gocb/v2 v2.12.1
 	github.com/dgraph-io/badger/v4 v4.9.1
 	github.com/dgraph-io/dgo/v2 v2.2.0
 	github.com/exaring/otelpgx v0.10.0
@@ -86,7 +86,7 @@ require (
 	github.com/containerd/continuity v0.4.5 // indirect
 	github.com/coreos/go-semver v0.3.1 // indirect
 	github.com/coreos/go-systemd/v22 v22.5.0 // indirect
-	github.com/couchbase/gocbcore/v10 v10.9.0 // indirect
+	github.com/couchbase/gocbcore/v10 v10.9.1 // indirect
 	github.com/couchbase/gocbcoreps v0.1.5-0.20260107140814-1c3a03f888f8 // indirect
 	github.com/couchbase/goprotostellar v1.0.5 // indirect
 	github.com/couchbaselabs/gocbconnstr/v2 v2.0.0 // indirect
