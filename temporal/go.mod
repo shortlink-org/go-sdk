@@ -6,7 +6,7 @@ require (
 	github.com/shortlink-org/go-sdk/config v0.0.0-20260107222411-453281b10921
 	github.com/shortlink-org/go-sdk/grpc v0.0.0-20260107222411-453281b10921
 	github.com/shortlink-org/go-sdk/logger v0.0.0-20260107222411-453281b10921
-	github.com/shortlink-org/go-sdk/observability v0.0.0-20260228185005-29f3e1960429
+	github.com/shortlink-org/go-sdk/observability v0.0.0-20260406174000-713088b38550
 	go.opentelemetry.io/otel v1.43.0
 	go.opentelemetry.io/otel/trace v1.43.0
 	go.temporal.io/sdk v1.41.1
