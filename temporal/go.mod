@@ -4,7 +4,7 @@ go 1.25.5
 
 require (
 	github.com/shortlink-org/go-sdk/config v0.0.0-20260107222411-453281b10921
-	github.com/shortlink-org/go-sdk/grpc v0.0.0-20260107222411-453281b10921
+	github.com/shortlink-org/go-sdk/grpc v0.0.0-20260412205338-faac3395a1da
 	github.com/shortlink-org/go-sdk/logger v0.0.0-20260107222411-453281b10921
 	github.com/shortlink-org/go-sdk/observability v0.0.0-20260406174000-713088b38550
 	go.opentelemetry.io/otel v1.43.0
@@ -46,7 +46,7 @@ require (
 	github.com/robfig/cron v1.2.0 // indirect
 	github.com/sagikazarmark/locafero v0.11.0 // indirect
 	github.com/shortlink-org/go-sdk/auth v0.0.0-20260410230549-a64f68ccd6e5 // indirect
-	github.com/shortlink-org/go-sdk/flight_trace v0.0.0-20260107222411-453281b10921 // indirect
+	github.com/shortlink-org/go-sdk/flight_trace v0.0.0-20260410230549-a64f68ccd6e5 // indirect
 	github.com/shortlink-org/go-sdk/http v0.0.0-20260410230549-a64f68ccd6e5 // indirect
 	github.com/sourcegraph/conc v0.3.1-0.20240121214520-5f936abd7ae8 // indirect
 	github.com/spf13/afero v1.15.0 // indirect
@@ -58,7 +58,7 @@ require (
 	github.com/subosito/gotenv v1.6.0 // indirect
 	github.com/twmb/murmur3 v1.1.8 // indirect
 	go.opentelemetry.io/auto/sdk v1.2.1 // indirect
-	go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc v0.67.0 // indirect
+	go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc v0.68.0 // indirect
 	go.opentelemetry.io/otel/exporters/prometheus v0.65.0 // indirect
 	go.opentelemetry.io/otel/metric v1.43.0 // indirect
 	go.opentelemetry.io/otel/sdk v1.43.0 // indirect
@@ -72,7 +72,7 @@ require (
 	golang.org/x/text v0.35.0 // indirect
 	golang.org/x/time v0.12.0 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20260401024825-9d38bb4040a9 // indirect
-	google.golang.org/genproto/googleapis/rpc v0.0.0-20260401024825-9d38bb4040a9 // indirect
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20260406210006-6f92a3bedf2d // indirect
 	google.golang.org/grpc v1.80.0 // indirect
 	google.golang.org/protobuf v1.36.11 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
