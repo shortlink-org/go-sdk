@@ -2,4 +2,4 @@ module github.com/shortlink-org/go-sdk/golangci-lint
 
 go 1.25.5
 
-require golang.org/x/tools v0.43.0
+require golang.org/x/tools v0.44.0
