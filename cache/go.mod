@@ -6,8 +6,8 @@ require (
 	github.com/go-redis/cache/v9 v9.0.0
 	github.com/ory/dockertest/v3 v3.12.0
 	github.com/redis/go-redis/v9 v9.18.0
-	github.com/redis/rueidis v1.0.73
-	github.com/redis/rueidis/rueidiscompat v1.0.73
+	github.com/redis/rueidis v1.0.74
+	github.com/redis/rueidis/rueidiscompat v1.0.74
 	github.com/shortlink-org/go-sdk/db v0.0.0-20260410230549-a64f68ccd6e5
 	github.com/shortlink-org/go-sdk/observability v0.0.0-20260406174000-713088b38550
 	github.com/stretchr/testify v1.11.1
