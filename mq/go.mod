@@ -9,7 +9,7 @@ require (
 	github.com/nats-io/nats.go v1.50.0
 	github.com/ory/dockertest/v3 v3.12.0
 	github.com/rabbitmq/amqp091-go v1.10.0
-	github.com/redis/rueidis v1.0.73
+	github.com/redis/rueidis v1.0.74
 	github.com/shortlink-org/go-sdk/db v0.0.0-20260410230549-a64f68ccd6e5
 	github.com/shortlink-org/go-sdk/logger v0.0.0-20260107222411-453281b10921
 	github.com/stretchr/testify v1.11.1
@@ -27,11 +27,11 @@ require (
 	github.com/felixge/httpsnoop v1.0.4 // indirect
 	github.com/hashicorp/golang-lru/v2 v2.0.7 // indirect
 	github.com/launchdarkly/eventsource v1.10.0 // indirect
-	github.com/moby/moby/api v1.54.0 // indirect
-	github.com/moby/moby/client v0.3.0 // indirect
+	github.com/moby/moby/api v1.54.1 // indirect
+	github.com/moby/moby/client v0.4.0 // indirect
 	github.com/neo4j/neo4j-go-driver/v6 v6.0.0 // indirect
 	github.com/spf13/viper v1.21.0 // indirect
-	github.com/stretchr/objx v0.5.2 // indirect
+	github.com/stretchr/objx v0.5.3 // indirect
 	github.com/twmb/murmur3 v1.1.8 // indirect
 	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.67.0 // indirect
 )
@@ -102,10 +102,10 @@ require (
 	github.com/prometheus/common v0.67.5 // indirect
 	github.com/prometheus/procfs v0.19.2 // indirect
 	github.com/rcrowley/go-metrics v0.0.0-20250401214520-65e299d6c5c9 // indirect
-	github.com/redis/rueidis/rueidisotel v1.0.73 // indirect
+	github.com/redis/rueidis/rueidisotel v1.0.74 // indirect
 	github.com/sagikazarmark/locafero v0.11.0 // indirect
 	github.com/shortlink-org/go-sdk/config v0.0.0-20260107222411-453281b10921
-	github.com/sirupsen/logrus v1.9.3 // indirect
+	github.com/sirupsen/logrus v1.9.4 // indirect
 	github.com/sourcegraph/conc v0.3.1-0.20240121214520-5f936abd7ae8 // indirect
 	github.com/spf13/afero v1.15.0 // indirect
 	github.com/spf13/cast v1.10.0 // indirect
