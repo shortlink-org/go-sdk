@@ -8,7 +8,7 @@ require (
 	github.com/heptiolabs/healthcheck v0.0.0-20211123025425-613501dd5deb
 	github.com/prometheus/client_golang v1.23.2
 	github.com/shortlink-org/go-sdk/config v0.0.0-20260107222411-453281b10921
-	github.com/shortlink-org/go-sdk/http v0.0.0-20260410230549-a64f68ccd6e5
+	github.com/shortlink-org/go-sdk/http v0.0.0-20260415234714-8c7f9b03b6b3
 	github.com/shortlink-org/go-sdk/logger v0.0.0-20260107222411-453281b10921
 	go.opentelemetry.io/contrib/propagators/b3 v1.43.0
 	go.opentelemetry.io/otel v1.43.0
@@ -64,7 +64,7 @@ require (
 	golang.org/x/sys v0.42.0 // indirect
 	golang.org/x/text v0.35.0 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20260401024825-9d38bb4040a9 // indirect
-	google.golang.org/genproto/googleapis/rpc v0.0.0-20260401024825-9d38bb4040a9 // indirect
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20260406210006-6f92a3bedf2d // indirect
 	google.golang.org/grpc v1.80.0 // indirect
 	google.golang.org/protobuf v1.36.11 // indirect
 	gopkg.in/DATA-DOG/go-sqlmock.v1 v1.3.0 // indirect
