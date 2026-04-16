@@ -107,12 +107,16 @@ github.com/shortlink-org/go-sdk/flight_trace v0.0.0-20260410230549-a64f68ccd6e5 
 github.com/shortlink-org/go-sdk/flight_trace v0.0.0-20260410230549-a64f68ccd6e5/go.mod h1:FOZ+GqUmcV6fUGkaw2JBsExIPSDk3/TxG4jbkjok7B4=
 github.com/shortlink-org/go-sdk/http v0.0.0-20260107222411-453281b10921 h1:pJSw09HcxhqSuVzdWUxpr7t4TDfMvXa+4rHj1MCkiwE=
 github.com/shortlink-org/go-sdk/http v0.0.0-20260107222411-453281b10921/go.mod h1:Byc5mjbHKVrp4UFT0SOxYJfKM8B45K0utEl06fZ8K7Y=
+github.com/shortlink-org/go-sdk/http v0.0.0-20260410230549-a64f68ccd6e5 h1:UhS/zImLaq0/2I6SNGXakWGeBe8oJhY9Q/waX+0irFY=
+github.com/shortlink-org/go-sdk/http v0.0.0-20260410230549-a64f68ccd6e5/go.mod h1:ftR0nI8XG0BAjSkLLLAeVH+leUh/HPMsBSTq4zygRBU=
 github.com/shortlink-org/go-sdk/logger v0.0.0-20260107222411-453281b10921 h1:mgUyseLj+kSW+R+lhB029ZS2rCJQZOkumRKKvHIFT7o=
 github.com/shortlink-org/go-sdk/logger v0.0.0-20260107222411-453281b10921/go.mod h1:26SEqudMpXAwKF7iNyfxhPoHUgJeHEzx8bw5kCultTQ=
 github.com/shortlink-org/go-sdk/observability v0.0.0-20260228185005-29f3e1960429 h1:JtRazzMq2Z+lhvoVhEitW/R+ElEfpPuLkzfsudxX640=
 github.com/shortlink-org/go-sdk/observability v0.0.0-20260228185005-29f3e1960429/go.mod h1:nh14MuzkI94HDbJrvFcXuztk8ns78H6iiKMBdwa0JTs=
 github.com/shortlink-org/go-sdk/observability v0.0.0-20260406174000-713088b38550 h1:dWsEW2G4qAIS/1yf38zM4xps5Gykbwxf0awkUJkXvIE=
 github.com/shortlink-org/go-sdk/observability v0.0.0-20260406174000-713088b38550/go.mod h1:O7hO5aEcEBXQowEmh6JBl41000G8N3EGJbwt4cZxtHU=
+github.com/shortlink-org/go-sdk/observability v0.0.0-20260415234714-8c7f9b03b6b3 h1:NYRg+S1LCZCLxPvuZmF3pdKfMlIhLn54Ze1aB+igijE=
+github.com/shortlink-org/go-sdk/observability v0.0.0-20260415234714-8c7f9b03b6b3/go.mod h1:j0edxMIe8mk0Jcp9PJPrZ/OnDFYqS6vSkP9tBn2PZDU=
 github.com/sourcegraph/conc v0.3.1-0.20240121214520-5f936abd7ae8 h1:+jumHNA0Wrelhe64i8F6HNlS8pkoyMv5sreGx2Ry5Rw=
 github.com/sourcegraph/conc v0.3.1-0.20240121214520-5f936abd7ae8/go.mod h1:3n1Cwaq1E1/1lhQhtRK2ts/ZwZEhjcQeJQ1RuC6Q/8U=
 github.com/spf13/afero v1.15.0 h1:b/YBCLWAJdFWJTN9cLhiXXcD7mzKn9Dm86dNnfyQw1I=
