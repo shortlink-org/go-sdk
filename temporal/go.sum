@@ -101,6 +101,8 @@ github.com/shortlink-org/go-sdk/auth v0.0.0-20260303191922-67c81c34e0a2 h1:jLizq
 github.com/shortlink-org/go-sdk/auth v0.0.0-20260303191922-67c81c34e0a2/go.mod h1:extkB7Ju0Pajc9yDrKchR4ykjALjkcmgx8J6UayC/Yo=
 github.com/shortlink-org/go-sdk/auth v0.0.0-20260410230549-a64f68ccd6e5 h1:Iadm/jGykrJ23ZM+rW1VfJXQ8qyKTz3cCai1cLduo0M=
 github.com/shortlink-org/go-sdk/auth v0.0.0-20260410230549-a64f68ccd6e5/go.mod h1:k0MYca+tdJ5DJjxNgsPSC1TZXAlB+rpjP4KChxkEt7I=
+github.com/shortlink-org/go-sdk/auth v0.0.0-20260415234714-8c7f9b03b6b3 h1:zPP/t6u6WIeCqb98DpwbP/KUw84BW+mJoUo7B6kDdQo=
+github.com/shortlink-org/go-sdk/auth v0.0.0-20260415234714-8c7f9b03b6b3/go.mod h1:y4xT7yCodKMPcs9Rp/at287bBL8erteSKTZugaxb9RI=
 github.com/shortlink-org/go-sdk/flight_trace v0.0.0-20260107222411-453281b10921 h1:0MxajZtWZwfeD5pafULavbJXAmypLoCmu3G3ePPtGxc=
 github.com/shortlink-org/go-sdk/flight_trace v0.0.0-20260107222411-453281b10921/go.mod h1:iR+4W9CDXC5A8Ec8plL1P6T+kySSXfPnxbSrZEK3zME=
 github.com/shortlink-org/go-sdk/flight_trace v0.0.0-20260410230549-a64f68ccd6e5 h1:Ee0pmu+C+/QnWR2lq69p2qrT+8LYEe/FjUpl2RS7KYQ=
@@ -109,6 +111,8 @@ github.com/shortlink-org/go-sdk/http v0.0.0-20260107222411-453281b10921 h1:pJSw0
 github.com/shortlink-org/go-sdk/http v0.0.0-20260107222411-453281b10921/go.mod h1:Byc5mjbHKVrp4UFT0SOxYJfKM8B45K0utEl06fZ8K7Y=
 github.com/shortlink-org/go-sdk/http v0.0.0-20260410230549-a64f68ccd6e5 h1:UhS/zImLaq0/2I6SNGXakWGeBe8oJhY9Q/waX+0irFY=
 github.com/shortlink-org/go-sdk/http v0.0.0-20260410230549-a64f68ccd6e5/go.mod h1:ftR0nI8XG0BAjSkLLLAeVH+leUh/HPMsBSTq4zygRBU=
+github.com/shortlink-org/go-sdk/http v0.0.0-20260415234714-8c7f9b03b6b3 h1:PGT9Sl+zC624wmcavyNoBLj4Nl8mQ21g8YnFB+yIUeE=
+github.com/shortlink-org/go-sdk/http v0.0.0-20260415234714-8c7f9b03b6b3/go.mod h1:jYkPYBCHVsHVtB5V2qWL5ZOnS1EXTJoxWMPOy7HROH8=
 github.com/sourcegraph/conc v0.3.1-0.20240121214520-5f936abd7ae8 h1:+jumHNA0Wrelhe64i8F6HNlS8pkoyMv5sreGx2Ry5Rw=
 github.com/sourcegraph/conc v0.3.1-0.20240121214520-5f936abd7ae8/go.mod h1:3n1Cwaq1E1/1lhQhtRK2ts/ZwZEhjcQeJQ1RuC6Q/8U=
 github.com/spf13/afero v1.15.0 h1:b/YBCLWAJdFWJTN9cLhiXXcD7mzKn9Dm86dNnfyQw1I=
