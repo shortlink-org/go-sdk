@@ -21,7 +21,7 @@ require (
 	github.com/ory/dockertest/v4 v4.0.0
 	github.com/redis/rueidis v1.0.74
 	github.com/redis/rueidis/rueidisotel v1.0.74
-	github.com/shortlink-org/go-sdk/logger v0.0.0-20260107222411-453281b10921
+	github.com/shortlink-org/go-sdk/logger v0.0.0-20260417235820-0f1877a4135b
 	github.com/stretchr/testify v1.11.1
 	github.com/syndtr/goleveldb v1.0.1-0.20220721030215-126854af5e6d
 	github.com/testcontainers/testcontainers-go v0.42.0
