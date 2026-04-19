@@ -501,6 +501,8 @@ github.com/shortlink-org/go-sdk/http v0.0.0-20260415234714-8c7f9b03b6b3 h1:PGT9S
 github.com/shortlink-org/go-sdk/http v0.0.0-20260415234714-8c7f9b03b6b3/go.mod h1:jYkPYBCHVsHVtB5V2qWL5ZOnS1EXTJoxWMPOy7HROH8=
 github.com/shortlink-org/go-sdk/logger v0.0.0-20260107222411-453281b10921 h1:mgUyseLj+kSW+R+lhB029ZS2rCJQZOkumRKKvHIFT7o=
 github.com/shortlink-org/go-sdk/logger v0.0.0-20260107222411-453281b10921/go.mod h1:26SEqudMpXAwKF7iNyfxhPoHUgJeHEzx8bw5kCultTQ=
+github.com/shortlink-org/go-sdk/logger v0.0.0-20260417235820-0f1877a4135b h1:DG7CBLqpy0WRANWrXXG4w9vlr8CNPKsPDFNrJSknNL8=
+github.com/shortlink-org/go-sdk/logger v0.0.0-20260417235820-0f1877a4135b/go.mod h1:ggDWhcBopvLmoJctQLTWSIBiBHr9KHwEhg4Vrmw7RW8=
 github.com/sirupsen/logrus v1.4.1/go.mod h1:ni0Sbl8bgC9z8RoU9G6nDWqqs/fq4eDPysMBDgk/93Q=
 github.com/sirupsen/logrus v1.4.2/go.mod h1:tLMulIdttU9McNUspp0xgXVQah82FyeX6MwdIuYE2rE=
 github.com/sirupsen/logrus v1.6.0/go.mod h1:7uNnSEd1DgxDLC74fIahvMZmmYsHGZGEOFrfsX/uA88=

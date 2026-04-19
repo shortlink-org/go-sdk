@@ -96,7 +96,7 @@ require (
 	github.com/sagikazarmark/locafero v0.11.0 // indirect
 	github.com/shortlink-org/go-sdk/config v0.0.0-20260107222411-453281b10921
 	github.com/shortlink-org/go-sdk/http v0.0.0-20260415234714-8c7f9b03b6b3 // indirect
-	github.com/shortlink-org/go-sdk/logger v0.0.0-20260107222411-453281b10921 // indirect
+	github.com/shortlink-org/go-sdk/logger v0.0.0-20260417235820-0f1877a4135b // indirect
 	github.com/sirupsen/logrus v1.9.4 // indirect
 	github.com/sourcegraph/conc v0.3.1-0.20240121214520-5f936abd7ae8 // indirect
 	github.com/spf13/afero v1.15.0 // indirect
