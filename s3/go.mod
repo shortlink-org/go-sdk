@@ -4,7 +4,7 @@ go 1.25.5
 
 require (
 	github.com/minio/minio-go/v7 v7.0.100
-	github.com/ory/dockertest/v4 v4.0.0
+	github.com/ory/dockertest/v3 v3.12.0
 	github.com/ory/dockertest/v4 v4.0.0
 	github.com/shortlink-org/go-sdk/logger v0.0.0-20260417235820-0f1877a4135b
 	github.com/stretchr/testify v1.11.1
@@ -67,7 +67,7 @@ require (
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
 	github.com/rs/xid v1.6.0 // indirect
 	github.com/sagikazarmark/locafero v0.11.0 // indirect
-	github.com/shortlink-org/go-sdk/config v0.0.0-20260107222411-453281b10921
+	github.com/shortlink-org/go-sdk/config v0.0.0-20260419222854-fd069f4d5106
 	github.com/sirupsen/logrus v1.9.3 // indirect
 	github.com/sourcegraph/conc v0.3.1-0.20240121214520-5f936abd7ae8 // indirect
 	github.com/spf13/afero v1.15.0 // indirect
