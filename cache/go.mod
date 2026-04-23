@@ -5,6 +5,7 @@ go 1.25.5
 require (
 	github.com/go-redis/cache/v9 v9.0.0
 	github.com/ory/dockertest/v3 v3.12.0
+	github.com/ory/dockertest/v4 v4.0.0
 	github.com/redis/go-redis/v9 v9.18.0
 	github.com/redis/rueidis v1.0.74
 	github.com/redis/rueidis/rueidiscompat v1.0.74
