@@ -9,78 +9,66 @@ import (
 	"time"
 
 	cache2 "github.com/go-redis/cache/v9"
-	"github.com/ory/dockertest/v3"
-	"github.com/ory/dockertest/v3/docker"
 	"github.com/shortlink-org/go-sdk/cache"
 	"github.com/shortlink-org/go-sdk/config"
 	"github.com/shortlink-org/go-sdk/observability/metrics"
 	"github.com/stretchr/testify/require"
+	"github.com/testcontainers/testcontainers-go"
+	"github.com/testcontainers/testcontainers-go/wait"
 )
 
 func TestCache(t *testing.T) {
-	// uses a sensible default on windows (tcp/http) and linux/osx (socket)
-	pool, err := dockertest.NewPool("")
-	require.NoError(t, err, "Could not connect to docker")
+	ctx := context.Background()
 
-	// pulls an image, creates a container based on it and runs it
-	resource, err := pool.RunWithOptions(&dockertest.RunOptions{
-		Repository: "redis",
-		Tag:        "7-alpine",
-	}, func(config *docker.HostConfig) {
-		config.AutoRemove = true
-		config.RestartPolicy = docker.RestartPolicy{Name: "no"}
-	})
-	require.NoError(t, err, "Could not start resource")
-
-	// setting the max wait time for the container to start
-	pool.MaxWait = time.Minute * 5
-
-	// exponential backoff-retry, because the application in the container might not be ready to accept connections yet
-	err = pool.Retry(func() error {
-		cfg, errCfg := config.New()
-		if errCfg != nil {
-			return errCfg
-		}
-		cfg.Set("STORE_REDIS_URI", fmt.Sprintf("localhost:%s", resource.GetPort("6379/tcp")))
-
-		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-		defer cancel()
-
-		_, errCache := cache.New(ctx, nil, &metrics.Monitoring{}, cfg)
-		if errCache != nil {
-			return errCache
-		}
-		return nil
-	})
-	require.NoError(t, err, "Could not connect to Docker")
+	c, err := testcontainers.Run(ctx, "redis:7-alpine",
+		testcontainers.WithExposedPorts("6379/tcp"),
+		testcontainers.WithWaitStrategy(
+			wait.ForListeningPort("6379/tcp").WithStartupTimeout(5*time.Minute),
+		),
+	)
+	require.NoError(t, err, "Could not start redis container")
 
 	t.Cleanup(func() {
-		// When you're done, kill and remove the container
-		if err := pool.Purge(resource); err != nil {
-			t.Fatalf("Could not purge resource: %s", err)
-		}
+		_ = c.Terminate(context.Background())
 	})
 
+	host, err := c.Host(ctx)
+	require.NoError(t, err)
+	mapped, err := c.MappedPort(ctx, "6379/tcp")
+	require.NoError(t, err)
+	redisAddr := fmt.Sprintf("%s:%s", host, mapped.Port())
+
+	require.Eventually(t, func() bool {
+		cfg, errCfg := config.New()
+		if errCfg != nil {
+			return false
+		}
+		cfg.Set("STORE_REDIS_URI", redisAddr)
+		tryCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		_, errCache := cache.New(tryCtx, nil, &metrics.Monitoring{}, cfg)
+		return errCache == nil
+	}, 5*time.Minute, time.Second, "redis ready for cache")
+
 	t.Run("Test Set and Get", func(t *testing.T) {
-		ctx := context.Background()
 		cfg, err := config.New()
 		require.NoError(t, err)
-		cfg.Set("STORE_REDIS_URI", fmt.Sprintf("localhost:%s", resource.GetPort("6379/tcp")))
+		cfg.Set("STORE_REDIS_URI", redisAddr)
 
-		c, err := cache.New(ctx, nil, &metrics.Monitoring{}, cfg)
+		cClient, err := cache.New(context.Background(), nil, &metrics.Monitoring{}, cfg)
 		require.NoError(t, err)
 
 		key := "myKey"
 		value := "myValue"
 
-		err = c.Set(&cache2.Item{
+		err = cClient.Set(&cache2.Item{
 			Key:   key,
 			Value: value,
 		})
 		require.NoError(t, err)
 
 		resp := ""
-		err = c.Get(ctx, key, &resp)
+		err = cClient.Get(context.Background(), key, &resp)
 		require.NoError(t, err)
 		require.Equal(t, value, resp)
 	})

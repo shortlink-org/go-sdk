@@ -7,12 +7,14 @@ import (
 	"fmt"
 	"os"
 	"testing"
+	"time"
 
-	"github.com/ory/dockertest/v3"
-	"github.com/ory/dockertest/v3/docker"
-	"github.com/shortlink-org/go-sdk/config"
 	"github.com/stretchr/testify/require"
+	"github.com/testcontainers/testcontainers-go"
+	"github.com/testcontainers/testcontainers-go/wait"
 	"go.uber.org/goleak"
+
+	"github.com/shortlink-org/go-sdk/config"
 )
 
 func TestMain(m *testing.M) {
@@ -27,40 +29,24 @@ func TestETCD(t *testing.T) {
 	require.NoError(t, err)
 	store := New(cfg)
 
-	// uses a sensible default on windows (tcp/http) and linux/osx (socket)
-	pool, err := dockertest.NewPool("")
-	require.NoError(t, err, "Could not connect to docker")
-
-	// pulls an image, creates a container based on it and runs it
-	resource, err := pool.RunWithOptions(&dockertest.RunOptions{
-		Repository: "docker.io/bitnami/etcd",
-		Tag:        "3",
-	}, func(config *docker.HostConfig) {
-		config.AutoRemove = true
-		config.RestartPolicy = docker.RestartPolicy{Name: "no"}
-	})
-	require.NoError(t, err, "Could not start resource")
-
-	// exponential backoff-retry, because the application in the container might not be ready to accept connections yet
-	if err := pool.Retry(func() error {
-		cfg.Set("STORE_ETCD_URI", fmt.Sprintf("localhost:%s", resource.GetPort("2379/tcp")))
-
-		errInit := store.Init(ctx)
-		if errInit != nil {
-			return errInit
-		}
-
-		return nil
-	}); err != nil {
-		require.NoError(t, err, "Could not connect to docker")
-	}
+	c, err := testcontainers.Run(ctx, "docker.io/bitnami/etcd:3",
+		testcontainers.WithExposedPorts("2379/tcp"),
+		testcontainers.WithWaitStrategy(
+			wait.ForListeningPort("2379/tcp").WithStartupTimeout(3*time.Minute),
+		),
+	)
+	require.NoError(t, err)
 
 	t.Cleanup(func() {
 		cancel()
-
-		// When you're done, kill and remove the container
-		if err := pool.Purge(resource); err != nil {
-			t.Fatalf("Could not purge resource: %s", err)
-		}
+		_ = c.Terminate(context.Background())
 	})
+
+	host, err := c.Host(ctx)
+	require.NoError(t, err)
+	mapped, err := c.MappedPort(ctx, "2379/tcp")
+	require.NoError(t, err)
+
+	cfg.Set("STORE_ETCD_URI", fmt.Sprintf("%s:%s", host, mapped.Port()))
+	require.NoError(t, store.Init(ctx))
 }

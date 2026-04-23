@@ -7,11 +7,14 @@ import (
 	"fmt"
 	"os"
 	"testing"
+	"time"
 
-	"github.com/ory/dockertest/v3"
 	"github.com/stretchr/testify/require"
+	"github.com/testcontainers/testcontainers-go"
+	"github.com/testcontainers/testcontainers-go/wait"
 	"go.uber.org/goleak"
 
+	"github.com/shortlink-org/go-sdk/config"
 	"github.com/shortlink-org/go-sdk/mq/query"
 )
 
@@ -23,29 +26,30 @@ func TestMain(m *testing.M) {
 
 func TestNATS(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
-	mq := New()
+	cfg, err := config.New()
+	require.NoError(t, err)
+	mq := New(cfg)
 
-	// uses a sensible default on windows (tcp/http) and linux/osx (socket)
-	pool, err := dockertest.NewPool("")
-	require.Nil(t, err, "Could not connect to docker")
+	c, err := testcontainers.Run(ctx, "nats:2.10-alpine",
+		testcontainers.WithExposedPorts("4222/tcp"),
+		testcontainers.WithWaitStrategy(
+			wait.ForListeningPort("4222/tcp").WithStartupTimeout(2*time.Minute),
+		),
+	)
+	require.NoError(t, err)
 
-	// pulls an image, creates a container based on it and runs it
-	resource, err := pool.Run("nats", "2.10-alpine", nil)
-	require.Nil(t, err, "Could not start resource")
+	t.Cleanup(func() {
+		cancel()
+		_ = c.Terminate(context.Background())
+	})
 
-	// exponential backoff-retry, because the application in the container might not be ready to accept connections yet
-	if err := pool.Retry(func() error {
-		t.Setenv("MQ_NATS_URI", fmt.Sprintf("nats://localhost:%s", resource.GetPort("4222/tcp")))
+	host, err := c.Host(ctx)
+	require.NoError(t, err)
+	mapped, err := c.MappedPort(ctx, "4222/tcp")
+	require.NoError(t, err)
 
-		err = mq.Init(ctx, nil)
-		if err != nil {
-			return err
-		}
-
-		return nil
-	}); err != nil {
-		require.Nil(t, err, "Could not connect to docker")
-	}
+	t.Setenv("MQ_NATS_URI", fmt.Sprintf("nats://%s:%s", host, mapped.Port()))
+	require.NoError(t, mq.Init(ctx, nil))
 
 	t.Run("Subscribe", func(t *testing.T) {
 		respCh := make(chan query.ResponseMessage)
@@ -68,14 +72,5 @@ func TestNATS(t *testing.T) {
 
 		err = mq.UnSubscribe("test")
 		require.Nil(t, err, "Cannot unsubscribe")
-	})
-
-	t.Cleanup(func() {
-		cancel()
-
-		// When you're done, kill and remove the container
-		if err := pool.Purge(resource); err != nil {
-			t.Fatalf("Could not purge resource: %s", err)
-		}
 	})
 }

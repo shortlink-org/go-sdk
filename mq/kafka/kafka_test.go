@@ -4,16 +4,20 @@ package kafka
 
 import (
 	"context"
-	"fmt"
+	"net/netip"
 	"os"
 	"testing"
+	"time"
 
-	"github.com/ory/dockertest/v3"
-	"github.com/ory/dockertest/v3/docker"
-	"github.com/shortlink-org/go-sdk/config"
+	tccontainer "github.com/moby/moby/api/types/container"
+	dockernetwork "github.com/moby/moby/api/types/network"
 	"github.com/stretchr/testify/require"
+	"github.com/testcontainers/testcontainers-go"
+	"github.com/testcontainers/testcontainers-go/network"
+	"github.com/testcontainers/testcontainers-go/wait"
 	"go.uber.org/goleak"
 
+	"github.com/shortlink-org/go-sdk/config"
 	"github.com/shortlink-org/go-sdk/logger"
 	"github.com/shortlink-org/go-sdk/mq/query"
 )
@@ -35,74 +39,63 @@ func TestKafka(t *testing.T) {
 	log, err := logger.New(logger.Configuration{})
 	require.NoError(t, err, "Cannot create logger")
 
-	// uses a sensible default on windows (tcp/http) and linux/osx (socket)
-	pool, err := dockertest.NewPool("")
-	require.NoError(t, err, "Could not connect to docker")
+	nw, err := network.New(ctx)
+	require.NoError(t, err)
 
-	// create a network with Client.CreateNetwork()
-	network, err := pool.Client.CreateNetwork(docker.CreateNetworkOptions{
-		Name: "shortlink-test-kafka",
-	})
+	zk, err := testcontainers.Run(ctx, "confluentinc/cp-zookeeper:7.5.3",
+		network.WithNetwork([]string{"test-kafka-zookeeper"}, nw),
+		testcontainers.WithEnv(map[string]string{
+			"ZOOKEEPER_CLIENT_PORT": "2181",
+			"ZOOKEEPER_TICK_TIME":   "2000",
+		}),
+		testcontainers.WithExposedPorts("2181/tcp"),
+		testcontainers.WithWaitStrategy(
+			wait.ForListeningPort("2181/tcp").WithStartupTimeout(2*time.Minute),
+		),
+	)
+	require.NoError(t, err)
+
+	kafkaC, err := testcontainers.Run(ctx, "confluentinc/cp-kafka:7.5.3",
+		network.WithNetwork([]string{"kafka"}, nw),
+		testcontainers.WithConfigModifier(func(c *tccontainer.Config) {
+			c.Hostname = "kafka"
+		}),
+		testcontainers.WithHostConfigModifier(func(hc *tccontainer.HostConfig) {
+			hc.PortBindings = dockernetwork.PortMap{
+				dockernetwork.MustParsePort("19093/tcp"): []dockernetwork.PortBinding{{HostIP: netip.IPv4Unspecified(), HostPort: "19093"}},
+			}
+		}),
+		testcontainers.WithEnv(map[string]string{
+			"KAFKA_BROKER_ID":                        "1",
+			"KAFKA_ZOOKEEPER_CONNECT":                "test-kafka-zookeeper:2181",
+			"KAFKA_ADVERTISED_LISTENERS":             "INSIDE://kafka:9092,OUTSIDE://localhost:19093",
+			"KAFKA_LISTENER_SECURITY_PROTOCOL_MAP":   "INSIDE:PLAINTEXT,OUTSIDE:PLAINTEXT",
+			"KAFKA_LISTENERS":                        "INSIDE://0.0.0.0:9092,OUTSIDE://0.0.0.0:19093",
+			"KAFKA_INTER_BROKER_LISTENER_NAME":       "INSIDE",
+			"KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR": "1",
+		}),
+		testcontainers.WithExposedPorts("19093/tcp"),
+		testcontainers.WithWaitStrategy(
+			wait.ForListeningPort("19093/tcp").WithStartupTimeout(3*time.Minute),
+		),
+	)
 	if err != nil {
-		t.Fatalf("Error create docker network: %s", err)
+		_ = zk.Terminate(context.Background())
+		_ = nw.Remove(context.Background())
 	}
+	require.NoError(t, err)
 
-	// pulls an image, creates a container based on it and runs it
-	ZOOKEEPER, err := pool.RunWithOptions(&dockertest.RunOptions{
-		Repository:   "confluentinc/cp-zookeeper",
-		Tag:          "7.5.3",
-		ExposedPorts: []string{"2181"},
-		Name:         "test-kafka-zookeeper",
-		Env:          []string{"ZOOKEEPER_CLIENT_PORT=2181", "ZOOKEEPER_TICK_TIME=2000"},
-		NetworkID:    network.ID,
+	t.Cleanup(func() {
+		cancel()
+		_ = kafkaC.Terminate(context.Background())
+		_ = zk.Terminate(context.Background())
+		_ = nw.Remove(context.Background())
 	})
-	require.NoError(t, err, "Could not start resource")
 
-	KAFKA, err := pool.RunWithOptions(&dockertest.RunOptions{
-		Repository: "confluentinc/cp-kafka",
-		Tag:        "7.5.3",
-		Name:       "test-kafka-server",
-		Hostname:   "kafka",
-		Env: []string{
-			"KAFKA_BROKER_ID=1",
-			"KAFKA_ZOOKEEPER_CONNECT=test-kafka-zookeeper:2181",
-			"KAFKA_ADVERTISED_LISTENERS=INSIDE://kafka:9092,OUTSIDE://localhost:19093",
-			"KAFKA_LISTENER_SECURITY_PROTOCOL_MAP=INSIDE:PLAINTEXT,OUTSIDE:PLAINTEXT",
-			"KAFKA_LISTENERS=INSIDE://0.0.0.0:9092,OUTSIDE://0.0.0.0:19093",
-			"KAFKA_INTER_BROKER_LISTENER_NAME=INSIDE",
-			"KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR=1",
-		},
-		ExposedPorts: []string{"19093/tcp"},
-		PortBindings: map[docker.Port][]docker.PortBinding{
-			"19093/tcp": {{HostIP: "localhost", HostPort: "19093/tcp"}},
-		},
-		NetworkID: network.ID,
-	})
-	if err != nil {
-		// When you're done, kill and remove the container
-		if errPurge := pool.Purge(ZOOKEEPER); errPurge != nil {
-			require.Errorf(t, errPurge, "Could not purge resource")
-		}
-
-		if err := pool.Client.RemoveNetwork(network.ID); err != nil {
-			require.Errorf(t, err, "Could not purge resource")
-		}
-
-		t.Fatalf("Could not start resource: %s", err)
-	}
-
-	// exponential backoff-retry, because the application in the container might not be ready to accept connections yet
-	if err := pool.Retry(func() error {
-		cfg.Set("MQ_KAFKA_URI", fmt.Sprintf("localhost:%s", KAFKA.GetPort("19093/tcp")))
-
-		if err := mq.Init(ctx, log); err != nil {
-			return err
-		}
-
-		return nil
-	}); err != nil {
-		t.Fatalf("Could not connect to docker: %s", err)
-	}
+	require.Eventually(t, func() bool {
+		cfg.Set("MQ_KAFKA_URI", "localhost:19093")
+		return mq.Init(ctx, log) == nil
+	}, 3*time.Minute, time.Second, "kafka init")
 
 	t.Run("Subscribe", func(t *testing.T) {
 		respCh := make(chan query.ResponseMessage)
@@ -125,22 +118,5 @@ func TestKafka(t *testing.T) {
 
 		err = mq.UnSubscribe("test")
 		require.Nil(t, err, "Cannot unsubscribe")
-	})
-
-	t.Cleanup(func() {
-		cancel()
-
-		// When you're done, kill and remove the container
-		if err := pool.Purge(ZOOKEEPER); err != nil {
-			t.Fatalf("Could not purge resource: %s", err)
-		}
-
-		if err := pool.Purge(KAFKA); err != nil {
-			t.Fatalf("Could not purge resource: %s", err)
-		}
-
-		if err := pool.Client.RemoveNetwork(network.ID); err != nil {
-			t.Fatalf("Could not purge resource: %s", err)
-		}
 	})
 }

@@ -7,13 +7,14 @@ import (
 	"fmt"
 	"os"
 	"testing"
+	"time"
 
 	"github.com/google/uuid"
-	"github.com/ory/dockertest/v3"
 	"github.com/stretchr/testify/require"
+	"github.com/testcontainers/testcontainers-go"
+	"github.com/testcontainers/testcontainers-go/wait"
 	"go.opentelemetry.io/otel/sdk/metric"
 	"go.opentelemetry.io/otel/trace"
-	"go.uber.org/atomic"
 	"go.uber.org/goleak"
 
 	"github.com/shortlink-org/go-sdk/config"
@@ -31,8 +32,6 @@ func TestMain(m *testing.M) {
 	os.Exit(m.Run())
 }
 
-var linkUniqId atomic.Int64
-
 func TestPostgres(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 
@@ -40,52 +39,33 @@ func TestPostgres(t *testing.T) {
 	require.NoError(t, err)
 	st := db.New(trace.NewNoopTracerProvider(), metric.NewMeterProvider(), cfg)
 
-	// uses a sensible default on windows (tcp/http) and linux/osx (socket)
-	pool, err := dockertest.NewPool("")
-	require.NoError(t, err, "Could not connect to docker")
-
-	// pulls an image, creates a container based on it and runs it
-	resource, err := pool.Run("ghcr.io/dbsystel/postgresql-partman", "16", []string{
-		"POSTGRESQL_USERNAME=postgres",
-		"POSTGRESQL_PASSWORD=shortlink",
-		"POSTGRESQL_DATABASE=eventsourcing",
-	})
-	if err != nil {
-		// When you're done, kill and remove the container
-		if errPurge := pool.Purge(resource); errPurge != nil {
-			t.Fatalf("Could not purge resource: %s", errPurge)
-		}
-
-		t.Fatalf("Could not start resource: %s", err)
-	}
-
-	// exponential backoff-retry, because the application in the container might not be ready to accept connections yet
-	if err := pool.Retry(func() error {
-		t.Setenv("STORE_POSTGRES_URI", fmt.Sprintf("postgres://postgres:shortlink@localhost:%s/eventsourcing?sslmode=disable", resource.GetPort("5432/tcp")))
-
-		errInit := st.Init(ctx)
-		if errInit != nil {
-			return errInit
-		}
-
-		return nil
-	}); err != nil {
-		// When you're done, kill and remove the container
-		if errPurge := pool.Purge(resource); errPurge != nil {
-			t.Fatalf("Could not purge resource: %s", errPurge)
-		}
-
-		require.NoError(t, err, "Could not connect to docker")
-	}
+	c, err := testcontainers.Run(ctx, "ghcr.io/dbsystel/postgresql-partman:16",
+		testcontainers.WithEnv(map[string]string{
+			"POSTGRESQL_USERNAME": "postgres",
+			"POSTGRESQL_PASSWORD": "shortlink",
+			"POSTGRESQL_DATABASE": "eventsourcing",
+		}),
+		testcontainers.WithExposedPorts("5432/tcp"),
+		testcontainers.WithWaitStrategy(
+			wait.ForListeningPort("5432/tcp").WithStartupTimeout(5*time.Minute),
+		),
+	)
+	require.NoError(t, err)
 
 	t.Cleanup(func() {
 		cancel()
-
-		// When you're done, kill and remove the container
-		if err := pool.Purge(resource); err != nil {
-			t.Fatalf("Could not purge resource: %s", err)
-		}
+		_ = c.Terminate(context.Background())
 	})
+
+	host, err := c.Host(ctx)
+	require.NoError(t, err)
+	mapped, err := c.MappedPort(ctx, "5432/tcp")
+	require.NoError(t, err)
+	t.Setenv("STORE_POSTGRES_URI", fmt.Sprintf("postgres://postgres:shortlink@%s:%s/eventsourcing?sslmode=disable", host, mapped.Port()))
+
+	require.Eventually(t, func() bool {
+		return st.Init(ctx) == nil
+	}, 5*time.Minute, time.Second, "postgres init")
 
 	// new event sourcing store
 	eventSourcing, err := New(ctx, st)

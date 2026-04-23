@@ -7,9 +7,11 @@ import (
 	"fmt"
 	"os"
 	"testing"
+	"time"
 
-	"github.com/ory/dockertest/v3"
 	"github.com/stretchr/testify/require"
+	"github.com/testcontainers/testcontainers-go"
+	"github.com/testcontainers/testcontainers-go/wait"
 	"go.opentelemetry.io/otel/sdk/metric"
 	"go.opentelemetry.io/otel/trace"
 	"go.uber.org/goleak"
@@ -29,34 +31,25 @@ func TestMySQL(t *testing.T) {
 	require.NoError(t, err)
 	store := New(trace.NewNoopTracerProvider(), metric.NewMeterProvider(), cfg)
 
-	// uses a sensible default on windows (tcp/http) and linux/osx (socket)
-	pool, err := dockertest.NewPool("")
-	require.Nil(t, err, "Could not connect to docker")
-
-	// pulls an image, creates a container based on it and runs it
-	resource, err := pool.Run("mysql", "latest", []string{"MYSQL_ROOT_PASSWORD=secret"})
-	require.Nil(t, err, "Could not start resource")
-
-	// exponential backoff-retry, because the application in the container might not be ready to accept connections yet
-	if err := pool.Retry(func() error {
-		t.Setenv("STORE_MYSQL_URI", fmt.Sprintf("root:secret@(localhost:%s)/mysql?parseTime=true", resource.GetPort("3306/tcp")))
-
-		err = store.Init(ctx)
-		if err != nil {
-			return err
-		}
-
-		return nil
-	}); err != nil {
-		require.Nil(t, err, "Could not connect to docker")
-	}
+	c, err := testcontainers.Run(ctx, "mysql:latest",
+		testcontainers.WithEnv(map[string]string{"MYSQL_ROOT_PASSWORD": "secret"}),
+		testcontainers.WithExposedPorts("3306/tcp"),
+		testcontainers.WithWaitStrategy(
+			wait.ForListeningPort("3306/tcp").WithStartupTimeout(3*time.Minute),
+		),
+	)
+	require.NoError(t, err)
 
 	t.Cleanup(func() {
 		cancel()
-
-		// When you're done, kill and remove the container
-		if err := pool.Purge(resource); err != nil {
-			t.Fatalf("Could not purge resource: %s", err)
-		}
+		_ = c.Terminate(context.Background())
 	})
+
+	host, err := c.Host(ctx)
+	require.NoError(t, err)
+	mapped, err := c.MappedPort(ctx, "3306/tcp")
+	require.NoError(t, err)
+
+	t.Setenv("STORE_MYSQL_URI", fmt.Sprintf("root:secret@(%s:%s)/mysql?parseTime=true", host, mapped.Port()))
+	require.NoError(t, store.Init(ctx))
 }

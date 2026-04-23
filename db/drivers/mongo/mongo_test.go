@@ -7,9 +7,11 @@ import (
 	"fmt"
 	"os"
 	"testing"
+	"time"
 
-	"github.com/ory/dockertest/v3"
 	"github.com/stretchr/testify/require"
+	"github.com/testcontainers/testcontainers-go"
+	"github.com/testcontainers/testcontainers-go/wait"
 	"go.uber.org/goleak"
 
 	"github.com/shortlink-org/go-sdk/config"
@@ -27,34 +29,24 @@ func TestMongo(t *testing.T) {
 	require.NoError(t, err)
 	store := New(cfg)
 
-	// uses a sensible default on windows (tcp/http) and linux/osx (socket)
-	pool, err := dockertest.NewPool("")
-	require.NoError(t, err, "Could not connect to docker")
-
-	// pulls an image, creates a container based on it and runs it
-	resource, err := pool.Run("bitnami/mongodb", "latest", nil)
-	require.NoError(t, err, "Could not start resource")
-
-	// exponential backoff-retry, because the application in the container might not be ready to accept connections yet
-	if err := pool.Retry(func() error {
-		t.Setenv("STORE_MONGODB_URI", fmt.Sprintf("mongodb://localhost:%s/shortlink", resource.GetPort("27017/tcp")))
-
-		err = store.Init(ctx)
-		if err != nil {
-			return err
-		}
-
-		return nil
-	}); err != nil {
-		require.NoError(t, err, "Could not connect to docker")
-	}
+	c, err := testcontainers.Run(ctx, "bitnami/mongodb:latest",
+		testcontainers.WithExposedPorts("27017/tcp"),
+		testcontainers.WithWaitStrategy(
+			wait.ForListeningPort("27017/tcp").WithStartupTimeout(3*time.Minute),
+		),
+	)
+	require.NoError(t, err)
 
 	t.Cleanup(func() {
 		cancel()
-
-		// When you're done, kill and remove the container
-		if err := pool.Purge(resource); err != nil {
-			t.Fatalf("Could not purge resource: %s", err)
-		}
+		_ = c.Terminate(context.Background())
 	})
+
+	host, err := c.Host(ctx)
+	require.NoError(t, err)
+	mapped, err := c.MappedPort(ctx, "27017/tcp")
+	require.NoError(t, err)
+
+	t.Setenv("STORE_MONGODB_URI", fmt.Sprintf("mongodb://%s:%s/shortlink", host, mapped.Port()))
+	require.NoError(t, store.Init(ctx))
 }

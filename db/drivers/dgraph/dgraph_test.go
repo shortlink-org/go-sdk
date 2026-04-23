@@ -7,11 +7,12 @@ import (
 	"fmt"
 	"os"
 	"testing"
+	"time"
 
-	"github.com/ory/dockertest/v3"
-	"github.com/ory/dockertest/v3/docker"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/testcontainers/testcontainers-go"
+	"github.com/testcontainers/testcontainers-go/network"
+	"github.com/testcontainers/testcontainers-go/wait"
 	"go.uber.org/goleak"
 
 	"github.com/shortlink-org/go-sdk/config"
@@ -40,75 +41,48 @@ func TestDgraph(t *testing.T) {
 	})
 	store := New(log, cfg)
 
-	// uses a sensible default on windows (tcp/http) and linux/osx (socket)
-	pool, err := dockertest.NewPool("")
-	require.NoError(t, err, "Could not connect to docker")
+	nw, err := network.New(ctx)
+	require.NoError(t, err)
 
-	// create a network with Client.CreateNetwork()
-	network, err := pool.Client.CreateNetwork(docker.CreateNetworkOptions{
-		Name: "shortlink-test-dgraph",
-	})
+	zero, err := testcontainers.Run(ctx, "dgraph/dgraph:v21.03.0",
+		network.WithNetwork([]string{"test-dgraph-zero"}, nw),
+		testcontainers.WithCmd("dgraph", "zero", "--my=test-dgraph-zero:5080"),
+		testcontainers.WithExposedPorts("5080/tcp"),
+		testcontainers.WithWaitStrategy(
+			wait.ForListeningPort("5080/tcp").WithStartupTimeout(3*time.Minute),
+		),
+	)
+	require.NoError(t, err)
+
+	alpha, err := testcontainers.Run(ctx, "dgraph/dgraph:v21.03.0",
+		network.WithNetwork([]string{}, nw),
+		testcontainers.WithCmd("dgraph", "alpha", "--my=localhost:7080", "--lru_mb=2048", "--zero=test-dgraph-zero:5080"),
+		testcontainers.WithExposedPorts("9080/tcp"),
+		testcontainers.WithWaitStrategy(
+			wait.ForListeningPort("9080/tcp").WithStartupTimeout(3*time.Minute),
+		),
+	)
 	if err != nil {
-		assert.Errorf(t, err, "Error create docker network")
-		os.Exit(1)
+		_ = zero.Terminate(context.Background())
+		_ = nw.Remove(context.Background())
 	}
-
-	// pulls an image, creates a container based on it and runs it
-	ZERO, err := pool.RunWithOptions(&dockertest.RunOptions{
-		Repository:   "dgraph/dgraph",
-		Tag:          "v21.03.0",
-		Cmd:          []string{"dgraph", "zero", "--my=test-dgraph-zero:5080"},
-		ExposedPorts: []string{"5080"},
-		Name:         "test-dgraph-zero",
-		NetworkID:    network.ID,
-	})
-	require.NoError(t, err, "Could not start resource")
-
-	ALPHA, err := pool.RunWithOptions(&dockertest.RunOptions{
-		Repository: "dgraph/dgraph",
-		Tag:        "v21.03.0",
-		Cmd:        []string{"dgraph", "alpha", "--my=localhost:7080", "--lru_mb=2048", fmt.Sprintf("--zero=%s:%s", "test-dgraph-zero", "5080")},
-		NetworkID:  network.ID,
-	})
-	if err != nil {
-		// When you're done, kill and remove the container
-		if errPurge := pool.Purge(ZERO); errPurge != nil {
-			assert.Errorf(t, errPurge, "Could not purge resource")
-		}
-
-		t.Fatalf("Could not start resource: %s", err)
-	}
-
-	// exponential backoff-retry, because the application in the container might not be ready to accept connections yet
-	if err := pool.Retry(func() error {
-		t.Setenv("STORE_DGRAPH_URI", fmt.Sprintf("localhost:%s", ALPHA.GetPort("9080/tcp")))
-
-		err = store.Init(ctx)
-		if err != nil {
-			return err
-		}
-
-		return nil
-	}); err != nil {
-		assert.Errorf(t, err, "Could not connect to docker")
-	}
+	require.NoError(t, err)
 
 	t.Cleanup(func() {
 		cancel()
-
-		// When you're done, kill and remove the container
-		if err := pool.Purge(ALPHA); err != nil {
-			assert.Errorf(t, err, "Could not purge resource")
-		}
-
-		// When you're done, kill and remove the container
-		if err := pool.Purge(ZERO); err != nil {
-			assert.Errorf(t, err, "Could not purge resource")
-		}
-
-		// Drop network
-		if err := pool.Client.RemoveNetwork(network.ID); err != nil {
-			assert.Errorf(t, err, "Could not remove network")
-		}
+		_ = alpha.Terminate(context.Background())
+		_ = zero.Terminate(context.Background())
+		_ = nw.Remove(context.Background())
 	})
+
+	host, err := alpha.Host(ctx)
+	require.NoError(t, err)
+	mapped, err := alpha.MappedPort(ctx, "9080/tcp")
+	require.NoError(t, err)
+
+	t.Setenv("STORE_DGRAPH_URI", fmt.Sprintf("%s:%s", host, mapped.Port()))
+
+	require.Eventually(t, func() bool {
+		return store.Init(ctx) == nil
+	}, 2*time.Minute, time.Second, "dgraph init")
 }

@@ -4,14 +4,18 @@ package kafka
 
 import (
 	"context"
-	"fmt"
+	"net/netip"
 	"testing"
+	"time"
 
-	"github.com/ory/dockertest/v3"
-	"github.com/ory/dockertest/v3/docker"
-	"github.com/shortlink-org/go-sdk/config"
+	tccontainer "github.com/moby/moby/api/types/container"
+	dockernetwork "github.com/moby/moby/api/types/network"
 	"github.com/stretchr/testify/require"
+	"github.com/testcontainers/testcontainers-go"
+	"github.com/testcontainers/testcontainers-go/network"
+	"github.com/testcontainers/testcontainers-go/wait"
 
+	"github.com/shortlink-org/go-sdk/config"
 	"github.com/shortlink-org/go-sdk/logger"
 	"github.com/shortlink-org/go-sdk/mq/query"
 )
@@ -28,72 +32,47 @@ func TestRedPanda(t *testing.T) {
 	log, err := logger.New(logger.Configuration{})
 	require.NoError(t, err, "Cannot create logger")
 
-	// uses a sensible default on windows (tcp/http) and linux/osx (socket)
-	pool, err := dockertest.NewPool("")
-	require.NoError(t, err, "Could not connect to docker")
+	nw, err := network.New(ctx)
+	require.NoError(t, err)
 
-	// create a network with Client.CreateNetwork()
-	network, err := pool.Client.CreateNetwork(docker.CreateNetworkOptions{
-		Name: "shortlink-test-redpanda",
-	})
-	if err != nil {
-		t.Fatalf("Error create docker network: %s", err)
-	}
-
-	RED_PANDA, err := pool.RunWithOptions(&dockertest.RunOptions{
-		Repository: "docker.redpanda.com/vectorized/redpanda",
-		Tag:        "v23.2.14",
-		Name:       "test-redpanda-server",
-		Cmd: []string{
-			"redpanda",
-			"start",
-			"--smp",
-			"1",
+	redpanda, err := testcontainers.Run(ctx, "docker.redpanda.com/vectorized/redpanda:v23.2.14",
+		network.WithNetwork([]string{"redpanda"}, nw),
+		testcontainers.WithCmd(
+			"redpanda", "start",
+			"--smp", "1",
 			"--overprovisioned",
-			"--reserve-memory",
-			"0M",
-			"--node-id",
-			"0",
-			"--kafka-addr",
-			"internal://0.0.0.0:9092,external://0.0.0.0:19092",
-			"--advertise-kafka-addr",
-			"internal://redpanda:9092,external://localhost:19092",
-			"--pandaproxy-addr",
-			"internal://0.0.0.0:8082,external://0.0.0.0:18082",
-			"--advertise-pandaproxy-addr",
-			"internal://redpanda:8082,external://localhost:18082",
-		},
-		ExposedPorts: []string{"19092/tcp"},
-		PortBindings: map[docker.Port][]docker.PortBinding{
-			"19092/tcp": {{HostIP: "localhost", HostPort: "19092/tcp"}},
-		},
-		NetworkID: network.ID,
-	})
+			"--reserve-memory", "0M",
+			"--node-id", "0",
+			"--kafka-addr", "internal://0.0.0.0:9092,external://0.0.0.0:19092",
+			"--advertise-kafka-addr", "internal://redpanda:9092,external://localhost:19092",
+			"--pandaproxy-addr", "internal://0.0.0.0:8082,external://0.0.0.0:18082",
+			"--advertise-pandaproxy-addr", "internal://redpanda:8082,external://localhost:18082",
+		),
+		testcontainers.WithHostConfigModifier(func(hc *tccontainer.HostConfig) {
+			hc.PortBindings = dockernetwork.PortMap{
+				dockernetwork.MustParsePort("19092/tcp"): []dockernetwork.PortBinding{{HostIP: netip.IPv4Unspecified(), HostPort: "19092"}},
+			}
+		}),
+		testcontainers.WithExposedPorts("19092/tcp"),
+		testcontainers.WithWaitStrategy(
+			wait.ForListeningPort("19092/tcp").WithStartupTimeout(3*time.Minute),
+		),
+	)
 	if err != nil {
-		t.Fatalf("Could not start resource: %s", err)
+		_ = nw.Remove(context.Background())
 	}
+	require.NoError(t, err)
 
-	// exponential backoff-retry, because the application in the container might not be ready to accept connections yet
-	if err := pool.Retry(func() error {
-		cfg.Set("MQ_KAFKA_URI", fmt.Sprintf("localhost:%s", RED_PANDA.GetPort("19092/tcp")))
+	t.Cleanup(func() {
+		cancel()
+		_ = redpanda.Terminate(context.Background())
+		_ = nw.Remove(context.Background())
+	})
 
-		if err := mq.Init(ctx, log); err != nil {
-			return err
-		}
-
-		return nil
-	}); err != nil {
-		// When you're done, kill and remove the container
-		if errPurge := pool.Purge(RED_PANDA); errPurge != nil {
-			require.Errorf(t, errPurge, "Could not purge resource")
-		}
-
-		if err := pool.Client.RemoveNetwork(network.ID); err != nil {
-			require.Errorf(t, err, "Could not purge resource")
-		}
-
-		t.Fatalf("Could not start resource: %s", err)
-	}
+	require.Eventually(t, func() bool {
+		cfg.Set("MQ_KAFKA_URI", "localhost:19092")
+		return mq.Init(ctx, log) == nil
+	}, 3*time.Minute, time.Second, "redpanda init")
 
 	t.Run("Subscribe", func(t *testing.T) {
 		respCh := make(chan query.ResponseMessage)
@@ -116,17 +95,5 @@ func TestRedPanda(t *testing.T) {
 
 		err = mq.UnSubscribe("test")
 		require.Nil(t, err, "Cannot unsubscribe")
-	})
-
-	t.Cleanup(func() {
-		cancel()
-
-		if err := pool.Purge(RED_PANDA); err != nil {
-			t.Fatalf("Could not purge resource: %s", err)
-		}
-
-		if err := pool.Client.RemoveNetwork(network.ID); err != nil {
-			t.Fatalf("Could not purge resource: %s", err)
-		}
 	})
 }

@@ -9,11 +9,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ory/dockertest/v3"
-	"github.com/ory/dockertest/v3/docker"
-	"github.com/shortlink-org/go-sdk/config"
 	"github.com/stretchr/testify/require"
+	"github.com/testcontainers/testcontainers-go"
+	"github.com/testcontainers/testcontainers-go/wait"
 	"go.uber.org/goleak"
+
+	"github.com/shortlink-org/go-sdk/config"
 )
 
 func TestMain(m *testing.M) {
@@ -28,42 +29,24 @@ func TestRedis(t *testing.T) {
 	require.NoError(t, err)
 	store := New(nil, nil, cfg)
 
-	// uses a sensible default on windows (tcp/http) and linux/osx (socket)
-	pool, err := dockertest.NewPool("")
-	require.NoError(t, err, "Could not connect to docker")
-
-	// pulls an image, creates a container based on it and runs it
-	resource, err := pool.RunWithOptions(&dockertest.RunOptions{
-		Repository: "redis",
-		Tag:        "7-alpine",
-	}, func(config *docker.HostConfig) {
-		config.AutoRemove = true
-		config.RestartPolicy = docker.RestartPolicy{Name: "no"}
-	})
-	require.NoError(t, err, "Could not start resource")
-
-	// setting the max wait time for the container to start
-	pool.MaxWait = time.Minute * 5
-
-	// exponential backoff-retry, because the application in the container might not be ready to accept connections yet
-	err = pool.Retry(func() error {
-		cfg.Set("STORE_REDIS_URI", fmt.Sprintf("localhost:%s", resource.GetPort("6379/tcp")))
-
-		errInit := store.Init(ctx)
-		if errInit != nil {
-			return errInit
-		}
-
-		return nil
-	})
-	require.NoError(t, err, "Could not connect to Docker")
+	c, err := testcontainers.Run(ctx, "redis:7-alpine",
+		testcontainers.WithExposedPorts("6379/tcp"),
+		testcontainers.WithWaitStrategy(
+			wait.ForListeningPort("6379/tcp").WithStartupTimeout(5*time.Minute),
+		),
+	)
+	require.NoError(t, err)
 
 	t.Cleanup(func() {
 		cancel()
-
-		// When you're done, kill and remove the container
-		if err := pool.Purge(resource); err != nil {
-			t.Fatalf("Could not purge resource: %s", err)
-		}
+		_ = c.Terminate(context.Background())
 	})
+
+	host, err := c.Host(ctx)
+	require.NoError(t, err)
+	mapped, err := c.MappedPort(ctx, "6379/tcp")
+	require.NoError(t, err)
+
+	cfg.Set("STORE_REDIS_URI", fmt.Sprintf("%s:%s", host, mapped.Port()))
+	require.NoError(t, store.Init(ctx))
 }

@@ -12,7 +12,7 @@ require (
 	github.com/ThreeDotsLabs/watermill v1.5.1
 	github.com/ThreeDotsLabs/watermill-sql/v4 v4.1.3
 	github.com/google/uuid v1.6.0
-	github.com/jackc/pgx/v5 v5.9.1
+	github.com/jackc/pgx/v5 v5.9.2
 	github.com/shortlink-org/go-sdk/logger v0.0.0-20260417235820-0f1877a4135b
 	github.com/shortlink-org/go-sdk/uow v0.0.0-00010101000000-000000000000
 	github.com/shortlink-org/go-sdk/watermill v0.0.0-00010101000000-000000000000

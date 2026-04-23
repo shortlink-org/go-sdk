@@ -7,9 +7,11 @@ import (
 	"fmt"
 	"os"
 	"testing"
+	"time"
 
-	"github.com/ory/dockertest/v3"
 	"github.com/stretchr/testify/require"
+	"github.com/testcontainers/testcontainers-go"
+	"github.com/testcontainers/testcontainers-go/wait"
 	"go.uber.org/goleak"
 
 	"github.com/shortlink-org/go-sdk/config"
@@ -27,54 +29,29 @@ func TestCockroachDB(t *testing.T) {
 	require.NoError(t, err)
 	store := New(cfg)
 
-	// uses a sensible default on windows (tcp/http) and linux/osx (socket)
-	pool, err := dockertest.NewPool("")
-	require.NoError(t, err, "Could not connect to docker")
-
-	// pulls an image, creates a container based on it and runs it
-	resource, err := pool.RunWithOptions(&dockertest.RunOptions{
-		Repository: "cockroachdb/cockroach",
-		Tag:        "v23.1.3",
-		Env: []string{
-			"COCKROACH_PASSWORD=password",
-			"COCKROACH_DATABASE=shortlink",
-		},
-		Cmd: []string{"start-single-node", "--insecure"},
-	})
-	if err != nil {
-		// When you're done, kill and remove the container
-		if errPurge := pool.Purge(resource); errPurge != nil {
-			t.Fatalf("Could not purge resource: %s", errPurge)
-		}
-
-		t.Fatalf("Could not start resource: %s", err)
-	}
-
-	// exponential backoff-retry, because the application in the container might not be ready to accept connections yet
-	if errRetry := pool.Retry(func() error {
-		t.Setenv("STORE_COCKROACHDB_URI", fmt.Sprintf("postgresql://root:password@localhost:%s/shortlink?sslmode=disable", resource.GetPort("26257/tcp"))) // Note that the port has changed
-
-		errInit := store.Init(ctx)
-		if errInit != nil {
-			return errInit
-		}
-
-		return nil
-	}); errRetry != nil {
-		// When you're done, kill and remove the container
-		if errPurge := pool.Purge(resource); errPurge != nil {
-			t.Fatalf("Could not purge resource: %s", errPurge)
-		}
-
-		require.NoError(t, errRetry, "Could not connect to docker")
-	}
+	c, err := testcontainers.Run(ctx, "cockroachdb/cockroach:v23.1.3",
+		testcontainers.WithEnv(map[string]string{
+			"COCKROACH_PASSWORD": "password",
+			"COCKROACH_DATABASE": "shortlink",
+		}),
+		testcontainers.WithCmd("start-single-node", "--insecure"),
+		testcontainers.WithExposedPorts("26257/tcp"),
+		testcontainers.WithWaitStrategy(
+			wait.ForListeningPort("26257/tcp").WithStartupTimeout(3*time.Minute),
+		),
+	)
+	require.NoError(t, err)
 
 	t.Cleanup(func() {
 		cancel()
-
-		// When you're done, kill and remove the container
-		if errPurge := pool.Purge(resource); errPurge != nil {
-			t.Fatalf("Could not purge resource: %s", errPurge)
-		}
+		_ = c.Terminate(context.Background())
 	})
+
+	host, err := c.Host(ctx)
+	require.NoError(t, err)
+	mapped, err := c.MappedPort(ctx, "26257/tcp")
+	require.NoError(t, err)
+
+	t.Setenv("STORE_COCKROACHDB_URI", fmt.Sprintf("postgresql://root:password@%s:%s/shortlink?sslmode=disable", host, mapped.Port()))
+	require.NoError(t, store.Init(ctx))
 }
