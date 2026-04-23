@@ -17,6 +17,7 @@ require (
 	github.com/shortlink-org/go-sdk/uow v0.0.0-00010101000000-000000000000
 	github.com/shortlink-org/go-sdk/watermill v0.0.0-00010101000000-000000000000
 	github.com/sony/gobreaker v1.0.0
+	github.com/sony/gobreaker/v2 v2.4.0
 	github.com/stretchr/testify v1.11.1
 	github.com/testcontainers/testcontainers-go v0.42.0
 	github.com/testcontainers/testcontainers-go/modules/postgres v0.42.0
