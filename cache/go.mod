@@ -18,10 +18,12 @@ require (
 require (
 	github.com/Masterminds/semver/v3 v3.4.0 // indirect
 	github.com/Unleash/unleash-go-sdk/v5 v5.1.0 // indirect
+	github.com/Unleash/unleash-go-sdk/v6 v6.4.0 // indirect
 	github.com/containerd/errdefs v1.0.0 // indirect
 	github.com/containerd/errdefs/pkg v0.3.0 // indirect
 	github.com/distribution/reference v0.6.0 // indirect
 	github.com/felixge/httpsnoop v1.0.4 // indirect
+	github.com/hashicorp/golang-lru/v2 v2.0.7 // indirect
 	github.com/klauspost/cpuid/v2 v2.2.11 // indirect
 	github.com/launchdarkly/eventsource v1.10.0 // indirect
 	github.com/moby/moby/api v1.54.1 // indirect
@@ -94,9 +96,9 @@ require (
 	github.com/prometheus/procfs v0.20.1 // indirect
 	github.com/redis/rueidis/rueidisotel v1.0.74 // indirect
 	github.com/sagikazarmark/locafero v0.11.0 // indirect
-	github.com/shortlink-org/go-sdk/config v0.0.0-20260107222411-453281b10921
+	github.com/shortlink-org/go-sdk/config v0.0.0-20260419222854-fd069f4d5106
 	github.com/shortlink-org/go-sdk/http v0.0.0-20260415234714-8c7f9b03b6b3 // indirect
-	github.com/shortlink-org/go-sdk/logger v0.0.0-20260107222411-453281b10921 // indirect
+	github.com/shortlink-org/go-sdk/logger v0.0.0-20260417235820-0f1877a4135b // indirect
 	github.com/sirupsen/logrus v1.9.4 // indirect
 	github.com/sourcegraph/conc v0.3.1-0.20240121214520-5f936abd7ae8 // indirect
 	github.com/spf13/afero v1.15.0 // indirect

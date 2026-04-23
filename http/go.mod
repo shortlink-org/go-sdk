@@ -9,7 +9,7 @@ require (
 	github.com/prometheus/client_golang v1.23.2
 	github.com/prometheus/client_model v0.6.2
 	github.com/shortlink-org/go-sdk/auth v0.0.0-20260417231502-a845b14b1f44
-	github.com/shortlink-org/go-sdk/config v0.0.0-20260107222411-453281b10921
+	github.com/shortlink-org/go-sdk/config v0.0.0-20260419222854-fd069f4d5106
 	github.com/shortlink-org/go-sdk/flight_trace v0.0.0-20260410230549-a64f68ccd6e5
 	github.com/shortlink-org/go-sdk/grpc v0.0.0-20260417231502-a845b14b1f44
 	github.com/shortlink-org/go-sdk/logger v0.0.0-20260417235820-0f1877a4135b

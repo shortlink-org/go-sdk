@@ -52,6 +52,8 @@ github.com/Nvveen/Gotty v0.0.0-20120604004816-cd527374f1e5 h1:TngWCqHvy9oXAN6lEV
 github.com/Nvveen/Gotty v0.0.0-20120604004816-cd527374f1e5/go.mod h1:lmUJ/7eu/Q8D7ML55dXQrVaamCz2vxCfdQBasLZfHKk=
 github.com/Unleash/unleash-go-sdk/v5 v5.1.0 h1:W+HHQklU5/H9kjYTn/T4TKvDHE0BxnZ0+MyTk06RdYw=
 github.com/Unleash/unleash-go-sdk/v5 v5.1.0/go.mod h1:1u8BfdyjlkV5j43la61n9A9ul4E+YQC2kKQotz8z7BE=
+github.com/Unleash/unleash-go-sdk/v6 v6.4.0 h1:cdQN/MFPRalE7rVS2DG0OwNXKE6LXmOiQLHoyBxMY6M=
+github.com/Unleash/unleash-go-sdk/v6 v6.4.0/go.mod h1:lfD5d3Ten7ECXQFpfmyMUnGC/9+ONPUGwlAbue7zuEk=
 github.com/XSAM/otelsql v0.41.0 h1:uZifjQhZhv5EDYJh+IVk1DiYxQZJBlNSen0MBFnfxB8=
 github.com/XSAM/otelsql v0.41.0/go.mod h1:NMQT0PiKoFILp9QgjQz+D5mvW+9mT0suR7OejqrtMaM=
 github.com/XSAM/otelsql v0.42.0 h1:Li0xF4eJUxG2e0x3D4rvRlys1f27yJKvjTh7ljkUP5o=
@@ -266,7 +268,10 @@ github.com/hailocab/go-hostpool v0.0.0-20160125115350-e80d13ce29ed/go.mod h1:tMW
 github.com/hashicorp/errwrap v1.0.0/go.mod h1:YH+1FKiLXxHSkmPseP+kNlulaMuP3n2brvKWEqk/Jc4=
 github.com/hashicorp/go-multierror v1.1.0/go.mod h1:spPvp8C1qA32ftKqdAHm4hHTbPw+vmowP0z+KUhOZdA=
 github.com/hashicorp/golang-lru v0.5.0/go.mod h1:/m3WP610KZHVQ1SGc6re/UDhFvYD7pJ4Ao+sR/qLZy8=
+github.com/hashicorp/golang-lru v0.5.1 h1:0hERBMJE1eitiLkihrMvRVBYAkpHzc/J3QdDN+dAcgU=
 github.com/hashicorp/golang-lru v0.5.1/go.mod h1:/m3WP610KZHVQ1SGc6re/UDhFvYD7pJ4Ao+sR/qLZy8=
+github.com/hashicorp/golang-lru/v2 v2.0.7 h1:a+bsQ5rvGLjzHuww6tVxozPZFVghXaHOwFs4luLUK2k=
+github.com/hashicorp/golang-lru/v2 v2.0.7/go.mod h1:QeFd9opnmA6QUJc5vARoKUSoFhyfM2/ZepoAG6RGpeM=
 github.com/heptiolabs/healthcheck v0.0.0-20211123025425-613501dd5deb h1:tsEKRC3PU9rMw18w/uAptoijhgG4EvlA5kfJPtwrMDk=
 github.com/heptiolabs/healthcheck v0.0.0-20211123025425-613501dd5deb/go.mod h1:NtmN9h8vrTveVQRLHcX2HQ5wIPBDCsZ351TGbZWgg38=
 github.com/hpcloud/tail v1.0.0/go.mod h1:ab1qPbhIpdTxEkNHXyeSf5vhxWSCs/tWer42PpOxQnU=
@@ -493,6 +498,8 @@ github.com/segmentio/encoding v0.5.3/go.mod h1:HS1ZKa3kSN32ZHVZ7ZLPLXWvOVIiZtyJn
 github.com/shopspring/decimal v0.0.0-20180709203117-cd690d0c9e24/go.mod h1:M+9NzErvs504Cn4c5DxATwIqPbtswREoFCre64PpcG4=
 github.com/shortlink-org/go-sdk/config v0.0.0-20260107222411-453281b10921 h1:NQvHpDjvz27jFpcQpjJPdbGOX2VJgOZIUQmx1zznyvw=
 github.com/shortlink-org/go-sdk/config v0.0.0-20260107222411-453281b10921/go.mod h1:WY8oEI8clVi+3QoNTC+4jcGQUVJmzNmO3D1fAcobayg=
+github.com/shortlink-org/go-sdk/config v0.0.0-20260419222854-fd069f4d5106 h1:UheCbENEwRYvgxfEGucDjHwBOPoHAj6r9nz5Z2plPCM=
+github.com/shortlink-org/go-sdk/config v0.0.0-20260419222854-fd069f4d5106/go.mod h1:SgqtI/Y3GTHOorKylL0ELCkZCSgrrtPX5zkaX1Y5uqQ=
 github.com/shortlink-org/go-sdk/http v0.0.0-20260107222411-453281b10921 h1:pJSw09HcxhqSuVzdWUxpr7t4TDfMvXa+4rHj1MCkiwE=
 github.com/shortlink-org/go-sdk/http v0.0.0-20260107222411-453281b10921/go.mod h1:Byc5mjbHKVrp4UFT0SOxYJfKM8B45K0utEl06fZ8K7Y=
 github.com/shortlink-org/go-sdk/http v0.0.0-20260410230549-a64f68ccd6e5 h1:UhS/zImLaq0/2I6SNGXakWGeBe8oJhY9Q/waX+0irFY=
@@ -501,6 +508,8 @@ github.com/shortlink-org/go-sdk/http v0.0.0-20260415234714-8c7f9b03b6b3 h1:PGT9S
 github.com/shortlink-org/go-sdk/http v0.0.0-20260415234714-8c7f9b03b6b3/go.mod h1:jYkPYBCHVsHVtB5V2qWL5ZOnS1EXTJoxWMPOy7HROH8=
 github.com/shortlink-org/go-sdk/logger v0.0.0-20260107222411-453281b10921 h1:mgUyseLj+kSW+R+lhB029ZS2rCJQZOkumRKKvHIFT7o=
 github.com/shortlink-org/go-sdk/logger v0.0.0-20260107222411-453281b10921/go.mod h1:26SEqudMpXAwKF7iNyfxhPoHUgJeHEzx8bw5kCultTQ=
+github.com/shortlink-org/go-sdk/logger v0.0.0-20260417235820-0f1877a4135b h1:DG7CBLqpy0WRANWrXXG4w9vlr8CNPKsPDFNrJSknNL8=
+github.com/shortlink-org/go-sdk/logger v0.0.0-20260417235820-0f1877a4135b/go.mod h1:ggDWhcBopvLmoJctQLTWSIBiBHr9KHwEhg4Vrmw7RW8=
 github.com/sirupsen/logrus v1.4.1/go.mod h1:ni0Sbl8bgC9z8RoU9G6nDWqqs/fq4eDPysMBDgk/93Q=
 github.com/sirupsen/logrus v1.4.2/go.mod h1:tLMulIdttU9McNUspp0xgXVQah82FyeX6MwdIuYE2rE=
 github.com/sirupsen/logrus v1.6.0/go.mod h1:7uNnSEd1DgxDLC74fIahvMZmmYsHGZGEOFrfsX/uA88=
