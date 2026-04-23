@@ -34,6 +34,8 @@ func (h HandlerRegistration) sanitize(service string) HandlerRegistration {
 	if h.Name == "" {
 		h.Name = strings.Join([]string{service, sanitizeTopic(h.Topic), "handler"}, "_")
 	}
+
 	h.Topic = strings.TrimSpace(h.Topic)
+
 	return h
 }

@@ -7,12 +7,13 @@ import (
 	"time"
 
 	grpc_middleware "github.com/grpc-ecosystem/go-grpc-middleware/v2"
-	"github.com/shortlink-org/go-sdk/logger"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/proto"
+
+	"github.com/shortlink-org/go-sdk/logger"
 )
 
 // UnaryServerInterceptor returns a new unary server interceptors that adds zap.Logger to the context.

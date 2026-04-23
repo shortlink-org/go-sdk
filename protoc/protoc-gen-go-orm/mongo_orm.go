@@ -43,6 +43,7 @@ func generateBuildMongoFilterMethod(g *protogen.GeneratedFile, structName string
 		if field.Desc.IsList() || field.Desc.IsMap() {
 			continue
 		}
+
 		fieldName := field.GoName
 		bsonFieldName := strings.ToLower(fieldName) // Adjust as per your field naming conventions
 		g.P("if f.", fieldName, " != nil {")

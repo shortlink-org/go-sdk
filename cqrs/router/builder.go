@@ -8,6 +8,7 @@ import (
 	"github.com/ThreeDotsLabs/watermill"
 	wmmessage "github.com/ThreeDotsLabs/watermill/message"
 	wmmid "github.com/ThreeDotsLabs/watermill/message/router/middleware"
+
 	"github.com/shortlink-org/go-sdk/cqrs/handlers"
 )
 
@@ -29,12 +30,15 @@ func NewRouter(
 	if logger == nil {
 		return nil, errNilLogger
 	}
+
 	if subscriber == nil {
 		return nil, errNilSubscriber
 	}
+
 	if publisher == nil {
 		return nil, errNilPublisher
 	}
+
 	if len(cfg.Handlers) == 0 {
 		return nil, errNoHandlers
 	}
@@ -58,6 +62,7 @@ func NewRouter(
 		if registration.Handler == nil {
 			return nil, fmt.Errorf("%w: topic %s", errNilHandlerLogic, registration.Topic)
 		}
+
 		if registration.Topic == "" {
 			return nil, fmt.Errorf("cqrs/router: topic is empty for handler %s", registration.Name)
 		}
@@ -79,6 +84,7 @@ func sanitizeService(name string) string {
 	if name == "" {
 		return "cqrs"
 	}
+
 	return strings.ToLower(strings.ReplaceAll(name, " ", "_"))
 }
 
@@ -87,6 +93,7 @@ func sanitizeTopic(name string) string {
 	if name == "" {
 		return "topic"
 	}
+
 	return strings.ToLower(strings.ReplaceAll(name, "*", "wildcard"))
 }
 
@@ -95,5 +102,6 @@ func enumerateHandlers(cfg RouterConfig, service string) []HandlerRegistration {
 	for _, h := range cfg.Handlers {
 		regs = append(regs, h.sanitize(service))
 	}
+
 	return regs
 }

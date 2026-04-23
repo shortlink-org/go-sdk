@@ -9,15 +9,20 @@ import (
 )
 
 // newTxPublisher creates a watermill publisher that writes to the outbox table in the same transaction as tx.
+//
+//nolint:ireturn // Watermill publishers are interface-typed by design.
 func newTxPublisher(tx pgx.Tx, cfg *txOutboxConfig) (wmmessage.Publisher, error) {
 	if cfg == nil {
-		return nil, nil
+		return nil, errNilTxOutboxConfig
 	}
+
 	wmLogger := cfg.WMLogger
 	if wmLogger == nil {
 		wmLogger = watermill.NewStdLogger(false, false)
 	}
+
 	sqlTx := wmsql.TxFromPgx(tx)
+
 	sqlPub, err := wmsql.NewPublisher(
 		sqlTx,
 		wmsql.PublisherConfig{
@@ -29,6 +34,7 @@ func newTxPublisher(tx pgx.Tx, cfg *txOutboxConfig) (wmmessage.Publisher, error)
 	if err != nil {
 		return nil, err
 	}
+
 	return forwarder.NewPublisher(sqlPub, forwarder.PublisherConfig{
 		ForwarderTopic: cfg.ForwarderTopic,
 	}), nil

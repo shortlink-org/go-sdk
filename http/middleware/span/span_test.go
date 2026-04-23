@@ -15,6 +15,7 @@ import (
 
 func TestSpanMiddleware(t *testing.T) {
 	tp := trace.NewTracerProvider()
+
 	otel.SetTracerProvider(tp)
 	defer otel.SetTracerProvider(noop.NewTracerProvider())
 
@@ -31,7 +32,7 @@ func TestSpanMiddleware(t *testing.T) {
 	defer span.End()
 
 	// Create an HTTP request with context
-	req := httptest.NewRequest(http.MethodGet, "/", http.NoBody).WithContext(ctx)
+	req := httptest.NewRequestWithContext(ctx, http.MethodGet, "/", http.NoBody)
 
 	// Using a ResponseRecorder to capture the response
 	rr := httptest.NewRecorder()
@@ -54,7 +55,7 @@ func TestSpanMiddleware_NoSpan(t *testing.T) {
 	middleware := Span()(testHandler)
 
 	// Create an HTTP request without span in context
-	req := httptest.NewRequest(http.MethodGet, "/", http.NoBody)
+	req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/", http.NoBody)
 
 	// Using a ResponseRecorder to capture the response
 	rr := httptest.NewRecorder()
@@ -69,6 +70,7 @@ func TestSpanMiddleware_NoSpan(t *testing.T) {
 
 func TestSpanMiddleware_StatusCodes(t *testing.T) {
 	tp := trace.NewTracerProvider()
+
 	otel.SetTracerProvider(tp)
 	defer otel.SetTracerProvider(noop.NewTracerProvider())
 
@@ -104,7 +106,7 @@ func TestSpanMiddleware_StatusCodes(t *testing.T) {
 			defer span.End()
 
 			// Create an HTTP request with context
-			req := httptest.NewRequest(http.MethodGet, "/", http.NoBody).WithContext(ctx)
+			req := httptest.NewRequestWithContext(ctx, http.MethodGet, "/", http.NoBody)
 
 			// Using a ResponseRecorder to capture the response
 			rr := httptest.NewRecorder()

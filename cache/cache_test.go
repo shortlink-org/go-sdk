@@ -4,7 +4,7 @@ package cache_test
 
 import (
 	"context"
-	"fmt"
+	"net/url"
 	"testing"
 	"time"
 
@@ -14,29 +14,21 @@ import (
 	"github.com/shortlink-org/go-sdk/observability/metrics"
 	"github.com/stretchr/testify/require"
 	"github.com/testcontainers/testcontainers-go"
-	"github.com/testcontainers/testcontainers-go/wait"
+	tcredis "github.com/testcontainers/testcontainers-go/modules/redis"
 )
 
 func TestCache(t *testing.T) {
 	ctx := context.Background()
 
-	c, err := testcontainers.Run(ctx, "redis:7-alpine",
-		testcontainers.WithExposedPorts("6379/tcp"),
-		testcontainers.WithWaitStrategy(
-			wait.ForListeningPort("6379/tcp").WithStartupTimeout(5*time.Minute),
-		),
-	)
+	c, err := tcredis.Run(ctx, "redis:7-alpine")
+	testcontainers.CleanupContainer(t, c)
 	require.NoError(t, err, "Could not start redis container")
 
-	t.Cleanup(func() {
-		_ = c.Terminate(context.Background())
-	})
-
-	host, err := c.Host(ctx)
+	uri, err := c.ConnectionString(ctx)
 	require.NoError(t, err)
-	mapped, err := c.MappedPort(ctx, "6379/tcp")
+	u, err := url.Parse(uri)
 	require.NoError(t, err)
-	redisAddr := fmt.Sprintf("%s:%s", host, mapped.Port())
+	redisAddr := u.Host
 
 	require.Eventually(t, func() bool {
 		cfg, errCfg := config.New()

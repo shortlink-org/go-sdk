@@ -44,6 +44,7 @@ func TestCommandBus_Send_NoGoroutineLeak(t *testing.T) {
 		ID string `json:"id"`
 	}{ID: "x"})
 	require.NoError(t, err)
+
 	_ = cmdBus
 }
 
@@ -63,5 +64,6 @@ func TestEventBus_Publish_NoGoroutineLeak(t *testing.T) {
 		ID string `json:"id"`
 	}{ID: "y"})
 	require.NoError(t, err)
+
 	_ = evtBus
 }

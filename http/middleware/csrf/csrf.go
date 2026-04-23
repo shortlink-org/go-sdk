@@ -64,11 +64,11 @@ type Config struct {
 }
 
 // New creates a new CSRF middleware with custom configuration
-func New(config Config) func(http.Handler) http.Handler {
+func New(cfg Config) func(http.Handler) http.Handler {
 	antiCSRF := http.NewCrossOriginProtection()
 
 	// Add trusted origins from config
-	for _, origin := range config.TrustedOrigins {
+	for _, origin := range cfg.TrustedOrigins {
 		err := antiCSRF.AddTrustedOrigin(origin)
 		if err != nil {
 			log.Printf("Failed to add trusted origin %s: %v", origin, err)

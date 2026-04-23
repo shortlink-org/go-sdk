@@ -8,10 +8,10 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	_ "github.com/jackc/pgx/v5/stdlib"
 	_ "github.com/lib/pq" // need for init PostgreSQL interface
-	"github.com/shortlink-org/go-sdk/config"
 	"go.opentelemetry.io/otel/sdk/metric"
 	"go.opentelemetry.io/otel/trace"
 
+	"github.com/shortlink-org/go-sdk/config"
 	"github.com/shortlink-org/go-sdk/db/options"
 )
 

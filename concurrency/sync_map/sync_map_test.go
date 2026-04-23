@@ -9,11 +9,13 @@ import (
 )
 
 func Test_SyncMap(t *testing.T) {
-	sm := sync_map.New()
+	t.Parallel()
+
+	syncMap := sync_map.New()
 
 	for i := range 1000 {
-		sm.Set(i, "value")
+		syncMap.Set(i, "value")
 	}
 
-	require.Equal(t, "value", sm.Get(5))
+	require.Equal(t, "value", syncMap.Get(5))
 }

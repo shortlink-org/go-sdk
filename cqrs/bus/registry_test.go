@@ -14,13 +14,15 @@ func TestTypeRegistryConcurrentAccess(t *testing.T) {
 	reg := NewTypeRegistry()
 
 	const workers = 50
+
 	var wg sync.WaitGroup
 
-	for i := 0; i < workers; i++ {
+	for i := range workers {
 		wg.Add(2)
 
 		go func(i int) {
 			defer wg.Done()
+
 			cmd := cqrsmessage.CommandEnvelope{
 				Metadata: map[string]string{
 					cqrsmessage.MetadataTypeName:    fmt.Sprintf("billing.command.create_%d", i),
@@ -33,6 +35,7 @@ func TestTypeRegistryConcurrentAccess(t *testing.T) {
 
 		go func(i int) {
 			defer wg.Done()
+
 			evt := cqrsmessage.EventEnvelope{
 				Metadata: map[string]string{
 					cqrsmessage.MetadataTypeName:    fmt.Sprintf("billing.aggregate.event_%d", i),
@@ -46,7 +49,7 @@ func TestTypeRegistryConcurrentAccess(t *testing.T) {
 
 	wg.Wait()
 
-	for i := 0; i < workers; i++ {
+	for i := range workers {
 		_, ok := reg.ResolveCommand(fmt.Sprintf("billing.command.create_%d.v1", i))
 		require.True(t, ok, "command %d not found", i)
 

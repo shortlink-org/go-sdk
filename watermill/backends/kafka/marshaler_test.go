@@ -4,12 +4,11 @@ import (
 	"testing"
 
 	"github.com/IBM/sarama"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
-
 	"github.com/ThreeDotsLabs/watermill"
 	"github.com/ThreeDotsLabs/watermill-kafka/v3/pkg/kafka"
 	"github.com/ThreeDotsLabs/watermill/message"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestDefaultMarshaler_MarshalUnmarshal(t *testing.T) {
@@ -33,7 +32,7 @@ func BenchmarkDefaultMarshaler_Marshal(b *testing.B) {
 	msg := message.NewMessage(watermill.NewUUID(), []byte("payload"))
 	msg.Metadata.Set("foo", "bar")
 
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		_, _ = m.Marshal("foo", msg)
 	}
 }
@@ -51,7 +50,7 @@ func BenchmarkDefaultMarshaler_Unmarshal(b *testing.B) {
 
 	consumedMsg := producerToConsumerMessage(marshaled)
 
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		_, _ = m.Unmarshal(consumedMsg)
 	}
 }
@@ -86,6 +85,7 @@ func producerToConsumerMessage(producerMessage *sarama.ProducerMessage) *sarama.
 
 	if producerMessage.Key != nil {
 		var err error
+
 		key, err = producerMessage.Key.Encode()
 		if err != nil {
 			panic(err)
@@ -93,8 +93,10 @@ func producerToConsumerMessage(producerMessage *sarama.ProducerMessage) *sarama.
 	}
 
 	var value []byte
+
 	if producerMessage.Value != nil {
 		var err error
+
 		value, err = producerMessage.Value.Encode()
 		if err != nil {
 			panic(err)

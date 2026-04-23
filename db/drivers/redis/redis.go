@@ -5,9 +5,10 @@ import (
 
 	"github.com/redis/rueidis"
 	"github.com/redis/rueidis/rueidisotel"
-	"github.com/shortlink-org/go-sdk/config"
 	"go.opentelemetry.io/otel/sdk/metric"
 	"go.opentelemetry.io/otel/trace"
+
+	"github.com/shortlink-org/go-sdk/config"
 )
 
 func New(tracer trace.TracerProvider, metrics *metric.MeterProvider, cfg *config.Config) *Store {

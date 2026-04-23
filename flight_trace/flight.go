@@ -42,7 +42,8 @@ func New(ctx context.Context, cfg *config.Config) (*Recorder, error) {
 	}
 
 	dumpPath := cfg.GetString("FLIGHT_RECORDER_DUMP_PATH")
-	if err := os.MkdirAll(dumpPath, 0o755); err != nil {
+	err := os.MkdirAll(dumpPath, 0o755)
+	if err != nil {
 		return nil, ErrCreateDumpPath
 	}
 
@@ -50,7 +51,8 @@ func New(ctx context.Context, cfg *config.Config) (*Recorder, error) {
 		MinAge:   cfg.GetDuration("FLIGHT_RECORDER_MIN_AGE"),
 		MaxBytes: cfg.GetUint64("FLIGHT_RECORDER_MAX_BYTES"),
 	})
-	if err := fr.Start(); err != nil {
+	err = fr.Start()
+	if err != nil {
 		return nil, ErrStartRecorder
 	}
 
@@ -119,6 +121,7 @@ func (wr *Recorder) cleanupOldDumps() {
 	sort.Slice(files, func(i, j int) bool {
 		fi, _ := os.Stat(files[i])
 		fj, _ := os.Stat(files[j])
+
 		return fi.ModTime().After(fj.ModTime()) // newest first
 	})
 

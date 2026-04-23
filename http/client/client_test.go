@@ -55,6 +55,7 @@ func TestClientRecords429Metrics(t *testing.T) {
 	require.NoError(t, err)
 
 	var value float64
+
 	found := false
 
 	for _, mf := range families {

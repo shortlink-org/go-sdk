@@ -41,10 +41,12 @@ func (e *EventStore) GetAggregateWithoutSnapshot(ctx context.Context) ([]*events
 			typeAggregate sql.NullString
 			version       sql.NullInt32
 		)
+
 		err = rows.Scan(&id, &typeAggregate, &version)
 		if err != nil {
 			return nil, err
 		}
+
 		if rows.Err() != nil {
 			return nil, rows.Err()
 		}
@@ -85,10 +87,12 @@ func (e *EventStore) SaveSnapshot(ctx context.Context, snapshot *eventsourcing.S
 	}
 
 	row := e.db.QueryRow(ctx, q, args...)
+
 	err = row.Scan()
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil
 	}
+
 	if err.Error() != "" {
 		span.RecordError(err)
 		span.SetStatus(codes.Error, err.Error())

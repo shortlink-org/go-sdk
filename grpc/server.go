@@ -11,6 +11,14 @@ import (
 	grpc_recovery "github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors/recovery"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
+	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
+	"go.opentelemetry.io/otel/trace"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/credentials"
+	"google.golang.org/grpc/reflection"
+	"google.golang.org/grpc/status"
+
 	"github.com/shortlink-org/go-sdk/config"
 	"github.com/shortlink-org/go-sdk/flight_trace"
 	"github.com/shortlink-org/go-sdk/grpc/authforward"
@@ -20,13 +28,6 @@ import (
 	pprof_interceptor "github.com/shortlink-org/go-sdk/grpc/middleware/pprof"
 	session_interceptor "github.com/shortlink-org/go-sdk/grpc/middleware/session"
 	"github.com/shortlink-org/go-sdk/logger"
-	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
-	"go.opentelemetry.io/otel/trace"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/credentials"
-	"google.golang.org/grpc/reflection"
-	"google.golang.org/grpc/status"
 )
 
 // Server represents a configured gRPC server instance.
@@ -66,12 +67,12 @@ func InitServer(
 		return nil, nil
 	}
 
-	config, err := setServerConfig(log, tracer, prom, flightRecorder, cfg) //nolint:contextcheck // false positive
+	srv, err := setServerConfig(log, tracer, prom, flightRecorder, cfg) //nolint:contextcheck // ctx is for Listen/Serve/shutdown; wiring-only path; WithLogger chain triggers false positive.
 	if err != nil {
 		return nil, err
 	}
 
-	endpoint := fmt.Sprintf("%s:%d", config.host, config.port)
+	endpoint := fmt.Sprintf("%s:%d", srv.host, srv.port)
 
 	var lc net.ListenConfig
 
@@ -81,7 +82,7 @@ func InitServer(
 	}
 
 	// Initialize the gRPC server.
-	grpcServer := grpc.NewServer(config.optionsNewServer...)
+	grpcServer := grpc.NewServer(srv.optionsNewServer...)
 
 	grpcServerInstance := &Server{
 		Server: grpcServer,
@@ -90,11 +91,11 @@ func InitServer(
 			reflection.Register(grpcServer)
 
 			// After all your registrations, make sure all of the Prometheus metrics are initialized.
-			config.serverMetrics.InitializeMetrics(grpcServer)
+			srv.serverMetrics.InitializeMetrics(grpcServer)
 
 			log.Info("Run gRPC server",
-				slog.Int("port", config.port),
-				slog.String("host", config.host),
+				slog.Int("port", srv.port),
+				slog.String("host", srv.host),
 			)
 
 			err = grpcServer.Serve(lis)
@@ -109,8 +110,10 @@ func InitServer(
 	go func() {
 		<-ctx.Done()
 
-		if config.authValidator != nil {
-			_ = config.authValidator.Close()
+		if srv.authValidator != nil {
+			if closeErr := srv.authValidator.Close(); closeErr != nil {
+				log.Error("auth validator close failed", slog.Any("err", closeErr))
+			}
 		}
 
 		log.Info("Shutdown gRPC server")
@@ -134,7 +137,7 @@ func setServerConfig(
 	cfg.SetDefault("GRPC_SERVER_HOST", "0.0.0.0") // gRPC host
 	grpcHost := cfg.GetString("GRPC_SERVER_HOST")
 
-	config := &server{
+	srv := &server{
 		port: grpcPort,
 		host: grpcHost,
 
@@ -142,31 +145,31 @@ func setServerConfig(
 		cfg: cfg,
 	}
 
-	config.WithLogger(log)
-	config.WithTracer(tracer)
-	config.WithAuthHeaders()
-	config.WithAuthForward()
-	config.WithPprofLabels()
-	config.WithFlightTrace(flightRecorder, log)
+	srv.WithLogger(log)
+	srv.WithTracer(tracer)
+	srv.WithAuthHeaders()
+	srv.WithAuthForward()
+	srv.WithPprofLabels()
+	srv.WithFlightTrace(flightRecorder, log)
 
 	if monitor != nil {
-		config.WithMetrics(monitor)
-		config.WithRecovery(monitor)
+		srv.WithMetrics(monitor)
+		srv.WithRecovery(monitor)
 	}
 
-	config.optionsNewServer = append(config.optionsNewServer,
+	srv.optionsNewServer = append(srv.optionsNewServer,
 		// Initialize your gRPC server's interceptor.
-		grpc.ChainUnaryInterceptor(config.interceptorUnaryServerList...),
-		grpc.ChainStreamInterceptor(config.interceptorStreamServerList...),
+		grpc.ChainUnaryInterceptor(srv.interceptorUnaryServerList...),
+		grpc.ChainStreamInterceptor(srv.interceptorStreamServerList...),
 	)
 
 	// NOTE: made after initialize your gRPC server's interceptor.
-	err := config.WithTLS()
+	err := srv.WithTLS()
 	if err != nil {
 		return nil, err
 	}
 
-	return config, nil
+	return srv, nil
 }
 
 // WithMetrics - setup metrics.
@@ -269,6 +272,7 @@ func (s *server) WithTLS() error {
 // WithAuthHeaders - map Istio outputClaimToHeaders into context.
 func (s *server) WithAuthHeaders() {
 	s.cfg.SetDefault("GRPC_AUTH_HEADERS_ENABLED", true)
+
 	if !s.cfg.GetBool("GRPC_AUTH_HEADERS_ENABLED") {
 		return
 	}
@@ -287,6 +291,7 @@ func (s *server) WithAuthHeaders() {
 // Use only when Istio RequestAuthentication is not enforcing JWT.
 func (s *server) WithAuthJWT() error {
 	s.cfg.SetDefault("GRPC_AUTH_JWT_ENABLED", false)
+
 	if !s.cfg.GetBool("GRPC_AUTH_JWT_ENABLED") {
 		return nil
 	}

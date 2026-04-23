@@ -22,7 +22,8 @@ func TestProtoMarshalerUnmarshalEmptyPayload(t *testing.T) {
 	m := NewProtoMarshaler(NewShortlinkNamer("svc"))
 	msg := wmmessage.NewMessageWithContext(context.Background(), "id", nil)
 
-	if err := m.Unmarshal(msg, &dummyProto{}); err == nil {
+	err := m.Unmarshal(msg, &dummyProto{})
+	if err == nil {
 		t.Fatal("expected error for empty payload")
 	}
 }

@@ -29,6 +29,7 @@ func (p *partition) set(key string, val any) {
 func (p *partition) delete(key string) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
+
 	delete(p.store, key)
 }
 

@@ -18,6 +18,7 @@ var (
 		if ns == "" {
 			ns = "shortlink"
 		}
+
 		return strings.ToLower(ns)
 	}()
 	MetadataTraceID     = metadataKey("trace_id")
@@ -51,9 +52,11 @@ func WithServiceName(ctx context.Context, serviceName string) context.Context {
 	if ctx == nil {
 		ctx = context.Background()
 	}
+
 	if serviceName == "" {
 		return ctx
 	}
+
 	return context.WithValue(ctx, serviceNameKey, serviceName)
 }
 
@@ -62,9 +65,11 @@ func ServiceNameFromContext(ctx context.Context) string {
 	if ctx == nil {
 		return ""
 	}
+
 	if val, ok := ctx.Value(serviceNameKey).(string); ok {
 		return val
 	}
+
 	return ""
 }
 

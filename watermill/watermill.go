@@ -2,15 +2,17 @@ package watermill
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/ThreeDotsLabs/watermill/message"
 	"github.com/hashicorp/go-multierror"
+	"go.opentelemetry.io/otel/metric"
+	"go.opentelemetry.io/otel/trace"
+
 	"github.com/shortlink-org/go-sdk/config"
 	"github.com/shortlink-org/go-sdk/logger"
 	watermilldlq "github.com/shortlink-org/go-sdk/watermill/dlq"
-	"go.opentelemetry.io/otel/metric"
-	"go.opentelemetry.io/otel/trace"
 )
 
 // Backend interface — реализация MQ backend (Kafka, RabbitMQ, NATS…)
@@ -29,8 +31,8 @@ type Client struct {
 }
 
 // New — создаёт Watermill Router + middleware + logger + OTEL + metrics.
-// backend должен быть создан "снаружи" (например, через kafka.New()).
-// meterProvider и tracerProvider должны быть переданы явно (например, из observability/metrics и observability/tracing).
+// Backend должен быть создан "снаружи" (например, через kafka.New()).
+// MeterProvider и tracerProvider должны быть переданы явно (например, из observability/metrics и observability/tracing).
 func New(
 	ctx context.Context,
 	log logger.Logger,
@@ -41,7 +43,7 @@ func New(
 	options ...Option,
 ) (*Client, error) {
 	if backend == nil {
-		return nil, fmt.Errorf("backend is nil — must be provided explicitly")
+		return nil, errors.New("backend is nil — must be provided explicitly")
 	}
 
 	wmLogger := NewWatermillLogger(log)
@@ -53,10 +55,12 @@ func New(
 	}
 
 	optsCfg := defaultOptions(cfg)
+
 	for _, opt := range options {
 		if opt == nil {
 			continue
 		}
+
 		opt(&optsCfg)
 	}
 
@@ -99,13 +103,15 @@ func (c *Client) Close() error {
 	var errs *multierror.Error
 
 	if c.Router != nil {
-		if err := c.Router.Close(); err != nil {
+		err := c.Router.Close()
+		if err != nil {
 			errs = multierror.Append(errs, fmt.Errorf("failed to close router: %w", err))
 		}
 	}
 
 	if c.backend != nil {
-		if err := c.backend.Close(); err != nil {
+		err := c.backend.Close()
+		if err != nil {
 			errs = multierror.Append(errs, fmt.Errorf("failed to close backend: %w", err))
 		}
 	}

@@ -32,6 +32,7 @@ func Migration(ctx context.Context, store db.DB, fsys fs.FS, tableName string) e
 			Err:         err,
 			Description: "failed to create migration source",
 		}
+
 		return retErr
 	}
 
@@ -45,8 +46,10 @@ func Migration(ctx context.Context, store db.DB, fsys fs.FS, tableName string) e
 			Err:         err,
 			Description: "failed to open migration connection",
 		}
+
 		return retErr
 	}
+
 	defer func() {
 		retErr = errors.Join(retErr, conn.Close())
 	}()
@@ -57,6 +60,7 @@ func Migration(ctx context.Context, store db.DB, fsys fs.FS, tableName string) e
 			Err:         err,
 			Description: "failed to ping migration connection",
 		}
+
 		return retErr
 	}
 
@@ -68,6 +72,7 @@ func Migration(ctx context.Context, store db.DB, fsys fs.FS, tableName string) e
 			Err:         err,
 			Description: "failed to create migration driver",
 		}
+
 		return retErr
 	}
 
@@ -77,6 +82,7 @@ func Migration(ctx context.Context, store db.DB, fsys fs.FS, tableName string) e
 			Err:         err,
 			Description: "failed to create migration instance",
 		}
+
 		return retErr
 	}
 
@@ -85,11 +91,12 @@ func Migration(ctx context.Context, store db.DB, fsys fs.FS, tableName string) e
 		retErr = errors.Join(retErr, sourceErr, dbErr)
 	}()
 
-	if err := migration.Up(); err != nil && err != migrate.ErrNoChange {
+	if err := migration.Up(); err != nil && !errors.Is(err, migrate.ErrNoChange) {
 		retErr = &MigrationError{
 			Err:         err,
 			Description: "failed to apply migration",
 		}
+
 		return retErr
 	}
 

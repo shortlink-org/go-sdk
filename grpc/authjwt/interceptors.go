@@ -10,14 +10,15 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
-	"github.com/shortlink-org/go-sdk/auth/session"
-	"github.com/shortlink-org/go-sdk/logger"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/trace"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"
+
+	"github.com/shortlink-org/go-sdk/auth/session"
+	"github.com/shortlink-org/go-sdk/logger"
 )
 
 const (
@@ -254,7 +255,8 @@ func shouldSkip(method string, skipMethods []string) bool {
 }
 
 func mergeSkipMethods(custom []string) []string {
-	defaults := []string{reflectionMethod, healthCheckMethod}
+	defaults := make([]string, 0, 2+len(custom))
+	defaults = append(defaults, reflectionMethod, healthCheckMethod)
 
 	return append(defaults, custom...)
 }

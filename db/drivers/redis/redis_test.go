@@ -4,14 +4,13 @@ package redis
 
 import (
 	"context"
-	"fmt"
+	"net/url"
 	"os"
 	"testing"
-	"time"
 
 	"github.com/stretchr/testify/require"
 	"github.com/testcontainers/testcontainers-go"
-	"github.com/testcontainers/testcontainers-go/wait"
+	tcredis "github.com/testcontainers/testcontainers-go/modules/redis"
 	"go.uber.org/goleak"
 
 	"github.com/shortlink-org/go-sdk/config"
@@ -29,24 +28,16 @@ func TestRedis(t *testing.T) {
 	require.NoError(t, err)
 	store := New(nil, nil, cfg)
 
-	c, err := testcontainers.Run(ctx, "redis:7-alpine",
-		testcontainers.WithExposedPorts("6379/tcp"),
-		testcontainers.WithWaitStrategy(
-			wait.ForListeningPort("6379/tcp").WithStartupTimeout(5*time.Minute),
-		),
-	)
+	c, err := tcredis.Run(ctx, "redis:7-alpine")
+	testcontainers.CleanupContainer(t, c)
 	require.NoError(t, err)
 
-	t.Cleanup(func() {
-		cancel()
-		_ = c.Terminate(context.Background())
-	})
+	t.Cleanup(cancel)
 
-	host, err := c.Host(ctx)
+	uri, err := c.ConnectionString(ctx)
 	require.NoError(t, err)
-	mapped, err := c.MappedPort(ctx, "6379/tcp")
+	u, err := url.Parse(uri)
 	require.NoError(t, err)
-
-	cfg.Set("STORE_REDIS_URI", fmt.Sprintf("%s:%s", host, mapped.Port()))
+	cfg.Set("STORE_REDIS_URI", u.Host)
 	require.NoError(t, store.Init(ctx))
 }

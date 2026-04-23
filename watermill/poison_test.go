@@ -21,6 +21,7 @@ func (p *poisonTestPublisher) Publish(topic string, msgs ...*message.Message) er
 	for _, msg := range msgs {
 		p.published = append(p.published, publishedMessage{topic: topic, msg: msg})
 	}
+
 	return nil
 }
 

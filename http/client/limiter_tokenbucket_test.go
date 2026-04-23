@@ -5,8 +5,18 @@ import (
 	"testing"
 	"time"
 
-	"github.com/shortlink-org/go-sdk/http/client/internal/types"
 	"github.com/stretchr/testify/require"
+
+	"github.com/shortlink-org/go-sdk/http/client/internal/types"
+)
+
+// Test tuning constants (revive add-constant / readable thresholds).
+const (
+	testSlowRatePerSec  = 0.1
+	testJitterOverMax   = 1.5
+	testJitterFraction  = 0.1
+	testJitterWaitCapMS = 1200
+	testRefillSleep     = 150 * time.Millisecond
 )
 
 func TestNewTokenBucketLimiter_InvalidConfig(t *testing.T) {
@@ -32,7 +42,7 @@ func TestNewTokenBucketLimiter_JitterNormalization(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, limiter)
 
-	limiter2, err := NewTokenBucketLimiter(10, 10, 1.5)
+	limiter2, err := NewTokenBucketLimiter(10, 10, testJitterOverMax)
 	require.NoError(t, err)
 	require.NotNil(t, limiter2)
 }
@@ -48,7 +58,7 @@ func TestTokenBucketLimiter_Wait_Immediate(t *testing.T) {
 }
 
 func TestTokenBucketLimiter_Wait_ContextCancellation(t *testing.T) {
-	limiter, err := NewTokenBucketLimiter(0.1, 1, 0) // very slow rate
+	limiter, err := NewTokenBucketLimiter(testSlowRatePerSec, 1, 0) // very slow rate
 	require.NoError(t, err)
 
 	// Consume the token
@@ -66,7 +76,7 @@ func TestTokenBucketLimiter_Wait_ContextCancellation(t *testing.T) {
 }
 
 func TestTokenBucketLimiter_Wait_ContextTimeout(t *testing.T) {
-	limiter, err := NewTokenBucketLimiter(0.1, 1, 0) // very slow rate
+	limiter, err := NewTokenBucketLimiter(testSlowRatePerSec, 1, 0) // very slow rate
 	require.NoError(t, err)
 
 	// Consume the token
@@ -88,13 +98,13 @@ func TestTokenBucketLimiter_Refill(t *testing.T) {
 	require.NoError(t, err)
 
 	// Consume all tokens
-	for i := 0; i < 5; i++ {
+	for range 5 {
 		_, err = limiter.Wait(context.Background())
 		require.NoError(t, err)
 	}
 
 	// Wait for refill
-	time.Sleep(150 * time.Millisecond) // should refill ~1.5 tokens
+	time.Sleep(testRefillSleep) // should refill ~1.5 tokens
 
 	// Should be able to get at least one token
 	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
@@ -106,7 +116,7 @@ func TestTokenBucketLimiter_Refill(t *testing.T) {
 }
 
 func TestTokenBucketLimiter_Jitter(t *testing.T) {
-	limiter, err := NewTokenBucketLimiter(1, 1, 0.1) // 10% jitter
+	limiter, err := NewTokenBucketLimiter(1, 1, testJitterFraction) // 10% jitter
 	require.NoError(t, err)
 
 	// Consume the token
@@ -124,7 +134,8 @@ func TestTokenBucketLimiter_Jitter(t *testing.T) {
 	// Wait time should be between base (1s) and base + jitter (1.1s)
 	// but could be slightly more due to timing
 	baseWait := 1 * time.Second
-	maxWait := 1200 * time.Millisecond              // 1.2 seconds
+	maxWait := time.Duration(testJitterWaitCapMS) * time.Millisecond // 1.2 seconds
+
 	require.GreaterOrEqual(t, wait1, baseWait*9/10) // at least 90% of base (allowing negative jitter)
 	require.LessOrEqual(t, wait1, maxWait)          // at most 20% more than base
 }
@@ -134,7 +145,7 @@ func TestTokenBucketLimiter_BurstLimit(t *testing.T) {
 	require.NoError(t, err)
 
 	// Consume burst
-	for i := 0; i < 3; i++ {
+	for range 3 {
 		_, err = limiter.Wait(context.Background())
 		require.NoError(t, err)
 	}
@@ -164,7 +175,7 @@ func TestTokenBucketLimiter_ConcurrentAccess(t *testing.T) {
 	done := make(chan error, 10)
 
 	// Launch 10 goroutines
-	for i := 0; i < 10; i++ {
+	for range 10 {
 		go func() {
 			_, err := limiter.Wait(ctx)
 			done <- err
@@ -172,7 +183,7 @@ func TestTokenBucketLimiter_ConcurrentAccess(t *testing.T) {
 	}
 
 	// All should succeed
-	for i := 0; i < 10; i++ {
+	for range 10 {
 		err := <-done
 		require.NoError(t, err)
 	}

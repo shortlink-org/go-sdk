@@ -7,11 +7,12 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
+
 	"github.com/shortlink-org/go-sdk/config"
 	"github.com/shortlink-org/go-sdk/flight_trace"
 	"github.com/shortlink-org/go-sdk/logger"
-	"go.opentelemetry.io/otel/attribute"
-	"go.opentelemetry.io/otel/trace"
 )
 
 // DebugTraceMiddleware triggers a Go Flight Recorder dump when:

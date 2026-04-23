@@ -19,6 +19,8 @@ func TestMain(m *testing.M) {
 }
 
 func TestMerge(t *testing.T) {
+	t.Parallel()
+
 	// Create two channels
 	ch1 := make(chan any, 5)
 	ch2 := make(chan any, 5)

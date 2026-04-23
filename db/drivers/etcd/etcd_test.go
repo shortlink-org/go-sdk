@@ -4,14 +4,13 @@ package etcd
 
 import (
 	"context"
-	"fmt"
 	"os"
+	"strings"
 	"testing"
-	"time"
 
 	"github.com/stretchr/testify/require"
 	"github.com/testcontainers/testcontainers-go"
-	"github.com/testcontainers/testcontainers-go/wait"
+	tcetcd "github.com/testcontainers/testcontainers-go/modules/etcd"
 	"go.uber.org/goleak"
 
 	"github.com/shortlink-org/go-sdk/config"
@@ -29,24 +28,16 @@ func TestETCD(t *testing.T) {
 	require.NoError(t, err)
 	store := New(cfg)
 
-	c, err := testcontainers.Run(ctx, "docker.io/bitnami/etcd:3",
-		testcontainers.WithExposedPorts("2379/tcp"),
-		testcontainers.WithWaitStrategy(
-			wait.ForListeningPort("2379/tcp").WithStartupTimeout(3*time.Minute),
-		),
-	)
-	require.NoError(t, err)
+	etcdC, err := tcetcd.Run(ctx, "gcr.io/etcd-development/etcd:v3.5.14")
+	testcontainers.CleanupContainer(t, etcdC)
+	require.NoError(t, err, "etcd container: ensure Docker is running")
 
-	t.Cleanup(func() {
-		cancel()
-		_ = c.Terminate(context.Background())
-	})
+	t.Cleanup(cancel)
 
-	host, err := c.Host(ctx)
+	endpoint, err := etcdC.ClientEndpoint(ctx)
 	require.NoError(t, err)
-	mapped, err := c.MappedPort(ctx, "2379/tcp")
-	require.NoError(t, err)
-
-	cfg.Set("STORE_ETCD_URI", fmt.Sprintf("%s:%s", host, mapped.Port()))
+	// client/v3 Endpoints expect host:port (see setConfig); ClientEndpoint returns http://host:port
+	hostPort := strings.TrimPrefix(strings.TrimPrefix(endpoint, "http://"), "https://")
+	cfg.Set("STORE_ETCD_URI", hostPort)
 	require.NoError(t, store.Init(ctx))
 }

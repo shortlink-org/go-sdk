@@ -72,6 +72,8 @@ type ValidatorConfig struct {
 }
 
 // NewValidator creates a new JWT validator.
+//
+//nolint:gocritic // hugeParam: ValidatorConfig is the public configuration DTO.
 func NewValidator(cfg ValidatorConfig) (*Validator, error) {
 	if cfg.JWKSURL == "" && cfg.CustomKeyfunc == nil && cfg.KeyFetcher == nil {
 		return nil, ErrJWKSURLRequired
@@ -172,7 +174,7 @@ func (v *Validator) Validate(ctx context.Context, tokenString string) ValidateRe
 			return ValidateResult{Error: err}
 		}
 
-		return ValidateResult{Error: fmt.Errorf("%w: %v", ErrInvalidToken, err)}
+		return ValidateResult{Error: fmt.Errorf("%w: %w", ErrInvalidToken, err)}
 	}
 
 	if !token.Valid {

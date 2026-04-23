@@ -9,8 +9,9 @@ import (
 	"net/http"
 	"sync"
 
-	"github.com/shortlink-org/go-sdk/logger"
 	"golang.org/x/sync/singleflight"
+
+	"github.com/shortlink-org/go-sdk/logger"
 )
 
 // Option configures the singleflight middleware.

@@ -6,6 +6,7 @@ import (
 	"net/url"
 
 	"github.com/neo4j/neo4j-go-driver/v6/neo4j"
+
 	"github.com/shortlink-org/go-sdk/config"
 )
 
@@ -53,7 +54,8 @@ func (s *Store) Init(ctx context.Context) error {
 	go func() {
 		<-ctx.Done()
 
-		if err := s.close(ctx); err != nil {
+		err := s.close(ctx)
+		if err != nil {
 			// We can't return the error here since we're in a goroutine,
 			// but in a real application you might want to log this
 			_ = err
@@ -70,7 +72,8 @@ func (s *Store) GetConn() any {
 
 // Close - close connection
 func (s *Store) close(ctx context.Context) error {
-	if err := s.client.Close(ctx); err != nil {
+	err := s.client.Close(ctx)
+	if err != nil {
 		return &StoreError{
 			Op:      "close",
 			Err:     err,
@@ -83,7 +86,6 @@ func (s *Store) close(ctx context.Context) error {
 
 // setConfig - set configuration
 func (s *Store) setConfig() error {
-
 	// Neo4j 4.0, defaults to no TLS therefore use bolt:// or neo4j://
 	// Neo4j 3.5, defaults to self-signed certificates, TLS on, therefore use bolt+ssc:// or neo4j+ssc://
 	s.cfg.SetDefault("STORE_NEO4J_URI", "neo4j://localhost:7687") // NEO4J URI

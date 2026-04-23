@@ -11,18 +11,24 @@ import (
 	"github.com/shortlink-org/go-sdk/config"
 )
 
-const defaultErrChanBuffer = 10
+const (
+	defaultErrChanBuffer = 10
+	defaultBatchSize     = 100
+)
 
 // New creates a new batch with a specified callback function.
-func New[T any](ctx context.Context, cfg *config.Config, callback func([]*Item[T]) error, opts ...Option[T]) (*Batch[T], <-chan error) {
+func New[T any](
+	ctx context.Context,
+	cfg *config.Config,
+	callback func([]*Item[T]) error,
+	opts ...Option[T],
+) (*Batch[T], <-chan error) {
 	cfg.SetDefault("BATCH_INTERVAL", "100ms")
-	cfg.SetDefault("BATCH_SIZE", 100)
+	cfg.SetDefault("BATCH_SIZE", defaultBatchSize)
 	cfg.SetDefault("BATCH_ERROR_BUFFER", defaultErrChanBuffer)
-
 	batch := &Batch[T]{
-		mu: sync.Mutex{},
-		wg: sync.WaitGroup{},
-
+		mu:       sync.Mutex{},
+		wg:       sync.WaitGroup{},
 		callback: callback,
 		items:    []*Item[T]{},
 		interval: cfg.GetDuration("BATCH_INTERVAL"),
@@ -32,18 +38,15 @@ func New[T any](ctx context.Context, cfg *config.Config, callback func([]*Item[T
 		// Buffered error channel to report errors from callback.
 		errChan: make(chan error, cfg.GetInt("BATCH_ERROR_BUFFER")),
 	}
-
 	// Apply options
 	for _, opt := range opts {
 		opt(batch)
 	}
-
 	// Launch a goroutine to monitor the passed context.
 	go func() {
 		<-ctx.Done()
 		close(batch.done)
 	}()
-
 	go batch.run()
 
 	return batch, batch.errChan
@@ -55,11 +58,11 @@ func (batch *Batch[T]) Push(item T) chan T {
 		CallbackChannel: make(chan T, 1),
 		Item:            item,
 	}
-
 	// Check for cancellation using the done channel.
 	select {
 	case <-batch.done:
 		close(newItem.CallbackChannel)
+
 		return newItem.CallbackChannel
 	default:
 	}
@@ -68,7 +71,6 @@ func (batch *Batch[T]) Push(item T) chan T {
 	batch.items = append(batch.items, newItem)
 	shouldFlush := len(batch.items) >= batch.size
 	batch.mu.Unlock()
-
 	// If the batch is full, flush it.
 	if shouldFlush {
 		go batch.flushItems()
@@ -107,13 +109,36 @@ func (batch *Batch[T]) closePendingChannels() {
 	}
 }
 
+func closeItemChannels[T any](items []*Item[T]) {
+	for _, item := range items {
+		close(item.CallbackChannel)
+	}
+}
+
+func (batch *Batch[T]) sendCallbackError(err error) {
+	select {
+	case batch.errChan <- err:
+	default:
+	}
+}
+
+func (batch *Batch[T]) processFlushAsync(items []*Item[T]) {
+	select {
+	case <-batch.done:
+		closeItemChannels(items)
+	default:
+		err := batch.callback(items)
+		if err != nil {
+			batch.sendCallbackError(err)
+		}
+	}
+}
+
 // flushItems flushes all items to the callback function.
 func (batch *Batch[T]) flushItems() {
 	batch.mu.Lock()
 	items := batch.items
 	batch.items = nil
-
-	// Check if cancellation has already occurred while still holding the lock.
 	doneClosed := false
 
 	select {
@@ -121,7 +146,6 @@ func (batch *Batch[T]) flushItems() {
 		doneClosed = true
 	default:
 	}
-
 	batch.mu.Unlock()
 
 	if len(items) == 0 {
@@ -129,28 +153,12 @@ func (batch *Batch[T]) flushItems() {
 	}
 
 	if doneClosed {
-		for _, item := range items {
-			close(item.CallbackChannel)
-		}
+		closeItemChannels(items)
 
 		return
 	}
 
 	batch.wg.Go(func() {
-		// Check cancellation again before proceeding.
-		select {
-		case <-batch.done:
-			for _, item := range items {
-				close(item.CallbackChannel)
-			}
-		default:
-			err := batch.callback(items)
-			if err != nil {
-				select {
-				case batch.errChan <- err:
-				default:
-				}
-			}
-		}
+		batch.processFlushAsync(items)
 	})
 }

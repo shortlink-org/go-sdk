@@ -11,7 +11,6 @@ import (
 
 	"github.com/shortlink-org/go-sdk/config"
 	"github.com/shortlink-org/go-sdk/logger"
-
 	"github.com/shortlink-org/go-sdk/mq/kafka"
 	"github.com/shortlink-org/go-sdk/mq/nats"
 	"github.com/shortlink-org/go-sdk/mq/query"
@@ -24,7 +23,7 @@ import (
 // Deprecated: Use github.com/shortlink-org/go-sdk/watermill instead.
 //
 //nolint:ireturn // It's made by design
-func New(ctx context.Context, log logger.Logger, cfg *config.Config) (MQ, error) {
+func New(ctx context.Context, log logger.Logger, cfg *config.Config) (*DataBus, error) {
 	cfg.SetDefault("MQ_ENABLED", "false") // Enabled MQ
 
 	if !cfg.GetBool("MQ_ENABLED") {
@@ -63,7 +62,8 @@ func (mq *DataBus) Use(ctx context.Context, log logger.Logger) (*DataBus, error)
 		mq.mq = kafka.New(mq.cfg)
 	}
 
-	if err := mq.Init(ctx, log); err != nil {
+	err := mq.Init(ctx, log)
+	if err != nil {
 		return nil, err
 	}
 

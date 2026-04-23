@@ -40,6 +40,7 @@ func generateBuildPostgresFilterMethod(g *protogen.GeneratedFile, structName str
 		if field.Desc.IsList() || field.Desc.IsMap() {
 			continue
 		}
+
 		fieldName := field.GoName
 		dbColumnName := strings.ToLower(fieldName)
 		generateFieldFilterConditions(g, fieldName, dbColumnName)
@@ -57,12 +58,15 @@ func generateFieldFilterConditions(g *protogen.GeneratedFile, fieldName, dbColum
 
 	for i, cond := range conditions {
 		op := operators[i]
+
 		valuePlaceholder := "?"
-		if cond == "StartsWith" {
+		switch cond {
+		case "StartsWith":
 			valuePlaceholder = "'%' || ?"
-		} else if cond == "EndsWith" {
+		case "EndsWith":
 			valuePlaceholder = "? || '%'"
 		}
+
 		g.P("if f.", fieldName, ".", cond, " != \"\" {")
 		g.P("query = query.Where(\"", dbColumnName, " ", op, " ", valuePlaceholder, "\", f.", fieldName, ".", cond, ")")
 		g.P("}")

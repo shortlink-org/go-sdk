@@ -10,6 +10,7 @@ type Config struct {
 
 func Load(cfg *config.Config) Config {
 	cfg.SetDefault("MQ_RABBIT_DSN", "amqp://guest:guest@rabbitmq:5672/")
+
 	return Config{
 		DSN: cfg.GetString("MQ_RABBIT_DSN"),
 	}

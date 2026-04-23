@@ -3,32 +3,19 @@ package handlers
 import (
 	"fmt"
 	"reflect"
-
-	wmmessage "github.com/ThreeDotsLabs/watermill/message"
 )
 
-func newValue(t reflect.Type) any {
-	if t == nil {
+func newValue(typ reflect.Type) any {
+	if typ == nil {
 		return nil
 	}
 
 	// Ensure we always produce a pointer value so proto.Unmarshal works.
-	if t.Kind() != reflect.Pointer {
-		t = reflect.PointerTo(t)
+	if typ.Kind() != reflect.Pointer {
+		typ = reflect.PointerTo(typ)
 	}
 
-	return reflect.New(t.Elem()).Interface()
-}
-
-func cloneMetadata(meta wmmessage.Metadata) map[string]string {
-	if meta == nil {
-		return nil
-	}
-	out := make(map[string]string, len(meta))
-	for k, v := range meta {
-		out[k] = v
-	}
-	return out
+	return reflect.New(typ.Elem()).Interface()
 }
 
 func handlerTypeOf[T any]() reflect.Type {
@@ -36,6 +23,8 @@ func handlerTypeOf[T any]() reflect.Type {
 	return reflect.TypeOf(zero)
 }
 
+//
+//nolint:ireturn // Returns the concrete generic payload type T.
 func typedPayload[T any](instance any, handlerType, registryType reflect.Type) (T, error) {
 	var zero T
 
@@ -50,6 +39,7 @@ func typedPayload[T any](instance any, handlerType, registryType reflect.Type) (
 		if !ok {
 			return zero, fmt.Errorf("%w: registry=%v handler=%T", errHandlerTypeMismatch, registryType, zero)
 		}
+
 		return payload, nil
 	}
 
@@ -68,11 +58,14 @@ func typedPayload[T any](instance any, handlerType, registryType reflect.Type) (
 		}
 	case !registryType.AssignableTo(handlerType) && !handlerType.AssignableTo(registryType):
 		return zero, fmt.Errorf("%w: registry=%s handler=%s", errHandlerTypeMismatch, registryType, handlerType)
+	default:
+		// mutually assignable concrete types
 	}
 
 	payload, ok := instance.(T)
 	if !ok {
 		return zero, fmt.Errorf("%w: registry=%s handler=%s", errHandlerTypeMismatch, registryType, handlerType)
 	}
+
 	return payload, nil
 }

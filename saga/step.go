@@ -11,6 +11,7 @@ import (
 
 type Step struct {
 	Options
+
 	ctx    context.Context
 	then   func(ctx context.Context) error
 	reject func(ctx context.Context, thenError error) error

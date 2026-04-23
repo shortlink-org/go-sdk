@@ -35,6 +35,7 @@ func generateCommonFile(gen *protogen.Plugin, file *protogen.File) {
 		// Generate the BuildFilter method
 		structName := "Filter" + message.GoIdent.GoName
 		g.P("type ", structName, " struct {")
+
 		for _, field := range message.Fields {
 			if field.Desc.IsList() || field.Desc.IsMap() {
 				continue
@@ -44,6 +45,7 @@ func generateCommonFile(gen *protogen.Plugin, file *protogen.File) {
 			goType := "*" + "StringFilterInput"
 			g.P(fieldName, " ", goType, " `json:\"", strings.ToLower(fieldName), "\"`")
 		}
+
 		g.P("}")
 		g.P()
 	}
@@ -78,6 +80,7 @@ func useCommonFile(gen *protogen.Plugin, file *protogen.File) {
 		g.P()
 
 		g.P("    return &", structName, "{")
+
 		for _, message := range file.Messages {
 			if _, ok := filterMap[message.GoIdent.GoName]; !ok && len(filterMap) > 0 {
 				continue
@@ -92,6 +95,7 @@ func useCommonFile(gen *protogen.Plugin, file *protogen.File) {
 				g.P(fieldName, ": params.", fieldName, ",")
 			}
 		}
+
 		g.P("    }")
 		g.P("}")
 		g.P()

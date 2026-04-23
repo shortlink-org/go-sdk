@@ -2,7 +2,6 @@ package bus
 
 import (
 	"database/sql"
-	"errors"
 	"fmt"
 	"strings"
 
@@ -10,13 +9,14 @@ import (
 	wmmessage "github.com/ThreeDotsLabs/watermill/message"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/jackc/pgx/v5/stdlib"
-	"github.com/shortlink-org/go-sdk/logger"
 	"go.opentelemetry.io/otel/metric"
+
+	"github.com/shortlink-org/go-sdk/logger"
 )
 
 const defaultForwarderTopic = "shortlink_cqrs_outbox"
 
-// Option configures Bus behaviours without breaking the constructor API.
+// Option configures Bus behaviors without breaking the constructor API.
 type Option func(*cqrsConfig)
 
 type cqrsConfig struct {
@@ -35,15 +35,17 @@ type txOutboxConfig struct {
 // When uow.HasTx(ctx) is true, the event is written to the outbox in the same transaction.
 // ForwarderTopic and WMLogger are used to create a tx-scoped watermill-sql publisher wrapped with the forwarder.
 func WithTxAwareOutbox(forwarderTopic string, wmLogger watermill.LoggerAdapter) Option {
-	return func(c *cqrsConfig) {
-		if c.err != nil {
+	return func(cfg *cqrsConfig) {
+		if cfg.err != nil {
 			return
 		}
+
 		if forwarderTopic == "" {
-			c.err = errors.New("cqrs/bus: forwarder topic is required for WithTxAwareOutbox")
+			cfg.err = errForwarderTopicRequiredTx
 			return
 		}
-		c.txOutbox = &txOutboxConfig{
+
+		cfg.txOutbox = &txOutboxConfig{
 			ForwarderTopic: forwarderTopic,
 			WMLogger:       wmLogger,
 		}
@@ -125,58 +127,78 @@ type OutboxConfig struct {
 //			}),
 //		)
 //	}
-func WithOutbox(cfg OutboxConfig) Option {
-	return func(c *cqrsConfig) {
-		conf := cfg
-		if c.err != nil {
+func WithOutbox(cfg *OutboxConfig) Option {
+	return func(cqrsCfg *cqrsConfig) {
+		if cqrsCfg.err != nil {
 			return
 		}
-		if err := conf.prepare(); err != nil {
-			c.err = err
+
+		if cfg == nil {
+			cqrsCfg.err = errForwarderNotConfigured
 			return
 		}
-		c.outbox = &conf
+
+		conf := *cfg
+
+		err := conf.prepare()
+		if err != nil {
+			cqrsCfg.err = err
+			return
+		}
+
+		cqrsCfg.outbox = &conf
 	}
 }
 
 func applyOptions(opts []Option) (cqrsConfig, error) {
 	var cfg cqrsConfig
+
 	for _, opt := range opts {
 		if opt == nil {
 			continue
 		}
+
 		opt(&cfg)
+
 		if cfg.err != nil {
 			break
 		}
 	}
+
 	return cfg, cfg.err
 }
 
 func (c *OutboxConfig) prepare() error {
 	if c.DB == nil && c.Pool == nil {
-		return errors.New("cqrs/bus: sql.DB or pgxpool.Pool must be provided")
+		return errOutboxMissingDB
 	}
+
 	if c.Subscriber == nil {
-		return errors.New("cqrs/bus: outbox subscriber is required")
+		return errOutboxMissingSubscriber
 	}
+
 	if c.RealPublisher == nil {
-		return errors.New("cqrs/bus: real publisher is required")
+		return errOutboxMissingRealPublisher
 	}
+
 	if c.Logger == nil {
-		return errors.New("cqrs/bus: logger is required")
+		return errOutboxMissingLogger
 	}
+
 	if c.MeterProvider == nil {
-		return errors.New("cqrs/bus: meter provider is required")
+		return errOutboxMissingMeterProvider
 	}
+
 	if c.DB == nil && c.Pool != nil {
 		c.DB = stdlib.OpenDBFromPool(c.Pool)
 	}
+
 	c.ForwarderName = sanitizeForwarderTopic(c.ForwarderName, c.DB, c.Pool)
+
 	return nil
 }
 
-func sanitizeForwarderTopic(name string, db *sql.DB, pool *pgxpool.Pool) string {
+func sanitizeForwarderTopic(name string, sqlDB *sql.DB, pool *pgxpool.Pool) string {
 	name = strings.TrimSpace(name)
 	if name != "" {
 		return name
@@ -185,13 +207,14 @@ func sanitizeForwarderTopic(name string, db *sql.DB, pool *pgxpool.Pool) string 
 	driverName := "sql"
 	if pool != nil {
 		driverName = "pgxpool"
-	} else if db != nil && db.Driver() != nil {
-		driverName = fmt.Sprintf("%T", db.Driver())
+	} else if sqlDB != nil && sqlDB.Driver() != nil {
+		driverName = fmt.Sprintf("%T", sqlDB.Driver())
 	}
 
 	driverName = strings.ToLower(driverName)
 	driverName = strings.ReplaceAll(driverName, ".", "_")
 	driverName = strings.ReplaceAll(driverName, "*", "_")
+
 	driverName = strings.Trim(driverName, "_")
 	if driverName == "" {
 		driverName = "sql"

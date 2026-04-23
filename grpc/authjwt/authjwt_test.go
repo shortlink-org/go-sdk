@@ -12,6 +12,8 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+const testRSAKeyBits = 2048
+
 // Test key for signing tokens.
 var (
 	testPrivateKey *rsa.PrivateKey
@@ -21,7 +23,7 @@ var (
 func TestMain(m *testing.M) {
 	var err error
 
-	testPrivateKey, err = rsa.GenerateKey(rand.Reader, 2048)
+	testPrivateKey, err = rsa.GenerateKey(rand.Reader, testRSAKeyBits)
 	if err != nil {
 		panic(err)
 	}
@@ -36,7 +38,7 @@ func mockKeyfunc(_ *jwt.Token) (any, error) {
 	return testPublicKey, nil
 }
 
-func createTestToken(t *testing.T, claims Claims) string {
+func createTestToken(t *testing.T, claims *Claims) string {
 	t.Helper()
 
 	token := jwt.NewWithClaims(jwt.SigningMethodRS256, claims)
@@ -58,7 +60,7 @@ func TestValidator_ValidToken(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	token := createTestToken(t, Claims{
+	token := createTestToken(t, &Claims{
 		RegisteredClaims: jwt.RegisteredClaims{
 			Subject:   "user-123",
 			Issuer:    "https://shortlink.best",
@@ -116,7 +118,7 @@ func TestValidator_ExpiredToken(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	token := createTestToken(t, Claims{
+	token := createTestToken(t, &Claims{
 		RegisteredClaims: jwt.RegisteredClaims{
 			Subject:   "user-123",
 			Issuer:    "https://shortlink.best",
@@ -141,7 +143,7 @@ func TestValidator_WrongIssuer(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	token := createTestToken(t, Claims{
+	token := createTestToken(t, &Claims{
 		RegisteredClaims: jwt.RegisteredClaims{
 			Subject:   "user-123",
 			Issuer:    "https://wrong-issuer.com",
@@ -164,7 +166,7 @@ func TestValidator_WrongAudience(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	token := createTestToken(t, Claims{
+	token := createTestToken(t, &Claims{
 		RegisteredClaims: jwt.RegisteredClaims{
 			Subject:   "user-123",
 			Issuer:    "https://shortlink.best",
@@ -188,7 +190,7 @@ func TestValidator_BearerPrefix(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	token := "Bearer " + createTestToken(t, Claims{
+	token := "Bearer " + createTestToken(t, &Claims{
 		RegisteredClaims: jwt.RegisteredClaims{
 			Subject:   "user-456",
 			Issuer:    "https://shortlink.best",
@@ -213,7 +215,7 @@ func TestValidator_SkipAudience(t *testing.T) {
 	require.NoError(t, err)
 
 	// Token without audience should be valid
-	token := createTestToken(t, Claims{
+	token := createTestToken(t, &Claims{
 		RegisteredClaims: jwt.RegisteredClaims{
 			Subject:   "user-123",
 			Issuer:    "https://shortlink.best",
@@ -270,7 +272,7 @@ func TestValidator_NoIssuer(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	token := createTestToken(t, Claims{
+	token := createTestToken(t, &Claims{
 		RegisteredClaims: jwt.RegisteredClaims{
 			Subject:   "user-123",
 			Issuer:    "any-issuer",

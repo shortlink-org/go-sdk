@@ -8,13 +8,11 @@ import (
 	"runtime"
 
 	"github.com/felixge/fgprof"
-
 	"go.opentelemetry.io/otel/trace"
 
+	"github.com/shortlink-org/go-sdk/config"
 	http_server "github.com/shortlink-org/go-sdk/http/server"
 	"github.com/shortlink-org/go-sdk/logger"
-
-	"github.com/shortlink-org/go-sdk/config"
 )
 
 type PprofEndpoint *http.ServeMux
@@ -47,7 +45,8 @@ func New(ctx context.Context, log logger.Logger, tracer trace.TracerProvider, cf
 		}
 
 		server := http_server.New(ctx, mux, serverCfg, cfg)
-		if err := server.ListenAndServe(); err != nil {
+		err := server.ListenAndServe()
+		if err != nil {
 			log.Error(err.Error())
 		}
 	}()

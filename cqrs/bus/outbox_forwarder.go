@@ -29,30 +29,131 @@ func newForwarderState(cfg *OutboxConfig) *forwarderState {
 		return nil
 	}
 
-	copy := *cfg
+	cfgSnap := *cfg
 
 	state := &forwarderState{
-		cfg:      &copy,
-		monitor:  newForwarderMonitor(copy.Logger, copy.MeterProvider, copy.ForwarderName),
-		wmLogger: sdkwatermill.NewWatermillLogger(copy.Logger),
+		cfg:      &cfgSnap,
+		monitor:  newForwarderMonitor(cfgSnap.Logger, cfgSnap.MeterProvider, cfgSnap.ForwarderName),
+		wmLogger: sdkwatermill.NewWatermillLogger(cfgSnap.Logger),
 	}
 
 	return state
+}
+
+func (s *forwarderState) Run(ctx context.Context) error {
+	if s == nil || s.cfg == nil {
+		return nil
+	}
+
+	if ctx == nil {
+		return errNilContext
+	}
+
+	s.cfg.Logger.Info("Starting CQRS outbox forwarder",
+		slog.String("forwarder", s.cfg.ForwarderName),
+	)
+
+	fwd, err := s.ensureForwarder()
+	if err != nil {
+		s.cfg.Logger.Error("Failed to initialize outbox forwarder",
+			slog.String("forwarder", s.cfg.ForwarderName),
+			slog.String("error", err.Error()),
+		)
+
+		return err
+	}
+
+	if fwd == nil {
+		s.cfg.Logger.Error("Failed to initialize outbox forwarder",
+			slog.String("forwarder", s.cfg.ForwarderName),
+			slog.String("error", errForwarderNotConfigured.Error()),
+		)
+
+		return errForwarderNotConfigured
+	}
+
+	runErr := fwd.Run(ctx)
+	if runErr != nil {
+		s.cfg.Logger.Error("Outbox forwarder stopped with error",
+			slog.String("forwarder", s.cfg.ForwarderName),
+			slog.String("error", runErr.Error()),
+		)
+
+		return runErr
+	}
+
+	s.cfg.Logger.Info("Outbox forwarder stopped",
+		slog.String("forwarder", s.cfg.ForwarderName),
+	)
+
+	return nil
+}
+
+func (s *forwarderState) Close(ctx context.Context) error {
+	if s == nil || s.cfg == nil {
+		return nil
+	}
+
+	fwd, err := s.ensureForwarder()
+	if err != nil {
+		return err
+	}
+
+	if fwd == nil {
+		return errForwarderNotConfigured
+	}
+
+	if ctx == nil {
+		return errNilContext
+	}
+
+	done := make(chan error, 1)
+
+	go func() {
+		done <- fwd.Close()
+	}()
+
+	select {
+	case <-ctx.Done():
+		s.cfg.Logger.Warn("Outbox forwarder close interrupted by context",
+			slog.String("forwarder", s.cfg.ForwarderName),
+			slog.String("error", ctx.Err().Error()),
+		)
+
+		return ctx.Err()
+	case closeErr := <-done:
+		if closeErr != nil {
+			s.cfg.Logger.Error("Failed to close outbox forwarder",
+				slog.String("forwarder", s.cfg.ForwarderName),
+				slog.String("error", closeErr.Error()),
+			)
+
+			return closeErr
+		}
+
+		s.cfg.Logger.Info("Outbox forwarder closed",
+			slog.String("forwarder", s.cfg.ForwarderName),
+		)
+
+		return nil
+	}
 }
 
 func (s *forwarderState) wrapPublisher(pub wmmessage.Publisher) wmmessage.Publisher {
 	if s == nil || s.cfg == nil || pub == nil {
 		return pub
 	}
+
 	pubCfg := forwarder.PublisherConfig{
 		ForwarderTopic: s.cfg.ForwarderName,
 	}
+
 	return forwarder.NewPublisher(pub, pubCfg)
 }
 
 func (s *forwarderState) ensureForwarder() (*forwarder.Forwarder, error) {
 	if s == nil || s.cfg == nil {
-		return nil, nil
+		return nil, errForwarderNotConfigured
 	}
 
 	s.once.Do(func() {
@@ -75,88 +176,6 @@ func (s *forwarderState) ensureForwarder() (*forwarder.Forwarder, error) {
 	})
 
 	return s.fwd, s.err
-}
-
-func (s *forwarderState) Run(ctx context.Context) error {
-	if s == nil || s.cfg == nil {
-		return nil
-	}
-
-	if ctx == nil {
-		ctx = context.Background()
-	}
-
-	s.cfg.Logger.Info("Starting CQRS outbox forwarder",
-		slog.String("forwarder", s.cfg.ForwarderName),
-	)
-
-	fwd, err := s.ensureForwarder()
-	if err != nil || fwd == nil {
-		if err != nil {
-			s.cfg.Logger.Error("Failed to initialize outbox forwarder",
-				slog.String("forwarder", s.cfg.ForwarderName),
-				slog.String("error", err.Error()),
-			)
-		}
-		return err
-	}
-
-	if err := fwd.Run(ctx); err != nil {
-		s.cfg.Logger.Error("Outbox forwarder stopped with error",
-			slog.String("forwarder", s.cfg.ForwarderName),
-			slog.String("error", err.Error()),
-		)
-		return err
-	}
-
-	s.cfg.Logger.Info("Outbox forwarder stopped",
-		slog.String("forwarder", s.cfg.ForwarderName),
-	)
-
-	return nil
-}
-
-func (s *forwarderState) Close(ctx context.Context) error {
-	if s == nil || s.cfg == nil {
-		return nil
-	}
-
-	fwd, err := s.ensureForwarder()
-	if err != nil || fwd == nil {
-		return err
-	}
-
-	if ctx == nil {
-		ctx = context.Background()
-	}
-
-	done := make(chan error, 1)
-	go func() {
-		done <- fwd.Close()
-	}()
-
-	select {
-	case <-ctx.Done():
-		s.cfg.Logger.Warn("Outbox forwarder close interrupted by context",
-			slog.String("forwarder", s.cfg.ForwarderName),
-			slog.String("error", ctx.Err().Error()),
-		)
-		return ctx.Err()
-	case err := <-done:
-		if err != nil {
-			s.cfg.Logger.Error("Failed to close outbox forwarder",
-				slog.String("forwarder", s.cfg.ForwarderName),
-				slog.String("error", err.Error()),
-			)
-			return err
-		}
-
-		s.cfg.Logger.Info("Outbox forwarder closed",
-			slog.String("forwarder", s.cfg.ForwarderName),
-		)
-
-		return nil
-	}
 }
 
 type forwarderMonitor struct {
@@ -225,6 +244,7 @@ func (m *forwarderMonitor) middleware() wmmessage.HandlerMiddleware {
 			}
 
 			m.observeSuccess(ctx, msg)
+
 			return result, nil
 		}
 	}

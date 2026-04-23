@@ -9,13 +9,16 @@ import (
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
-	"github.com/shortlink-org/go-sdk/auth/session"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
+
+	"github.com/shortlink-org/go-sdk/auth/session"
 )
+
+const interceptorRSAKeyBits = 2048
 
 var (
 	interceptorKeyOnce sync.Once
@@ -28,7 +31,7 @@ func getInterceptorKeys(t *testing.T) (*rsa.PrivateKey, *rsa.PublicKey) {
 
 	interceptorKeyOnce.Do(func() {
 		var err error
-		interceptorPrivKey, err = rsa.GenerateKey(rand.Reader, 2048)
+		interceptorPrivKey, err = rsa.GenerateKey(rand.Reader, interceptorRSAKeyBits)
 		if err != nil {
 			panic(err)
 		}
@@ -38,7 +41,7 @@ func getInterceptorKeys(t *testing.T) (*rsa.PrivateKey, *rsa.PublicKey) {
 	return interceptorPrivKey, interceptorPubKey
 }
 
-func createInterceptorToken(t *testing.T, claims Claims) string {
+func createInterceptorToken(t *testing.T, claims *Claims) string {
 	t.Helper()
 
 	priv, _ := getInterceptorKeys(t)
@@ -100,7 +103,7 @@ func TestValidateRequest_SetsSessionClaims(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	token := createInterceptorToken(t, Claims{
+	token := createInterceptorToken(t, &Claims{
 		RegisteredClaims: jwt.RegisteredClaims{
 			Subject:   "user-123",
 			Issuer:    "https://shortlink.best",

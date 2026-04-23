@@ -1,16 +1,18 @@
 package grpc
 
 import (
+	"github.com/bhope/hedge"
 	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-middleware/providers/prometheus"
 	"github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors/timeout"
 	"github.com/prometheus/client_golang/prometheus"
-	"github.com/shortlink-org/go-sdk/grpc/authforward"
-	grpc_logger "github.com/shortlink-org/go-sdk/grpc/middleware/logger"
-	"github.com/shortlink-org/go-sdk/logger"
 	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
 	api "go.opentelemetry.io/otel/sdk/metric"
 	"go.opentelemetry.io/otel/trace"
 	"google.golang.org/grpc"
+
+	"github.com/shortlink-org/go-sdk/grpc/authforward"
+	grpc_logger "github.com/shortlink-org/go-sdk/grpc/middleware/logger"
+	"github.com/shortlink-org/go-sdk/logger"
 )
 
 // Option configures a gRPC client.
@@ -20,6 +22,14 @@ type Option func(*Client)
 func (c *Client) apply(options ...Option) {
 	for _, option := range options {
 		option(c)
+	}
+}
+
+// WithHedge registers an adaptive hedged-requests unary interceptor (outermost).
+// See https://github.com/bhope/hedge
+func WithHedge(opts ...hedge.Option) Option {
+	return func(client *Client) {
+		client.hedgeUnary = hedge.NewUnaryClientInterceptor(opts...)
 	}
 }
 
@@ -104,7 +114,7 @@ func WithMetrics(prom *prometheus.Registry) Option {
 
 		defer func() {
 			// ignore duplicate-registration panic
-			_ = recover()
+			recover() //nolint:errcheck // recover return is the panic value, not an error
 		}()
 
 		prom.MustRegister(clientMetrics)

@@ -9,14 +9,13 @@ import (
 	"time"
 
 	"github.com/IBM/sarama"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
-
 	"github.com/ThreeDotsLabs/watermill"
 	"github.com/ThreeDotsLabs/watermill-kafka/v3/pkg/kafka"
 	"github.com/ThreeDotsLabs/watermill/message"
 	"github.com/ThreeDotsLabs/watermill/message/subscriber"
 	"github.com/ThreeDotsLabs/watermill/pubsub/tests"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func kafkaBrokers() []string {
@@ -24,6 +23,7 @@ func kafkaBrokers() []string {
 	if brokers != "" {
 		return strings.Split(brokers, ",")
 	}
+
 	return []string{"localhost:9091", "localhost:9092", "localhost:9093"}
 }
 
@@ -35,10 +35,13 @@ func newPubSub(
 ) (*kafka.Publisher, *kafka.Subscriber) {
 	logger := watermill.NewStdLogger(false, false)
 
-	var err error
-	var publisher *kafka.Publisher
+	var (
+		err       error
+		publisher *kafka.Publisher
+	)
 
 	retriesLeft := 5
+
 	for {
 		publisher, err = kafka.NewPublisher(kafka.PublisherConfig{
 			Brokers:   kafkaBrokers(),
@@ -52,6 +55,7 @@ func newPubSub(
 		fmt.Printf("cannot create kafka Publisher: %s, retrying (%d retries left)", err, retriesLeft)
 		time.Sleep(time.Second * 2)
 	}
+
 	require.NoError(t, err)
 
 	saramaConfig := kafka.DefaultSaramaSubscriberConfig()
@@ -70,6 +74,7 @@ func newPubSub(
 	var subscriber *kafka.Subscriber
 
 	retriesLeft = 5
+
 	for {
 		subscriber, err = kafka.NewSubscriber(
 			kafka.SubscriberConfig{
@@ -181,10 +186,11 @@ func TestCtxValues(t *testing.T) {
 
 	var messagesToPublish []*message.Message
 
-	for i := 0; i < 20; i++ {
+	for range 20 {
 		id := watermill.NewUUID()
 		messagesToPublish = append(messagesToPublish, message.NewMessage(id, nil))
 	}
+
 	err := pub.Publish(topicName, messagesToPublish...)
 	require.NoError(t, err, "cannot publish message")
 
@@ -195,6 +201,7 @@ func TestCtxValues(t *testing.T) {
 	require.True(t, all)
 
 	expectedPartitionsOffsets := map[int32]int64{}
+
 	for _, msg := range receivedMessages {
 		partition, ok := kafka.MessagePartitionFromCtx(msg.Context())
 		assert.True(t, ok)
@@ -214,6 +221,7 @@ func TestCtxValues(t *testing.T) {
 			expectedPartitionsOffsets[partition] = messagePartitionOffset + 1
 		}
 	}
+
 	assert.NotEmpty(t, expectedPartitionsOffsets)
 
 	offsets, err := sub.PartitionOffset(topicName)
@@ -272,6 +280,7 @@ MessagesLoop:
 			}
 
 			msg.Nack()
+
 			retries++
 		case <-time.After(timeout):
 			break MessagesLoop
@@ -314,6 +323,7 @@ func TestCtxValuesAfterRetry(t *testing.T) {
 		// kafka partition offset is offset of the last message + 1
 		expectedPartitionsOffsets[partition] = messagePartitionOffset + 1
 	}
+
 	assert.NotEmpty(t, expectedPartitionsOffsets)
 
 	offsets, err := sub.PartitionOffset(topicName)

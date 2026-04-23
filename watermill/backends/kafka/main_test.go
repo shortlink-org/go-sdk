@@ -33,13 +33,17 @@ func TestMain(m *testing.M) {
 	brokers, err := container.Brokers(ctx)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "failed to get kafka brokers: %v\n", err)
+
 		_ = container.Terminate(context.Background())
+
 		os.Exit(1)
 	}
 
 	if err := os.Setenv("WATERMILL_TEST_KAFKA_BROKERS", strings.Join(brokers, ",")); err != nil {
 		fmt.Fprintf(os.Stderr, "failed to set env: %v\n", err)
+
 		_ = container.Terminate(context.Background())
+
 		os.Exit(1)
 	}
 

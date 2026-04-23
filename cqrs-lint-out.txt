@@ -1,0 +1,10 @@
+cqrs/bus/command_bus.go:1: : # github.com/shortlink-org/go-sdk/cqrs/bus [github.com/shortlink-org/go-sdk/cqrs/bus.test]
+bus/command_bus.go:23:24: undefined: cqrsmessage.Marshaler
+bus/command_bus.go:29:67: undefined: cqrsmessage.Marshaler
+bus/command_bus.go:41:24: undefined: cqrsmessage.Marshaler
+bus/event_bus.go:25:24: undefined: cqrsmessage.Marshaler
+bus/event_bus.go:32:65: undefined: cqrsmessage.Marshaler
+bus/event_bus.go:44:24: undefined: cqrsmessage.Marshaler (typecheck)
+package bus
+1 issues:
+* typecheck: 1

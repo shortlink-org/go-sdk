@@ -41,7 +41,7 @@ func (ch *Channel) Consume(ctx context.Context, queue, consumer string, autoAck,
 
 	go func() {
 		for {
-			d, err := ch.Channel.ConsumeWithContext(ctx, queue, consumer, autoAck, exclusive, noLocal, noWait, args)
+			d, err := ch.ConsumeWithContext(ctx, queue, consumer, autoAck, exclusive, noLocal, noWait, args)
 			if err != nil {
 				ch.log.Error(fmt.Errorf("consume failed, err: %w", err).Error())
 				time.Sleep(time.Duration(ch.delay) * time.Second)

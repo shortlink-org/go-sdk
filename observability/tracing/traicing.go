@@ -8,7 +8,6 @@ import (
 	"log/slog"
 
 	otelpyroscope "github.com/grafana/otel-profiling-go"
-	"github.com/shortlink-org/go-sdk/config"
 	"go.opentelemetry.io/contrib/propagators/b3"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
@@ -17,8 +16,8 @@ import (
 	"go.opentelemetry.io/otel/sdk/trace"
 	traceProvider "go.opentelemetry.io/otel/trace"
 
+	"github.com/shortlink-org/go-sdk/config"
 	"github.com/shortlink-org/go-sdk/logger"
-
 	"github.com/shortlink-org/go-sdk/observability/common"
 )
 
@@ -79,7 +78,8 @@ func Init(ctx context.Context, cnf Config, log logger.Logger, cfg *config.Config
 		<-ctx.Done()
 
 		// Shutdown will flush any remaining spans and shut down the exporter.
-		if errShutdown := tp.Shutdown(ctx); errShutdown != nil {
+		errShutdown := tp.Shutdown(ctx)
+		if errShutdown != nil {
 			log.Error("error shutting down trace provider",
 				slog.String("err", errShutdown.Error()),
 			)

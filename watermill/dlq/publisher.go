@@ -2,14 +2,16 @@ package dlq
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"sync"
 
 	"github.com/ThreeDotsLabs/watermill/message"
-	"github.com/shortlink-org/go-sdk/logger"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/propagation"
+
+	"github.com/shortlink-org/go-sdk/logger"
 )
 
 var (
@@ -24,6 +26,7 @@ func getLogger() logger.Logger {
 		if err != nil {
 			panic(fmt.Sprintf("dlq logger init failed: %v", err))
 		}
+
 		logMu.Lock()
 		pkgLogger = l
 		logMu.Unlock()
@@ -54,11 +57,11 @@ func Logger() logger.Logger {
 // PublishDLQ builds the DLQ message and forwards it using the provided publisher.
 func PublishDLQ(ctx context.Context, publisher message.Publisher, topic string, event DLQEvent) error {
 	if publisher == nil {
-		return fmt.Errorf("dlq publisher is nil")
+		return errors.New("dlq publisher is nil")
 	}
 
 	if topic == "" {
-		return fmt.Errorf("dlq topic is empty")
+		return errors.New("dlq topic is empty")
 	}
 
 	msg, err := BuildDLQMessage(event)

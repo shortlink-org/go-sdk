@@ -26,6 +26,7 @@ func New(cfg *config.Config) *Redis {
 
 func (r *Redis) Init(ctx context.Context, log logger.Logger) error {
 	var ok bool
+
 	mq := dbredis.New(trace.NewNoopTracerProvider(), metric.NewMeterProvider(), r.cfg)
 
 	err := mq.Init(ctx)
@@ -42,7 +43,8 @@ func (r *Redis) Init(ctx context.Context, log logger.Logger) error {
 	go func() {
 		<-ctx.Done()
 
-		if errClose := r.close(); errClose != nil {
+		errClose := r.close()
+		if errClose != nil {
 			log.Error("Redis close error",
 				slog.String("error", errClose.Error()),
 			)

@@ -6,8 +6,8 @@ import (
 	"net/url"
 
 	"github.com/nats-io/nats.go"
-	"github.com/shortlink-org/go-sdk/config"
 
+	"github.com/shortlink-org/go-sdk/config"
 	"github.com/shortlink-org/go-sdk/logger"
 	"github.com/shortlink-org/go-sdk/mq/query"
 )
@@ -36,7 +36,8 @@ func (mq *MQ) Init(ctx context.Context, log logger.Logger) error {
 	go func() {
 		<-ctx.Done()
 
-		if errClose := mq.close(); errClose != nil {
+		errClose := mq.close()
+		if errClose != nil {
 			log.Error("NATS close",
 				slog.String("error", errClose.Error()),
 			)

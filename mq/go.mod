@@ -6,7 +6,6 @@ require (
 	github.com/IBM/sarama v1.47.0
 	github.com/dnwe/otelsarama v0.0.0-20240308230250-9388d9d40bc0
 	github.com/heptiolabs/healthcheck v0.0.0-20211123025425-613501dd5deb
-	github.com/moby/moby/api v1.54.1
 	github.com/nats-io/nats.go v1.51.0
 	github.com/rabbitmq/amqp091-go v1.11.0
 	github.com/redis/rueidis v1.0.74
@@ -14,9 +13,12 @@ require (
 	github.com/shortlink-org/go-sdk/logger v0.0.0-20260417235820-0f1877a4135b
 	github.com/stretchr/testify v1.11.1
 	github.com/testcontainers/testcontainers-go v0.42.0
+	github.com/testcontainers/testcontainers-go/modules/kafka v0.42.0
+	github.com/testcontainers/testcontainers-go/modules/nats v0.42.0
+	github.com/testcontainers/testcontainers-go/modules/rabbitmq v0.42.0
+	github.com/testcontainers/testcontainers-go/modules/redpanda v0.42.0
 	go.opentelemetry.io/otel v1.43.0
 	go.uber.org/goleak v1.3.0
-	golang.org/x/sync v0.20.0
 )
 
 require (
@@ -31,11 +33,14 @@ require (
 	github.com/ebitengine/purego v0.10.0 // indirect
 	github.com/felixge/httpsnoop v1.0.4 // indirect
 	github.com/go-ole/go-ole v1.2.6 // indirect
+	github.com/gocql/gocql v1.7.0 // indirect
+	github.com/hailocab/go-hostpool v0.0.0-20160125115350-e80d13ce29ed // indirect
 	github.com/hashicorp/golang-lru/v2 v2.0.7 // indirect
 	github.com/launchdarkly/eventsource v1.10.0 // indirect
 	github.com/lufia/plan9stats v0.0.0-20211012122336-39d0f177ccd0 // indirect
 	github.com/magiconair/properties v1.8.10 // indirect
 	github.com/moby/go-archive v0.2.0 // indirect
+	github.com/moby/moby/api v1.54.1 // indirect
 	github.com/moby/moby/client v0.4.0 // indirect
 	github.com/moby/patternmatcher v0.6.1 // indirect
 	github.com/moby/sys/sequential v0.6.0 // indirect
@@ -50,6 +55,9 @@ require (
 	github.com/twmb/murmur3 v1.1.8 // indirect
 	github.com/yusufpapurcu/wmi v1.2.4 // indirect
 	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.68.0 // indirect
+	golang.org/x/mod v0.35.0 // indirect
+	golang.org/x/sync v0.20.0 // indirect
+	gopkg.in/inf.v0 v0.9.1 // indirect
 )
 
 require (

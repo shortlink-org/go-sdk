@@ -22,6 +22,7 @@ func TestBackendPublishSubscribeWithTestcontainer(t *testing.T) {
 	if err != nil {
 		t.Skipf("kafka container not available: %v", err)
 	}
+
 	t.Cleanup(func() {
 		_ = kafkaContainer.Terminate(context.Background())
 	})

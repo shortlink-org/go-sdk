@@ -10,7 +10,7 @@ import (
 // New creates a new logger instance using the provided configuration.
 //
 //nolint:ireturn // It's made by design
-func NewDefault(_ context.Context, cfg *config.Config) (Logger, func(), error) {
+func NewDefault(_ context.Context, cfg *config.Config) (*SlogLogger, func(), error) {
 	cfg.SetDefault("LOG_LEVEL", INFO_LEVEL)
 	cfg.SetDefault("LOG_TIME_FORMAT", time.RFC3339Nano)
 

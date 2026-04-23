@@ -10,14 +10,15 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/shortlink-org/go-sdk/config"
-	"github.com/shortlink-org/go-sdk/flight_trace"
-	"github.com/shortlink-org/go-sdk/logger"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
+
+	"github.com/shortlink-org/go-sdk/config"
+	"github.com/shortlink-org/go-sdk/flight_trace"
+	"github.com/shortlink-org/go-sdk/logger"
 )
 
 const debugTraceKey = "X-DEBUG-TRACE"

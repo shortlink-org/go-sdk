@@ -2,6 +2,7 @@ package message
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 
@@ -53,12 +54,15 @@ func (m *ProtoMarshaler) Marshal(ctx context.Context, v any) (*wmmessage.Message
 	if wmMsg.Metadata.Get(MetadataTypeName) == "" {
 		wmMsg.Metadata.Set(MetadataTypeName, typeName)
 	}
+
 	if wmMsg.Metadata.Get(MetadataTypeVersion) == "" {
 		wmMsg.Metadata.Set(MetadataTypeVersion, version)
 	}
+
 	if wmMsg.Metadata.Get(MetadataContentType) == "" {
 		wmMsg.Metadata.Set(MetadataContentType, "application/x-protobuf")
 	}
+
 	if wmMsg.Metadata.Get(MetadataServiceName) == "" && m.namer != nil {
 		wmMsg.Metadata.Set(MetadataServiceName, m.namer.ServiceName())
 	}
@@ -72,10 +76,11 @@ func (m *ProtoMarshaler) Marshal(ctx context.Context, v any) (*wmmessage.Message
 // Unmarshal decodes protobuf payload into provided value.
 func (m *ProtoMarshaler) Unmarshal(msg *wmmessage.Message, v any) error {
 	if msg == nil {
-		return fmt.Errorf("message is nil")
+		return errors.New("message is nil")
 	}
+
 	if len(msg.Payload) == 0 {
-		return fmt.Errorf("message payload is empty")
+		return errors.New("message payload is empty")
 	}
 
 	protoMsg, ok := v.(proto.Message)
@@ -96,6 +101,7 @@ func (m *ProtoMarshaler) Name(v any) string {
 			return m.namer.CommandName(v)
 		}
 	}
+
 	return NameOf(v)
 }
 
@@ -104,14 +110,18 @@ func (m *ProtoMarshaler) NameFromMessage(msg *wmmessage.Message) string {
 	if msg == nil {
 		return ""
 	}
+
 	typeName := msg.Metadata.Get(MetadataTypeName)
+
 	version := msg.Metadata.Get(MetadataTypeVersion)
 	if typeName != "" {
 		if version == "" {
 			version = defaultVersion
 		}
-		return strings.Join([]string{typeName, version}, ".")
+
+		return typeName + "." + version
 	}
+
 	return NameOf(msg)
 }
 
@@ -119,14 +129,18 @@ func splitCanonicalName(full string) (string, string) {
 	if full == "" {
 		return "", defaultVersion
 	}
+
 	parts := strings.Split(full, ".")
 	if len(parts) <= 1 {
 		return full, defaultVersion
 	}
+
 	version := parts[len(parts)-1]
 	typeName := strings.Join(parts[:len(parts)-1], ".")
+
 	if version == "" {
 		version = defaultVersion
 	}
+
 	return typeName, version
 }

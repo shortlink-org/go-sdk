@@ -56,6 +56,7 @@ func generateBuildRamFilterMethod(g *protogen.GeneratedFile, structName string, 
 		if field.Desc.IsList() || field.Desc.IsMap() {
 			continue
 		}
+
 		fieldName := field.GoName
 		generateBuildRamFieldFilterConditions(g, fieldName)
 	}

@@ -23,9 +23,9 @@ func (f RoundTripperFunc) RoundTrip(r *http.Request) (*http.Response, error) {
 
 // Limiter defines the interface for rate limiting.
 // Wait blocks until a request can be made according to the rate limit,
-// or until the context is cancelled. It returns the total time spent waiting
+// or until the context is canceled. It returns the total time spent waiting
 // and any error that occurred (typically context.Canceled or context.DeadlineExceeded).
-type Limiter interface {
+type Limiter interface { //nolint:iface // Contract for http_client token bucket; implementations live in the parent package.
 	Wait(ctx context.Context) (time.Duration, error)
 }
 
@@ -76,15 +76,18 @@ func NewMetrics(namespace, subsystem string) *Metrics {
 }
 
 func (m *Metrics) Register(reg prometheus.Registerer) error {
-	if err := reg.Register(m.RateLimitWaitSeconds); err != nil {
+	err := reg.Register(m.RateLimitWaitSeconds)
+	if err != nil {
 		return fmt.Errorf("register wait_seconds: %w", err)
 	}
 
-	if err := reg.Register(m.RateLimit429Total); err != nil {
+	err = reg.Register(m.RateLimit429Total)
+	if err != nil {
 		return fmt.Errorf("register 429: %w", err)
 	}
 
-	if err := reg.Register(m.DeadlineCancelledTotal); err != nil {
+	err = reg.Register(m.DeadlineCancelledTotal)
+	if err != nil {
 		return fmt.Errorf("register deadline_canceled: %w", err)
 	}
 

@@ -17,10 +17,8 @@ import (
 	"go.opentelemetry.io/otel/trace"
 
 	"github.com/shortlink-org/go-sdk/config"
-
 	http_server "github.com/shortlink-org/go-sdk/http/server"
 	"github.com/shortlink-org/go-sdk/logger"
-
 	"github.com/shortlink-org/go-sdk/observability/common"
 )
 
@@ -34,6 +32,7 @@ type Monitoring struct {
 // New - Monitoring endpoints
 func New(ctx context.Context, log logger.Logger, tracer trace.TracerProvider, cfg *config.Config) (*Monitoring, func(), error) {
 	var err error
+
 	monitoring := &Monitoring{cfg: cfg}
 
 	// Create a "common" meter provider for metrics
@@ -61,6 +60,7 @@ func New(ctx context.Context, log logger.Logger, tracer trace.TracerProvider, cf
 			log.Error(errListenAndServe.Error())
 		}
 	}()
+
 	log.Info("Run monitoring",
 		slog.String("addr", "0.0.0.0:9090"),
 	)

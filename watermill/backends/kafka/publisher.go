@@ -4,10 +4,9 @@ import (
 	"time"
 
 	"github.com/IBM/sarama"
-	"github.com/pkg/errors"
-
 	"github.com/ThreeDotsLabs/watermill"
 	"github.com/ThreeDotsLabs/watermill/message"
+	"github.com/pkg/errors"
 )
 
 type Publisher struct {
@@ -75,6 +74,7 @@ func (c *PublisherConfig) setDefaults() {
 	if c.OverwriteSaramaConfig == nil {
 		c.OverwriteSaramaConfig = DefaultSaramaSyncPublisherConfig()
 	}
+
 	if c.Marshaler == nil {
 		c.Marshaler = DefaultMarshaler{}
 	}
@@ -84,6 +84,7 @@ func (c PublisherConfig) Validate() error {
 	if len(c.Brokers) == 0 {
 		return errors.New("missing brokers")
 	}
+
 	if c.Marshaler == nil {
 		return errors.New("missing marshaler")
 	}
@@ -141,9 +142,11 @@ func (p *Publisher) Close() error {
 	if p.closed {
 		return nil
 	}
+
 	p.closed = true
 
-	if err := p.producer.Close(); err != nil {
+	err := p.producer.Close()
+	if err != nil {
 		return errors.Wrap(err, "cannot close Kafka producer")
 	}
 

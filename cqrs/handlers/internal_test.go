@@ -17,7 +17,8 @@ func (sampleImpl) Do() {}
 
 func TestNewValueHandlesPointerAndValueTypes(t *testing.T) {
 	t.Run("value type returns pointer", func(t *testing.T) {
-		typ := reflect.TypeOf(sampleStruct{})
+		typ := reflect.TypeFor[sampleStruct]()
+
 		val := newValue(typ)
 		if _, ok := val.(*sampleStruct); !ok {
 			t.Fatalf("expected *sampleStruct, got %T", val)
@@ -25,7 +26,8 @@ func TestNewValueHandlesPointerAndValueTypes(t *testing.T) {
 	})
 
 	t.Run("pointer type is preserved", func(t *testing.T) {
-		typ := reflect.TypeOf(&sampleStruct{})
+		typ := reflect.TypeFor[*sampleStruct]()
+
 		val := newValue(typ)
 		if _, ok := val.(*sampleStruct); !ok {
 			t.Fatalf("expected *sampleStruct, got %T", val)
@@ -34,18 +36,20 @@ func TestNewValueHandlesPointerAndValueTypes(t *testing.T) {
 }
 
 func TestTypedPayloadCoversInterfacesAndValues(t *testing.T) {
-	registryType := reflect.TypeOf(&sampleStruct{})
+	registryType := reflect.TypeFor[*sampleStruct]()
 	handlerType := handlerTypeOf[*sampleStruct]()
 
 	payload, err := typedPayload[*sampleStruct](&sampleStruct{}, handlerType, registryType)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
+
 	if payload == nil {
 		t.Fatal("payload is nil")
 	}
 
 	interfaceHandlerType := handlerTypeOf[sampleInterface]()
+
 	_, err = typedPayload[sampleInterface](&sampleImpl{}, interfaceHandlerType, registryType)
 	if err != nil {
 		t.Fatalf("unexpected error for interface handler: %v", err)
@@ -53,7 +57,7 @@ func TestTypedPayloadCoversInterfacesAndValues(t *testing.T) {
 }
 
 func TestTypedPayloadMismatch(t *testing.T) {
-	registryType := reflect.TypeOf(&sampleStruct{})
+	registryType := reflect.TypeFor[*sampleStruct]()
 	handlerType := handlerTypeOf[*sampleImpl]()
 
 	if _, err := typedPayload[*sampleImpl](&sampleStruct{}, handlerType, registryType); err == nil {

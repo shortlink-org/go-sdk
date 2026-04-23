@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	wmmessage "github.com/ThreeDotsLabs/watermill/message"
+
 	cqrsmessage "github.com/shortlink-org/go-sdk/cqrs/message"
 )
 
@@ -60,30 +61,15 @@ func NewCommandBusWithOptions(
 	return bus, nil
 }
 
-// validate checks that the command bus and its dependencies are properly initialized.
-func (b *CommandBus) validate(cmd any) error {
-	if b == nil {
-		return errCommandBusUninitialized
-	}
-	if b.publisher == nil {
-		return errCommandPublisherNil
-	}
-	if b.marshaler == nil {
-		return errCommandMarshalerNil
-	}
-	if cmd == nil {
-		return errCommandPayloadNil
-	}
-	return nil
-}
-
 // Send encodes and publishes command with Shortlink metadata and tracing context.
 func (b *CommandBus) Send(ctx context.Context, cmd any) error {
-	if err := b.validate(cmd); err != nil {
-		return err
-	}
 	if ctx == nil {
-		ctx = context.Background()
+		return errNilContext
+	}
+
+	errValidate := b.validate(cmd)
+	if errValidate != nil {
+		return errValidate
 	}
 
 	var (
@@ -110,6 +96,7 @@ func (b *CommandBus) Send(ctx context.Context, cmd any) error {
 	if msg.Metadata.Get(cqrsmessage.MetadataServiceName) == "" && service != "" {
 		msg.Metadata.Set(cqrsmessage.MetadataServiceName, service)
 	}
+
 	msg.Metadata.Set(cqrsmessage.MetadataMessageKind, string(cqrsmessage.KindCommand))
 
 	cqrsmessage.SetTrace(ctx, msg)
@@ -133,4 +120,25 @@ func (b *CommandBus) CloseForwarder(ctx context.Context) error {
 	}
 
 	return b.forwarder.Close(ctx)
+}
+
+// validate checks that the command bus and its dependencies are properly initialized.
+func (b *CommandBus) validate(cmd any) error {
+	if b == nil {
+		return errCommandBusUninitialized
+	}
+
+	if b.publisher == nil {
+		return errCommandPublisherNil
+	}
+
+	if b.marshaler == nil {
+		return errCommandMarshalerNil
+	}
+
+	if cmd == nil {
+		return errCommandPayloadNil
+	}
+
+	return nil
 }

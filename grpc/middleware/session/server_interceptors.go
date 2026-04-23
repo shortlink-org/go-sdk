@@ -8,7 +8,6 @@ import (
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
-	"github.com/shortlink-org/go-sdk/auth/session"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	otelcodes "go.opentelemetry.io/otel/codes"
@@ -17,6 +16,8 @@ import (
 	grpcCodes "google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
+
+	"github.com/shortlink-org/go-sdk/auth/session"
 )
 
 const (
@@ -104,12 +105,16 @@ func handleUnarySession(
 			attribute.Int("rpc.grpc.status_code", int(code)),
 		)
 
-		observeIdentityResolution(ctx, source, outcome, reason, start)
+		observeIdentityResolution(identityResolutionObserveParams{
+			ctx: ctx, source: source, outcome: outcome, reason: reason, start: start,
+		})
 
 		return nil, status.Error(code, err.Error())
 	}
 
-	observeIdentityResolution(ctx, source, outcome, reason, start)
+	observeIdentityResolution(identityResolutionObserveParams{
+		ctx: ctx, source: source, outcome: outcome, reason: reason, start: start,
+	})
 
 	span.SetAttributes(attribute.String("enduser.id", userID))
 	span.SetStatus(otelcodes.Ok, "user identity resolved")
@@ -168,18 +173,24 @@ func handleStreamSession(
 	)
 
 	start := time.Now()
+
 	userID, source, err := resolveUserIdentity(ctx, span)
 	outcome, reason := "success", "ok"
 
 	if err != nil {
 		code, reasonStr := classifyAuthError(err)
 		span.SetAttributes(attribute.Int("rpc.grpc.status_code", int(code)))
-		observeIdentityResolution(ctx, source, "error", reasonStr, start)
+		observeIdentityResolution(identityResolutionObserveParams{
+			ctx: ctx, source: source, outcome: "error", reason: reasonStr, start: start,
+		})
 
 		return status.Error(code, err.Error())
 	}
 
-	observeIdentityResolution(ctx, source, outcome, reason, start)
+	observeIdentityResolution(identityResolutionObserveParams{
+		ctx: ctx, source: source, outcome: outcome, reason: reason, start: start,
+	})
+
 	span.SetAttributes(attribute.String("enduser.id", userID))
 	span.SetStatus(otelcodes.Ok, "user identity resolved")
 
@@ -187,6 +198,7 @@ func handleStreamSession(
 	if claims := claimsFromMetadata(ctx); claims != nil {
 		ctx = session.WithClaims(ctx, claims)
 	}
+
 	wrapped := &sessionWrappedServerStream{ServerStream: stream, wrappedCtx: ctx}
 	err = handler(srv, wrapped)
 
@@ -278,6 +290,7 @@ func firstNonEmptyMetadataValue(md metadata.MD, keys ...string) string {
 		if len(values) == 0 {
 			continue
 		}
+
 		value := strings.TrimSpace(values[0])
 		if value != "" {
 			return value
@@ -319,18 +332,26 @@ func classifyAuthError(err error) (grpcCodes.Code, string) {
 
 // --- Metrics (with exemplars) ---
 
-func observeIdentityResolution(ctx context.Context, source, outcome, reason string, start time.Time) {
-	duration := time.Since(start).Seconds()
+type identityResolutionObserveParams struct {
+	ctx     context.Context
+	source  string
+	outcome string
+	reason  string
+	start   time.Time
+}
+
+func observeIdentityResolution(p identityResolutionObserveParams) {
+	duration := time.Since(p.start).Seconds()
 
 	authIdentityResolutionTotal.
-		WithLabelValues(source, outcome, reason).
+		WithLabelValues(p.source, p.outcome, p.reason).
 		Inc()
 
 	obs := authIdentityResolutionSeconds.
-		WithLabelValues(source, outcome, reason)
+		WithLabelValues(p.source, p.outcome, p.reason)
 
 	if eo, ok := obs.(prometheus.ExemplarObserver); ok {
-		if sc := trace.SpanContextFromContext(ctx); sc.IsSampled() && sc.HasTraceID() {
+		if sc := trace.SpanContextFromContext(p.ctx); sc.IsSampled() && sc.HasTraceID() {
 			eo.ObserveWithExemplar(duration, prometheus.Labels{
 				"trace_id": sc.TraceID().String(),
 			})

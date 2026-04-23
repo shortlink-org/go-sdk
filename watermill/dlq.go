@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/ThreeDotsLabs/watermill/message"
+
 	shortdlq "github.com/shortlink-org/go-sdk/watermill/dlq"
 )
 

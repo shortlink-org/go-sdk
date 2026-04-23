@@ -9,6 +9,8 @@ import (
 )
 
 // TestTrafficLightFSM verifies the functionality of the Traffic Light FSM with context support.
+//
+//nolint:maintidx // one scenario with sequential transitions and repeated assertions
 func TestTrafficLightFSM(t *testing.T) {
 	// Define traffic light states.
 	const (
@@ -40,18 +42,20 @@ func TestTrafficLightFSM(t *testing.T) {
 	)
 
 	// Set up the OnExitState callback.
-	trafficLight.SetOnExitState(func(ctx context.Context, from, to State, event Event) {
+	trafficLight.SetOnExitState(func(ctx context.Context, fromState, toState State, event Event) {
 		callbackLock.Lock()
 		defer callbackLock.Unlock()
-		exited = from
+
+		exited = fromState
 		triggeredEv = event
 	})
 
 	// Set up the OnEnterState callback.
-	trafficLight.SetOnEnterState(func(ctx context.Context, from, to State, event Event) {
+	trafficLight.SetOnEnterState(func(ctx context.Context, fromState, toState State, event Event) {
 		callbackLock.Lock()
 		defer callbackLock.Unlock()
-		entered = to
+
+		entered = toState
 		triggeredEv = event
 	})
 
@@ -59,6 +63,7 @@ func TestTrafficLightFSM(t *testing.T) {
 	resetCallbacks := func() {
 		callbackLock.Lock()
 		defer callbackLock.Unlock()
+
 		entered, exited, triggeredEv = "", "", ""
 	}
 

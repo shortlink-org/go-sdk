@@ -6,27 +6,27 @@ package sessioninterceptor
 import (
 	"context"
 
-	"github.com/shortlink-org/go-sdk/auth/session"
-	"github.com/shortlink-org/go-sdk/grpc/authforward"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"
+
+	"github.com/shortlink-org/go-sdk/auth/session"
+	"github.com/shortlink-org/go-sdk/grpc/authforward"
 )
 
 const (
-	// authorizationKey is the gRPC metadata key for the JWT token.
-	// Must be lowercase for gRPC metadata.
+	// The gRPC metadata key for the JWT token. Must be lowercase for gRPC metadata.
 	authorizationKey = "authorization"
 
-	// userIDKey is the gRPC metadata key for the user ID.
+	// The gRPC metadata key for the user ID.
 	userIDKey = "user-id"
 
-	// xUserIDKey is the metadata key populated by Istio outputClaimToHeaders.
+	// The metadata key populated by Istio outputClaimToHeaders for the user id.
 	xUserIDKey = "x-user-id"
 
-	// xUserEmailKey is the metadata key populated by Istio outputClaimToHeaders.
+	// The metadata key populated by Istio outputClaimToHeaders for the user email.
 	xUserEmailKey = "x-user-email"
 
 	// initialPairsCapacity is the initial capacity for metadata pairs slice.
@@ -69,7 +69,10 @@ func attachAuthMetadata(ctx context.Context) (context.Context, error) {
 	auth := GetAuthorization(ctx)
 
 	// Get user ID from JWT claims
-	userID, _ := session.GetUserID(ctx)
+	userID, getUserErr := session.GetUserID(ctx)
+	if getUserErr != nil {
+		userID = ""
+	}
 
 	// Build metadata
 	pairs := make([]string, 0, initialPairsCapacity)

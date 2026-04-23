@@ -4,7 +4,6 @@ import (
 	"context"
 
 	"github.com/shortlink-org/go-sdk/config"
-
 	"github.com/shortlink-org/go-sdk/db/options"
 )
 

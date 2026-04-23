@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	wmmessage "github.com/ThreeDotsLabs/watermill/message"
+
 	cqrsmessage "github.com/shortlink-org/go-sdk/cqrs/message"
 	"github.com/shortlink-org/go-sdk/uow"
 )
@@ -65,62 +66,59 @@ func NewEventBusWithOptions(
 	return bus, nil
 }
 
-// validate checks that the event bus and its dependencies are properly initialized.
-// When only WithTxAwareOutbox is used (no forwarder), publisher may be nil.
-func (b *EventBus) validate(evt any) error {
-	if b == nil {
-		return errEventBusUninitialized
-	}
-	if b.publisher == nil && (b.txOutbox == nil || b.forwarder != nil) {
-		return errEventPublisherNil
-	}
-	if b.marshaler == nil {
-		return errEventMarshalerNil
-	}
-	if evt == nil {
-		return errEventPayloadNil
-	}
-	return nil
-}
-
 // Publish sends event using canonical topic name.
 // Optional PublishOption(s) apply to this call only; e.g. WithPublisher(txPublisher) for transactional outbox.
 func (b *EventBus) Publish(ctx context.Context, evt any, opts ...PublishOption) error {
-	if err := b.validate(evt); err != nil {
-		return err
-	}
 	if ctx == nil {
-		ctx = context.Background()
+		return errNilContext
 	}
 
-	var po publishOptions
+	errValidate := b.validate(evt)
+	if errValidate != nil {
+		return errValidate
+	}
+
+	var pubOpts publishOptions
+
 	for _, opt := range opts {
 		if opt != nil {
-			opt(&po)
+			opt(&pubOpts)
 		}
 	}
+
 	publisher := b.publisher
+
 	var txPub wmmessage.Publisher
-	if po.publisher != nil {
-		publisher = po.publisher
+
+	defer func() {
+		if txPub == nil {
+			return
+		}
+
+		closer, ok := txPub.(interface{ Close() error })
+		if !ok {
+			return
+		}
+
+		_ = closer.Close() //nolint:errcheck // best-effort close of tx-scoped publisher after publish
+	}()
+
+	if pubOpts.publisher != nil {
+		publisher = pubOpts.publisher
 	} else if b.txOutbox != nil && uow.HasTx(ctx) {
 		var err error
+
 		txPub, err = newTxPublisher(uow.FromContext(ctx), b.txOutbox)
 		if err != nil {
 			return fmt.Errorf("tx-scoped publisher: %w", err)
 		}
+
 		publisher = txPub
 	}
+
 	if publisher == nil {
 		return errEventPublishRequiresTx
 	}
-	defer func() {
-		if txPub != nil {
-			if c, ok := txPub.(interface{ Close() error }); ok {
-				_ = c.Close()
-			}
-		}
-	}()
 
 	var (
 		name    string
@@ -146,6 +144,7 @@ func (b *EventBus) Publish(ctx context.Context, evt any, opts ...PublishOption) 
 	if msg.Metadata.Get(cqrsmessage.MetadataServiceName) == "" && service != "" {
 		msg.Metadata.Set(cqrsmessage.MetadataServiceName, service)
 	}
+
 	msg.Metadata.Set(cqrsmessage.MetadataMessageKind, string(cqrsmessage.KindEvent))
 
 	cqrsmessage.SetTrace(ctx, msg)
@@ -171,6 +170,28 @@ func (b *EventBus) CloseForwarder(ctx context.Context) error {
 	return b.forwarder.Close(ctx)
 }
 
+// validate checks that the event bus and its dependencies are properly initialized.
+// When only WithTxAwareOutbox is used (no forwarder), publisher may be nil.
+func (b *EventBus) validate(evt any) error {
+	if b == nil {
+		return errEventBusUninitialized
+	}
+
+	if b.publisher == nil && (b.txOutbox == nil || b.forwarder != nil) {
+		return errEventPublisherNil
+	}
+
+	if b.marshaler == nil {
+		return errEventMarshalerNil
+	}
+
+	if evt == nil {
+		return errEventPayloadNil
+	}
+
+	return nil
+}
+
 // EventPublisher exposes EventBus as Publish(ctx, event) for dependency injection.
 // Use it as ports.EventPublisher so apps (e.g. OMS) need no local adapter.
 type EventPublisher struct{ Bus *EventBus }
@@ -185,5 +206,6 @@ func (p *EventPublisher) Publish(ctx context.Context, event any) error {
 	if p == nil || p.Bus == nil {
 		return nil
 	}
+
 	return p.Bus.Publish(ctx, event)
 }

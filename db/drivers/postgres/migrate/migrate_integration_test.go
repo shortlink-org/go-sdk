@@ -13,7 +13,6 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/modules/postgres"
-	"github.com/testcontainers/testcontainers-go/wait"
 
 	"github.com/shortlink-org/go-sdk/db/drivers/postgres/migrate"
 )
@@ -44,12 +43,9 @@ func setupPostgres(t *testing.T) *pgxpool.Pool {
 		postgres.WithDatabase("testdb"),
 		postgres.WithUsername("testuser"),
 		postgres.WithPassword("testpass"),
-		testcontainers.WithWaitStrategy(
-			wait.ForLog("database system is ready to accept connections").
-				WithOccurrence(2).
-				WithStartupTimeout(30*time.Second),
-		),
+		postgres.BasicWaitStrategies(),
 	)
+	testcontainers.CleanupContainer(t, container)
 	require.NoError(t, err)
 
 	connStr, err := container.ConnectionString(ctx, "sslmode=disable")
@@ -60,7 +56,6 @@ func setupPostgres(t *testing.T) *pgxpool.Pool {
 
 	t.Cleanup(func() {
 		pool.Close()
-		container.Terminate(context.Background())
 	})
 
 	return pool

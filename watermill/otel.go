@@ -35,6 +35,7 @@ func ExtractTrace(parent context.Context, msg *message.Message) context.Context 
 	}
 
 	traceID, err1 := trace.TraceIDFromHex(tid)
+
 	spanID, err2 := trace.SpanIDFromHex(sid)
 	if err1 != nil || err2 != nil {
 		return parent
@@ -71,6 +72,7 @@ func (o *OTelMiddleware) HandlerMiddleware() message.HandlerMiddleware {
 			if parent == nil {
 				parent = context.Background()
 			}
+
 			ctx := ExtractTrace(parent, msg)
 
 			// Start consumer span

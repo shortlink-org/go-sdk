@@ -34,7 +34,8 @@ func (c amqpHeadersCarrier) ForeachKey(handler func(key, val string) error) erro
 			continue
 		}
 
-		if err := handler(k, v); err != nil {
+		err := handler(k, v)
+		if err != nil {
 			return err
 		}
 	}

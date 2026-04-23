@@ -14,10 +14,17 @@ import (
 	"github.com/shortlink-org/go-sdk/observability/metrics"
 )
 
+const defaultLocalCacheCount = 1000
+
 // New returns a new cache.Client.
-func New(ctx context.Context, tracer trace.TracerProvider, monitor *metrics.Monitoring, cfg *config.Config) (*cache.Cache, error) {
+func New(
+	ctx context.Context,
+	tracer trace.TracerProvider,
+	monitor *metrics.Monitoring,
+	cfg *config.Config,
+) (*cache.Cache, error) {
 	cfg.SetDefault("LOCAL_CACHE_TTL", "5m")
-	cfg.SetDefault("LOCAL_CACHE_COUNT", 1000)
+	cfg.SetDefault("LOCAL_CACHE_COUNT", defaultLocalCacheCount)
 	cfg.SetDefault("LOCAL_CACHE_METRICS_ENABLED", true)
 
 	store := redis.New(tracer, monitor.Metrics, cfg)

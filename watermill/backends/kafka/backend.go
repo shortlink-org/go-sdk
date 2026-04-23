@@ -6,6 +6,7 @@ import (
 
 	"github.com/ThreeDotsLabs/watermill/message"
 	"github.com/hashicorp/go-multierror"
+	"github.com/pkg/errors"
 
 	"github.com/shortlink-org/go-sdk/config"
 	"github.com/shortlink-org/go-sdk/logger"
@@ -21,10 +22,11 @@ type Backend struct {
 // New wires Kafka publisher and subscriber using config-driven defaults.
 func New(_ context.Context, log logger.Logger, cfg *config.Config) (*Backend, error) {
 	if cfg == nil {
-		return nil, fmt.Errorf("config is nil")
+		return nil, errors.New("config is nil")
 	}
+
 	if log == nil {
-		return nil, fmt.Errorf("logger is nil")
+		return nil, errors.New("logger is nil")
 	}
 
 	settings, err := loadBackendSettings(cfg)
@@ -56,6 +58,7 @@ func (b *Backend) Publisher() message.Publisher {
 	if b == nil {
 		return nil
 	}
+
 	return b.publisher
 }
 
@@ -64,6 +67,7 @@ func (b *Backend) Subscriber() message.Subscriber {
 	if b == nil {
 		return nil
 	}
+
 	return b.subscriber
 }
 
@@ -76,13 +80,15 @@ func (b *Backend) Close() error {
 	var errs *multierror.Error
 
 	if b.publisher != nil {
-		if err := b.publisher.Close(); err != nil {
+		err := b.publisher.Close()
+		if err != nil {
 			errs = multierror.Append(errs, fmt.Errorf("close publisher: %w", err))
 		}
 	}
 
 	if b.subscriber != nil {
-		if err := b.subscriber.Close(); err != nil {
+		err := b.subscriber.Close()
+		if err != nil {
 			errs = multierror.Append(errs, fmt.Errorf("close subscriber: %w", err))
 		}
 	}
@@ -93,10 +99,11 @@ func (b *Backend) Close() error {
 // NewPublisherFromConfig wires only Kafka publisher from config/log.
 func NewPublisherFromConfig(log logger.Logger, cfg *config.Config) (*Publisher, error) {
 	if cfg == nil {
-		return nil, fmt.Errorf("config is nil")
+		return nil, errors.New("config is nil")
 	}
+
 	if log == nil {
-		return nil, fmt.Errorf("logger is nil")
+		return nil, errors.New("logger is nil")
 	}
 
 	settings, err := loadBackendSettings(cfg)
@@ -110,10 +117,11 @@ func NewPublisherFromConfig(log logger.Logger, cfg *config.Config) (*Publisher, 
 // NewSubscriberFromConfig wires only Kafka subscriber from config/log.
 func NewSubscriberFromConfig(log logger.Logger, cfg *config.Config) (*Subscriber, error) {
 	if cfg == nil {
-		return nil, fmt.Errorf("config is nil")
+		return nil, errors.New("config is nil")
 	}
+
 	if log == nil {
-		return nil, fmt.Errorf("logger is nil")
+		return nil, errors.New("logger is nil")
 	}
 
 	settings, err := loadBackendSettings(cfg)

@@ -1,6 +1,7 @@
 package metrics_middleware
 
 import (
+	"context"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -22,7 +23,7 @@ func Test_NewMetrics(t *testing.T) {
 	router.Use(middlewares)
 
 	// Create a test request and response recorder
-	req := httptest.NewRequest(http.MethodGet, "/users/bob", http.NoBody)
+	req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/users/bob", http.NoBody)
 	w := httptest.NewRecorder()
 
 	// Add a test endpoint that returns a 200 OK status code

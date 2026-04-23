@@ -2,9 +2,10 @@ package rabbit
 
 import (
 	"context"
-	"fmt"
+	"errors"
 
 	"github.com/ThreeDotsLabs/watermill/message"
+
 	"github.com/shortlink-org/go-sdk/config"
 	"github.com/shortlink-org/go-sdk/logger"
 )
@@ -13,7 +14,7 @@ type Backend struct{}
 
 func New(ctx context.Context, log logger.Logger, cfg *config.Config) (*Backend, error) {
 	// TODO: implement real AMQP adapter
-	return nil, fmt.Errorf("RabbitMQ backend is not implemented yet")
+	return nil, errors.New("RabbitMQ backend is not implemented yet")
 }
 
 func (b *Backend) Publisher() message.Publisher   { return nil }

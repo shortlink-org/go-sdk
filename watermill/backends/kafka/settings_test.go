@@ -62,6 +62,7 @@ func TestNewKafkaConfigOverrides(t *testing.T) {
 	assert.False(t, kcfg.enableOTEL)
 	assert.Equal(t, sarama.OffsetOldest, kcfg.initialOffset)
 	assert.Equal(t, sarama.RoundRobinBalanceStrategyName, kcfg.rebalanceStrategy.Name())
+
 	expectedVersion, _ := sarama.ParseKafkaVersion("2.5.0")
 	assert.Equal(t, expectedVersion, kcfg.version)
 	assert.Equal(t, sarama.CompressionGZIP, kcfg.compression)

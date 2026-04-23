@@ -1,14 +1,16 @@
 package csrf
 
 import (
+	"context"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
-	"github.com/shortlink-org/go-sdk/config"
-	"github.com/shortlink-org/go-sdk/logger"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/shortlink-org/go-sdk/config"
+	"github.com/shortlink-org/go-sdk/logger"
 )
 
 func TestMiddleware(t *testing.T) {
@@ -72,6 +74,7 @@ func TestMiddleware(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			// Clean up environment/config
 			t.Setenv("CSRF_TRUSTED_ORIGINS", "")
+
 			cfg, err := config.New()
 			require.NoError(t, err)
 			cfg.Reset()
@@ -88,8 +91,9 @@ func TestMiddleware(t *testing.T) {
 			// Create a test handler
 			handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				w.WriteHeader(http.StatusOK)
-				_, err := w.Write([]byte("OK"))
-				require.NoError(t, err)
+
+				_, writeErr := w.Write([]byte("OK"))
+				assert.NoError(t, writeErr)
 			})
 
 			// Apply CSRF middleware
@@ -103,7 +107,7 @@ func TestMiddleware(t *testing.T) {
 			protectedHandler := middleware(handler)
 
 			// Create test request
-			req := httptest.NewRequest(tt.method, "/test", http.NoBody)
+			req := httptest.NewRequestWithContext(context.Background(), tt.method, "/test", http.NoBody)
 			if tt.origin != "" {
 				req.Header.Set("Origin", tt.origin)
 			}
@@ -172,8 +176,9 @@ func TestNew(t *testing.T) {
 			// Create a test handler
 			handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				w.WriteHeader(http.StatusOK)
-				_, err := w.Write([]byte("OK"))
-				require.NoError(t, err)
+
+				_, writeErr := w.Write([]byte("OK"))
+				assert.NoError(t, writeErr)
 			})
 
 			// Apply CSRF middleware with custom config
@@ -181,7 +186,7 @@ func TestNew(t *testing.T) {
 			protectedHandler := middleware(handler)
 
 			// Create test request
-			req := httptest.NewRequest(tt.method, "/test", http.NoBody)
+			req := httptest.NewRequestWithContext(context.Background(), tt.method, "/test", http.NoBody)
 			req.Header.Set("Origin", tt.origin)
 
 			// Record response
@@ -230,6 +235,7 @@ func TestConfigureTrustedOrigins(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Setenv("CSRF_TRUSTED_ORIGINS", "")
+
 			cfg, err := config.New()
 			require.NoError(t, err)
 			cfg.Reset()
@@ -263,7 +269,7 @@ func TestConfigureTrustedOrigins(t *testing.T) {
 					continue
 				}
 
-				req := httptest.NewRequest(http.MethodPost, "/test", http.NoBody)
+				req := httptest.NewRequestWithContext(context.Background(), http.MethodPost, "/test", http.NoBody)
 				req.Header.Set("Origin", expectedOrigin)
 
 				rr := httptest.NewRecorder()
@@ -284,6 +290,7 @@ func TestCustomEnvironmentVariable(t *testing.T) {
 	// Clean up
 	t.Setenv("CSRF_TRUSTED_ORIGINS", "")
 	t.Setenv(customEnvVar, "")
+
 	appCfg, err := config.New()
 	require.NoError(t, err)
 	appCfg.Reset()
@@ -299,8 +306,9 @@ func TestCustomEnvironmentVariable(t *testing.T) {
 	// Create test handler
 	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
-		_, err := w.Write([]byte("OK"))
-		require.NoError(t, err)
+
+		_, writeErr := w.Write([]byte("OK"))
+		assert.NoError(t, writeErr)
 	})
 
 	// Apply middleware
@@ -314,7 +322,7 @@ func TestCustomEnvironmentVariable(t *testing.T) {
 	protectedHandler := middleware(handler)
 
 	// Test with one of the configured origins
-	req := httptest.NewRequest(http.MethodPost, "/test", http.NoBody)
+	req := httptest.NewRequestWithContext(context.Background(), http.MethodPost, "/test", http.NoBody)
 	req.Header.Set("Origin", "https://shortlink.best")
 
 	rr := httptest.NewRecorder()
@@ -339,8 +347,9 @@ func TestViperConfiguration(t *testing.T) {
 	// Create test handler
 	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
-		_, err := w.Write([]byte("OK"))
-		require.NoError(t, err)
+
+		_, writeErr := w.Write([]byte("OK"))
+		assert.NoError(t, writeErr)
 	})
 
 	// Apply middleware
@@ -354,7 +363,7 @@ func TestViperConfiguration(t *testing.T) {
 	protectedHandler := middleware(handler)
 
 	// Test with configured origin
-	req := httptest.NewRequest(http.MethodPost, "/test", http.NoBody)
+	req := httptest.NewRequestWithContext(context.Background(), http.MethodPost, "/test", http.NoBody)
 	req.Header.Set("Origin", "https://shortlink.best")
 
 	rr := httptest.NewRecorder()
@@ -378,16 +387,19 @@ func BenchmarkMiddleware(b *testing.B) {
 	require.NoError(b, err)
 
 	log := logInstance
+
 	cfg, cfgErr := config.New()
 	if cfgErr != nil {
 		b.Fatalf("failed to init config: %v", cfgErr)
 	}
+
 	cfg.Reset()
 	cfg.AutomaticEnv()
+
 	middleware := Middleware(log, cfg)
 	protectedHandler := middleware(handler)
 
-	req := httptest.NewRequest(http.MethodGet, "/test", http.NoBody)
+	req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/test", http.NoBody)
 	rr := httptest.NewRecorder()
 
 	b.ResetTimer()
@@ -413,16 +425,19 @@ func BenchmarkMiddlewareWithOrigin(b *testing.B) {
 	require.NoError(b, err)
 
 	log := logInstance
+
 	cfg, cfgErr := config.New()
 	if cfgErr != nil {
 		b.Fatalf("failed to init config: %v", cfgErr)
 	}
+
 	cfg.Reset()
 	cfg.AutomaticEnv()
+
 	middleware := Middleware(log, cfg)
 	protectedHandler := middleware(handler)
 
-	req := httptest.NewRequest(http.MethodPost, "/test", http.NoBody)
+	req := httptest.NewRequestWithContext(context.Background(), http.MethodPost, "/test", http.NoBody)
 	req.Header.Set("Origin", "https://shortlink.best")
 
 	rr := httptest.NewRecorder()

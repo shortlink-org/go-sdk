@@ -4,8 +4,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/shortlink-org/go-sdk/config"
 	"github.com/sony/gobreaker"
+
+	"github.com/shortlink-org/go-sdk/config"
 )
 
 // Option configures Watermill client behavior.
@@ -88,6 +89,7 @@ func defaultOptions(cfg *config.Config) Options {
 	}
 
 	serviceName := strings.TrimSpace(cfg.GetString("SERVICE_NAME"))
+
 	cbName := "watermill_handler"
 	if serviceName != "" {
 		cbName = serviceName + "_watermill_handler"
@@ -102,9 +104,11 @@ func defaultOptions(cfg *config.Config) Options {
 	if cbSettings.Timeout <= 0 {
 		cbSettings.Timeout = 30 * time.Second
 	}
+
 	if cbSettings.MaxRequests == 0 {
 		cbSettings.MaxRequests = 1
 	}
+
 	cbSettings.ReadyToTrip = func(counts gobreaker.Counts) bool {
 		return counts.ConsecutiveFailures >= uint32(failureThreshold)
 	}

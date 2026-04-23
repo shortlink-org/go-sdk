@@ -7,11 +7,12 @@ import (
 	"fmt"
 	"log/slog"
 
-	"github.com/shortlink-org/go-sdk/config"
-	"github.com/shortlink-org/go-sdk/logger"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/credentials/insecure"
+
+	"github.com/shortlink-org/go-sdk/config"
+	"github.com/shortlink-org/go-sdk/logger"
 )
 
 // Client represents a gRPC client configuration.
@@ -19,6 +20,7 @@ type Client struct {
 	interceptorUnaryClientList  []grpc.UnaryClientInterceptor
 	interceptorStreamClientList []grpc.StreamClientInterceptor
 	optionsNewClient            []grpc.DialOption
+	hedgeUnary                  grpc.UnaryClientInterceptor
 
 	port int
 	host string
@@ -37,27 +39,29 @@ func InitClient(
 	cfg *config.Config,
 	options ...Option,
 ) (*grpc.ClientConn, func(), error) {
-	config, err := SetClientConfig(cfg, options...)
+	clientState, err := SetClientConfig(cfg, options...)
 	if err != nil {
 		return nil, nil, err
 	}
 
 	// Set up a connection to the server peer
 	conn, err := grpc.NewClient(
-		config.GetURI(),
-		config.optionsNewClient...,
+		clientState.GetURI(),
+		clientState.optionsNewClient...,
 	)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to connect to gRPC server: %w", err)
 	}
 
 	log.Info("Run gRPC Client",
-		slog.Int("port", config.port),
-		slog.String("host", config.host),
+		slog.Int("port", clientState.port),
+		slog.String("host", clientState.host),
 	)
 
 	cleanup := func() {
-		_ = conn.Close()
+		if closeErr := conn.Close(); closeErr != nil {
+			log.Error("gRPC client conn close failed", slog.Any("err", closeErr))
+		}
 	}
 
 	return conn, cleanup, nil
@@ -71,28 +75,33 @@ func SetClientConfig(cfg *config.Config, options ...Option) (*Client, error) {
 	cfg.SetDefault("GRPC_CLIENT_HOST", "0.0.0.0") // gRPC host
 	grpcHost := cfg.GetString("GRPC_CLIENT_HOST")
 
-	config := &Client{
+	grpcClient := &Client{
 		port: grpcPort,
 		host: grpcHost,
 		cfg:  cfg,
 	}
 
-	config.apply(options...)
+	grpcClient.apply(options...)
+
+	unaryChain := grpcClient.interceptorUnaryClientList
+	if grpcClient.hedgeUnary != nil {
+		unaryChain = append([]grpc.UnaryClientInterceptor{grpcClient.hedgeUnary}, unaryChain...)
+	}
 
 	// Initialize your gRPC client's interceptor.
-	config.optionsNewClient = append(
-		config.optionsNewClient,
-		grpc.WithChainUnaryInterceptor(config.interceptorUnaryClientList...),
-		grpc.WithChainStreamInterceptor(config.interceptorStreamClientList...),
+	grpcClient.optionsNewClient = append(
+		grpcClient.optionsNewClient,
+		grpc.WithChainUnaryInterceptor(unaryChain...),
+		grpc.WithChainStreamInterceptor(grpcClient.interceptorStreamClientList...),
 	)
 
 	// NOTE: made after initialize your gRPC Client's interceptor.
-	err := config.withTLS()
+	err := grpcClient.withTLS()
 	if err != nil {
 		return nil, err
 	}
 
-	return config, nil
+	return grpcClient, nil
 }
 
 // GetOptions - return options for gRPC Client.

@@ -1,22 +1,28 @@
 package jwt_middleware
 
 import (
+	"context"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
-	"github.com/shortlink-org/go-sdk/auth/session"
-	"github.com/shortlink-org/go-sdk/config"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/shortlink-org/go-sdk/auth/session"
+	"github.com/shortlink-org/go-sdk/config"
 )
 
-func createTestToken(claims oathkeeperClaims) string {
+func createTestToken(t *testing.T, claims *oathkeeperClaims) string {
+	t.Helper()
+
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 	// Sign with a dummy key (we don't verify signatures)
-	tokenString, _ := token.SignedString([]byte("test-secret"))
+	tokenString, err := token.SignedString([]byte("test-secret"))
+	require.NoError(t, err)
+
 	return tokenString
 }
 
@@ -37,25 +43,25 @@ func TestJWT_ValidToken(t *testing.T) {
 		SessionID:  "session-789",
 	}
 
-	tokenString := createTestToken(claims)
+	tokenString := createTestToken(t, &claims)
 
 	handler := JWT(cfg)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// Verify claims are in context
 		sessionClaims, err := session.GetClaims(r.Context())
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		assert.Equal(t, "user-123", sessionClaims.Subject)
 		assert.Equal(t, "test@example.com", sessionClaims.Email)
 		assert.Equal(t, "Test User", sessionClaims.Name)
 
 		// Verify user ID is in context
 		userID, err := session.GetUserID(r.Context())
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		assert.Equal(t, "user-123", userID)
 
 		w.WriteHeader(http.StatusOK)
 	}))
 
-	req := httptest.NewRequest(http.MethodGet, "/api/test", nil)
+	req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/api/test", http.NoBody)
 	req.Header.Set("Authorization", "Bearer "+tokenString)
 
 	rec := httptest.NewRecorder()
@@ -72,7 +78,7 @@ func TestJWT_MissingToken(t *testing.T) {
 		t.Fatal("handler should not be called")
 	}))
 
-	req := httptest.NewRequest(http.MethodGet, "/api/test", nil)
+	req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/api/test", http.NoBody)
 	req.Header.Set("Accept", "application/json")
 
 	rec := httptest.NewRecorder()
@@ -89,7 +95,7 @@ func TestJWT_InvalidToken(t *testing.T) {
 		t.Fatal("handler should not be called")
 	}))
 
-	req := httptest.NewRequest(http.MethodGet, "/api/test", nil)
+	req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/api/test", http.NoBody)
 	req.Header.Set("Authorization", "Bearer invalid.token.here")
 	req.Header.Set("Accept", "application/json")
 
@@ -111,13 +117,13 @@ func TestJWT_MissingSubject(t *testing.T) {
 		Email: "test@example.com",
 	}
 
-	tokenString := createTestToken(claims)
+	tokenString := createTestToken(t, &claims)
 
 	handler := JWT(cfg)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		t.Fatal("handler should not be called")
 	}))
 
-	req := httptest.NewRequest(http.MethodGet, "/api/test", nil)
+	req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/api/test", http.NoBody)
 	req.Header.Set("Authorization", "Bearer "+tokenString)
 	req.Header.Set("Accept", "application/json")
 
@@ -136,7 +142,7 @@ func TestJWT_RedirectForBrowser(t *testing.T) {
 		t.Fatal("handler should not be called")
 	}))
 
-	req := httptest.NewRequest(http.MethodGet, "/api/test", nil)
+	req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/api/test", http.NoBody)
 	req.Header.Set("Accept", "text/html")
 
 	rec := httptest.NewRecorder()
@@ -162,10 +168,11 @@ func TestExtractBearerToken(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			req := httptest.NewRequest(http.MethodGet, "/", nil)
+			req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/", http.NoBody)
 			if tt.header != "" {
 				req.Header.Set("Authorization", tt.header)
 			}
+
 			result := extractBearerToken(req)
 			assert.Equal(t, tt.expected, result)
 		})

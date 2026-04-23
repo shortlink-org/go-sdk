@@ -2,6 +2,7 @@ package rabbit
 
 import (
 	"context"
+	"errors"
 	"log/slog"
 	"sync"
 
@@ -13,6 +14,9 @@ import (
 
 type MQ struct {
 	mu sync.Mutex
+	// subs holds one AMQP channel per subscribe target (exchange name).
+	// Publish uses mq.ch; consume paths use dedicated channels to avoid concurrent use of one channel.
+	subs map[string]*Channel
 
 	config *Config
 	cfg    *config.Config
@@ -27,6 +31,7 @@ func New(log logger.Logger, cfg *config.Config) *MQ {
 		log:    log,
 		cfg:    cfg,
 		config: loadConfig(cfg), // Set configuration
+		subs:   make(map[string]*Channel),
 	}
 }
 
@@ -50,7 +55,8 @@ func (mq *MQ) Init(ctx context.Context, log logger.Logger) error {
 	go func() {
 		<-ctx.Done()
 
-		if errClose := mq.close(); errClose != nil {
+		errClose := mq.close()
+		if errClose != nil {
 			log.Error("RabbitMQ close error",
 				slog.String("error", errClose.Error()),
 			)
@@ -60,18 +66,36 @@ func (mq *MQ) Init(ctx context.Context, log logger.Logger) error {
 	return nil
 }
 
-// close gracefully closes the connection and channel.
+// close gracefully closes subscription channels, the publish channel, and the connection.
 func (mq *MQ) close() error {
-	if err := mq.conn.Close(); err != nil {
-		return err
+	var errs error
+
+	mq.mu.Lock()
+	for _, subCh := range mq.subs {
+		err := subCh.Close()
+		if err != nil {
+			errs = errors.Join(errs, err)
+		}
 	}
 
-	//nolint:revive // ignore
-	if err := mq.ch.Close(); err != nil {
-		return err
+	mq.subs = make(map[string]*Channel)
+	mq.mu.Unlock()
+
+	if mq.ch != nil {
+		err := mq.ch.Close()
+		if err != nil {
+			errs = errors.Join(errs, err)
+		}
 	}
 
-	return nil
+	if mq.conn != nil {
+		err := mq.conn.Close()
+		if err != nil {
+			errs = errors.Join(errs, err)
+		}
+	}
+
+	return errs
 }
 
 // Check verifies the connection status.

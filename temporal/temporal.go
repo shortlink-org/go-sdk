@@ -95,6 +95,7 @@ func New(
 	if err != nil {
 		return nil, fmt.Errorf("failed to create tracing interceptor: %w", err)
 	}
+
 	interceptors = append(interceptors, tracingInterceptor)
 
 	// Build client options
@@ -145,6 +146,7 @@ func CheckHealth(ctx context.Context, c client.Client) error {
 	if err != nil {
 		return fmt.Errorf("temporal health check failed: %w", err)
 	}
+
 	return nil
 }
 
@@ -186,6 +188,7 @@ func toSlogAttrs(keyvals []any) []slog.Attr {
 		if !ok {
 			continue
 		}
+
 		attrs = append(attrs, slog.Any(key, keyvals[i+1]))
 	}
 

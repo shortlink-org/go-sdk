@@ -4,10 +4,11 @@ import (
 	"context"
 )
 
+// Session is a typed string used as a context key for session-related values.
 type Session string
 
 const (
-	// contextClaimsKey is the key used to store JWT claims in the context.
+	// ContextClaimsKey is the key used to store JWT claims in the context.
 	contextClaimsKey = Session("jwt-claims")
 
 	// ContextUserIDKey is the key used to store the user id in the context.
@@ -23,10 +24,10 @@ type Claims struct {
 	Email string `json:"email"`
 	// Name from identity traits
 	Name string `json:"name"`
-	// IdentityID is the Kratos identity ID
-	IdentityID string `json:"identity_id"`
-	// SessionID is the Kratos session ID
-	SessionID string `json:"session_id"`
+	// IdentityID is the Kratos identity ID.
+	IdentityID string `json:"identity_id"` //nolint:tagliatelle // Oathkeeper JWT uses snake_case keys.
+	// SessionID is the Kratos session ID.
+	SessionID string `json:"session_id"` //nolint:tagliatelle // Oathkeeper JWT uses snake_case keys.
 	// Metadata from identity metadata_public
 	Metadata map[string]any `json:"metadata"`
 	// Issuer of the token
@@ -86,11 +87,13 @@ func GetEmail(ctx context.Context) (string, error) {
 	if err != nil {
 		return "", err
 	}
+
 	return claims.Email, nil
 }
 
 // IsAuthenticated checks if the context has valid claims.
 func IsAuthenticated(ctx context.Context) bool {
 	_, err := GetClaims(ctx)
+
 	return err == nil
 }

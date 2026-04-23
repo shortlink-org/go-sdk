@@ -7,11 +7,10 @@ import (
 	"fmt"
 	"os"
 	"testing"
-	"time"
 
 	"github.com/stretchr/testify/require"
 	"github.com/testcontainers/testcontainers-go"
-	"github.com/testcontainers/testcontainers-go/wait"
+	"github.com/testcontainers/testcontainers-go/modules/aerospike"
 	"go.uber.org/goleak"
 
 	"github.com/shortlink-org/go-sdk/config"
@@ -29,28 +28,17 @@ func TestAerospike(t *testing.T) {
 	require.NoError(t, err)
 	store := New(cfg)
 
-	c, err := testcontainers.Run(ctx, "aerospike/aerospike-server:6.4.0.6",
-		testcontainers.WithExposedPorts("3000/tcp"),
-		testcontainers.WithWaitStrategy(
-			wait.ForListeningPort("3000/tcp").WithStartupTimeout(3*time.Minute),
-		),
-	)
+	asContainer, err := aerospike.Run(ctx, "aerospike/aerospike-server:6.4.0.6")
+	testcontainers.CleanupContainer(t, asContainer)
+	require.NoError(t, err, "aerospike container: ensure Docker is running")
+
+	t.Cleanup(cancel)
+
+	host, err := asContainer.Host(ctx)
+	require.NoError(t, err)
+	mapped, err := asContainer.MappedPort(ctx, "3000/tcp")
 	require.NoError(t, err)
 
-	t.Cleanup(func() {
-		cancel()
-		_ = c.Terminate(context.Background())
-	})
-
-	host, err := c.Host(ctx)
-	require.NoError(t, err)
-	mapped, err := c.MappedPort(ctx, "3000/tcp")
-	require.NoError(t, err)
-
-	t.Setenv("STORE_AEROSPIKE_URI", fmt.Sprintf("tcp://%s:%s", host, mapped.Port()))
+	cfg.Set("STORE_AEROSPIKE_URI", fmt.Sprintf("tcp://%s:%s", host, mapped.Port()))
 	require.NoError(t, store.Init(ctx))
-
-	t.Run("Close", func(t *testing.T) {
-		cancel()
-	})
 }

@@ -10,9 +10,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/shortlink-org/go-sdk/http/middleware/logger/mocks"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/shortlink-org/go-sdk/http/middleware/logger/mocks"
 )
 
 func TestSingleFlight_CoalescesRequests(t *testing.T) {
@@ -27,7 +28,9 @@ func TestSingleFlight_CoalescesRequests(t *testing.T) {
 		time.Sleep(50 * time.Millisecond) // Simulate slow handler
 		writer.Header().Set("X-Custom-Header", "test-value")
 		writer.WriteHeader(http.StatusOK)
-		_, _ = writer.Write([]byte(responseBody))
+
+		_, werr := writer.Write([]byte(responseBody))
+		assert.NoError(t, werr)
 	})
 
 	mockLog := mocks.NewMockLogger(t)
@@ -48,7 +51,7 @@ func TestSingleFlight_CoalescesRequests(t *testing.T) {
 		go func(index int) {
 			defer waitGroup.Done()
 
-			req := httptest.NewRequest(http.MethodGet, "/test?foo=bar", nil)
+			req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/test?foo=bar", http.NoBody)
 			wrapped.ServeHTTP(responses[index], req)
 		}(idx)
 	}
@@ -87,7 +90,7 @@ func TestSingleFlight_NonGETNotCoalesced(t *testing.T) {
 
 	for range numRequests {
 		waitGroup.Go(func() {
-			req := httptest.NewRequest(http.MethodPost, "/test", nil)
+			req := httptest.NewRequestWithContext(context.Background(), http.MethodPost, "/test", http.NoBody)
 			rec := httptest.NewRecorder()
 			wrapped.ServeHTTP(rec, req)
 		})
@@ -108,7 +111,9 @@ func TestSingleFlight_DifferentKeysNotCoalesced(t *testing.T) {
 		handlerCalls.Add(1)
 		time.Sleep(30 * time.Millisecond)
 
-		_, _ = writer.Write([]byte(request.URL.Path))
+		//nolint:gosec // test handler echoes path into body for assertions
+		_, werr := writer.Write([]byte(request.URL.Path))
+		assert.NoError(t, werr)
 	})
 
 	mockLog := mocks.NewMockLogger(t)
@@ -124,7 +129,7 @@ func TestSingleFlight_DifferentKeysNotCoalesced(t *testing.T) {
 		go func(urlPath string) {
 			defer waitGroup.Done()
 
-			req := httptest.NewRequest(http.MethodGet, urlPath, nil)
+			req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, urlPath, http.NoBody)
 			rec := httptest.NewRecorder()
 			wrapped.ServeHTTP(rec, req)
 		}(path)
@@ -142,7 +147,9 @@ func TestSingleFlight_PreservesStatusCode(t *testing.T) {
 
 	handler := http.HandlerFunc(func(writer http.ResponseWriter, _ *http.Request) {
 		writer.WriteHeader(http.StatusNotFound)
-		_, _ = writer.Write([]byte("not found"))
+
+		_, werr := writer.Write([]byte("not found"))
+		assert.NoError(t, werr)
 	})
 
 	mockLog := mocks.NewMockLogger(t)
@@ -162,7 +169,7 @@ func TestSingleFlight_PreservesStatusCode(t *testing.T) {
 		go func(index int) {
 			defer waitGroup.Done()
 
-			req := httptest.NewRequest(http.MethodGet, "/notfound", nil)
+			req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/notfound", http.NoBody)
 			wrapped.ServeHTTP(recorders[index], req)
 		}(idx)
 	}
@@ -181,7 +188,9 @@ func TestSingleFlight_Integration(t *testing.T) {
 	handler := http.HandlerFunc(func(writer http.ResponseWriter, _ *http.Request) {
 		writer.Header().Set("Content-Type", "application/json")
 		writer.WriteHeader(http.StatusOK)
-		_, _ = writer.Write([]byte(`{"status":"ok"}`))
+
+		_, werr := writer.Write([]byte(`{"status":"ok"}`))
+		assert.NoError(t, werr)
 	})
 
 	mockLog := mocks.NewMockLogger(t)
@@ -192,15 +201,15 @@ func TestSingleFlight_Integration(t *testing.T) {
 
 	ctx := context.Background()
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, server.URL+"/test", nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, server.URL+"/test", http.NoBody)
 	require.NoError(t, err)
 
 	resp, err := http.DefaultClient.Do(req)
 	require.NoError(t, err)
 
-	defer func() {
-		_ = resp.Body.Close()
-	}()
+	t.Cleanup(func() {
+		require.NoError(t, resp.Body.Close())
+	})
 
 	body, err := io.ReadAll(resp.Body)
 	require.NoError(t, err)

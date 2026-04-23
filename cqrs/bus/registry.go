@@ -30,24 +30,64 @@ func NewTypeRegistry() *TypeRegistry {
 	}
 }
 
-// validateCommand checks that command is not nil.
-func (r *TypeRegistry) validateCommand(cmd any) error {
-	if cmd == nil {
-		return ErrNilCommandType
-	}
-	return nil
-}
-
 // RegisterCommand registers command type.
 func (r *TypeRegistry) RegisterCommand(cmd any) error {
-	if err := r.validateCommand(cmd); err != nil {
+	err := r.validateCommand(cmd)
+	if err != nil {
 		return err
 	}
+
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
 	name := cqrsmessage.NameOf(cmd)
 	r.commands[name] = normalizeType(cmd)
+
+	return nil
+}
+
+// RegisterEvent registers event type.
+func (r *TypeRegistry) RegisterEvent(evt any) error {
+	err := r.validateEvent(evt)
+	if err != nil {
+		return err
+	}
+
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	name := cqrsmessage.NameOf(evt)
+	r.events[name] = normalizeType(evt)
+
+	return nil
+}
+
+// ResolveCommand returns command type by canonical name.
+func (r *TypeRegistry) ResolveCommand(name string) (reflect.Type, bool) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
+	cmdType, ok := r.commands[name]
+
+	return cmdType, ok
+}
+
+// ResolveEvent returns event type by canonical name.
+func (r *TypeRegistry) ResolveEvent(name string) (reflect.Type, bool) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
+	evtType, ok := r.events[name]
+
+	return evtType, ok
+}
+
+// validateCommand checks that command is not nil.
+func (r *TypeRegistry) validateCommand(cmd any) error {
+	if cmd == nil {
+		return ErrNilCommandType
+	}
+
 	return nil
 }
 
@@ -56,45 +96,19 @@ func (r *TypeRegistry) validateEvent(evt any) error {
 	if evt == nil {
 		return ErrNilEventType
 	}
+
 	return nil
-}
-
-// RegisterEvent registers event type.
-func (r *TypeRegistry) RegisterEvent(evt any) error {
-	if err := r.validateEvent(evt); err != nil {
-		return err
-	}
-	r.mu.Lock()
-	defer r.mu.Unlock()
-
-	name := cqrsmessage.NameOf(evt)
-	r.events[name] = normalizeType(evt)
-	return nil
-}
-
-// ResolveCommand returns command type by canonical name.
-func (r *TypeRegistry) ResolveCommand(name string) (reflect.Type, bool) {
-	r.mu.RLock()
-	defer r.mu.RUnlock()
-	t, ok := r.commands[name]
-	return t, ok
-}
-
-// ResolveEvent returns event type by canonical name.
-func (r *TypeRegistry) ResolveEvent(name string) (reflect.Type, bool) {
-	r.mu.RLock()
-	defer r.mu.RUnlock()
-	t, ok := r.events[name]
-	return t, ok
 }
 
 func normalizeType(v any) reflect.Type {
-	t := reflect.TypeOf(v)
-	if t == nil {
+	typ := reflect.TypeOf(v)
+	if typ == nil {
 		return nil
 	}
-	if t.Kind() != reflect.Pointer {
-		t = reflect.PointerTo(t)
+
+	if typ.Kind() != reflect.Pointer {
+		typ = reflect.PointerTo(typ)
 	}
-	return t
+
+	return typ
 }

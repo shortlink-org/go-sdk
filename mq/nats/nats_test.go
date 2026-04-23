@@ -4,14 +4,12 @@ package nats
 
 import (
 	"context"
-	"fmt"
 	"os"
 	"testing"
-	"time"
 
 	"github.com/stretchr/testify/require"
 	"github.com/testcontainers/testcontainers-go"
-	"github.com/testcontainers/testcontainers-go/wait"
+	tcnats "github.com/testcontainers/testcontainers-go/modules/nats"
 	"go.uber.org/goleak"
 
 	"github.com/shortlink-org/go-sdk/config"
@@ -30,25 +28,15 @@ func TestNATS(t *testing.T) {
 	require.NoError(t, err)
 	mq := New(cfg)
 
-	c, err := testcontainers.Run(ctx, "nats:2.10-alpine",
-		testcontainers.WithExposedPorts("4222/tcp"),
-		testcontainers.WithWaitStrategy(
-			wait.ForListeningPort("4222/tcp").WithStartupTimeout(2*time.Minute),
-		),
-	)
+	ctr, err := tcnats.Run(ctx, "nats:2.10-alpine")
+	testcontainers.CleanupContainer(t, ctr)
 	require.NoError(t, err)
 
-	t.Cleanup(func() {
-		cancel()
-		_ = c.Terminate(context.Background())
-	})
+	t.Cleanup(cancel)
 
-	host, err := c.Host(ctx)
+	uri, err := ctr.ConnectionString(ctx)
 	require.NoError(t, err)
-	mapped, err := c.MappedPort(ctx, "4222/tcp")
-	require.NoError(t, err)
-
-	t.Setenv("MQ_NATS_URI", fmt.Sprintf("nats://%s:%s", host, mapped.Port()))
+	t.Setenv("MQ_NATS_URI", uri)
 	require.NoError(t, mq.Init(ctx, nil))
 
 	t.Run("Subscribe", func(t *testing.T) {

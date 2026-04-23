@@ -43,6 +43,9 @@ type TokenExtractor interface {
 	FromOutgoingMetadata(ctx context.Context) (string, error)
 }
 
+// Compile-time check that MetadataTokenExtractor implements TokenExtractor.
+var _ TokenExtractor = MetadataTokenExtractor{}
+
 // MetadataTokenExtractor extracts tokens from gRPC metadata.
 type MetadataTokenExtractor struct{}
 
@@ -85,14 +88,22 @@ func TokenFromContext(ctx context.Context) string {
 // TokenFromIncomingMetadata extracts the authorization token from incoming gRPC metadata.
 // Returns empty string if not present or invalid.
 func TokenFromIncomingMetadata(ctx context.Context) string {
-	token, _ := MetadataTokenExtractor{}.FromIncomingMetadata(ctx)
+	token, err := MetadataTokenExtractor{}.FromIncomingMetadata(ctx)
+	if err != nil {
+		return ""
+	}
+
 	return token
 }
 
 // TokenFromOutgoingMetadata extracts the authorization token from outgoing gRPC metadata.
 // Returns empty string if not present.
 func TokenFromOutgoingMetadata(ctx context.Context) string {
-	token, _ := MetadataTokenExtractor{}.FromOutgoingMetadata(ctx)
+	token, err := MetadataTokenExtractor{}.FromOutgoingMetadata(ctx)
+	if err != nil {
+		return ""
+	}
+
 	return token
 }
 

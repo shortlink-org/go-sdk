@@ -5,17 +5,22 @@ import (
 	"strings"
 
 	"github.com/golang-jwt/jwt/v5"
-	"github.com/shortlink-org/go-sdk/auth/session"
-	"github.com/shortlink-org/go-sdk/config"
-	session_interceptor "github.com/shortlink-org/go-sdk/grpc/middleware/session"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/propagation"
 	"go.opentelemetry.io/otel/trace"
+
+	"github.com/shortlink-org/go-sdk/auth/session"
+	"github.com/shortlink-org/go-sdk/config"
+	session_interceptor "github.com/shortlink-org/go-sdk/grpc/middleware/session"
 )
 
-const tracerName = "github.com/shortlink-org/go-sdk/http/middleware/jwt"
+const (
+	tracerName = "github.com/shortlink-org/go-sdk/http/middleware/jwt"
+
+	authSchemeParts = 2 // "Bearer" + token from Authorization header
+)
 
 // jwtMiddleware holds the middleware configuration.
 type jwtMiddleware struct {
@@ -54,8 +59,11 @@ func JWT(cfg *config.Config) func(next http.Handler) http.Handler {
 }
 
 // oathkeeperClaims represents the JWT claims from Oathkeeper id_token mutator.
+//
+//nolint:tagliatelle // JSON field names match Oathkeeper id_token mutator schema.
 type oathkeeperClaims struct {
 	jwt.RegisteredClaims
+
 	Email      string         `json:"email"`
 	Name       string         `json:"name"`
 	IdentityID string         `json:"identity_id"`
@@ -64,10 +72,10 @@ type oathkeeperClaims struct {
 }
 
 func (j jwtMiddleware) middleware(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	return http.HandlerFunc(func(responseWriter http.ResponseWriter, req *http.Request) {
 		// Extract trace context from incoming headers (traceparent, b3, uber-trace-id)
 		// This ensures trace continuity from Oathkeeper -> BFF -> downstream services
-		ctx := j.propagator.Extract(r.Context(), propagation.HeaderCarrier(r.Header))
+		ctx := j.propagator.Extract(req.Context(), propagation.HeaderCarrier(req.Header))
 
 		ctx, span := j.tracer.Start(ctx, "jwt.validate",
 			trace.WithAttributes(attribute.String("component", "jwt_middleware")),
@@ -76,10 +84,11 @@ func (j jwtMiddleware) middleware(next http.Handler) http.Handler {
 		defer span.End()
 
 		// Extract token from Authorization header
-		tokenString := extractBearerToken(r)
+		tokenString := extractBearerToken(req)
 		if tokenString == "" {
 			span.SetStatus(codes.Error, "missing authorization header")
-			j.handleUnauthorized(w, r)
+			j.handleUnauthorized(responseWriter, req)
+
 			return
 		}
 
@@ -88,21 +97,24 @@ func (j jwtMiddleware) middleware(next http.Handler) http.Handler {
 		if err != nil {
 			span.RecordError(err)
 			span.SetStatus(codes.Error, err.Error())
-			j.handleUnauthorized(w, r)
+			j.handleUnauthorized(responseWriter, req)
+
 			return
 		}
 
 		oathClaims, ok := token.Claims.(*oathkeeperClaims)
 		if !ok {
 			span.SetStatus(codes.Error, "invalid claims type")
-			j.handleUnauthorized(w, r)
+			j.handleUnauthorized(responseWriter, req)
+
 			return
 		}
 
 		// Validate subject is present
 		if oathClaims.Subject == "" {
 			span.SetStatus(codes.Error, "missing subject in token")
-			j.handleUnauthorized(w, r)
+			j.handleUnauthorized(responseWriter, req)
+
 			return
 		}
 
@@ -120,6 +132,7 @@ func (j jwtMiddleware) middleware(next http.Handler) http.Handler {
 		if oathClaims.IssuedAt != nil {
 			claims.IssuedAt = oathClaims.IssuedAt.Unix()
 		}
+
 		if oathClaims.ExpiresAt != nil {
 			claims.ExpiresAt = oathClaims.ExpiresAt.Unix()
 		}
@@ -136,10 +149,10 @@ func (j jwtMiddleware) middleware(next http.Handler) http.Handler {
 		ctx = session.WithUserID(ctx, claims.Subject)
 
 		// Store original Authorization header for gRPC propagation
-		authHeader := r.Header.Get("Authorization")
+		authHeader := req.Header.Get("Authorization")
 		ctx = session_interceptor.WithAuthorization(ctx, authHeader)
 
-		next.ServeHTTP(w, r.WithContext(ctx))
+		next.ServeHTTP(responseWriter, req.WithContext(ctx))
 	})
 }
 
@@ -150,8 +163,8 @@ func extractBearerToken(r *http.Request) string {
 		return ""
 	}
 
-	parts := strings.SplitN(auth, " ", 2)
-	if len(parts) != 2 || !strings.EqualFold(parts[0], "bearer") {
+	parts := strings.SplitN(auth, " ", authSchemeParts)
+	if len(parts) != authSchemeParts || !strings.EqualFold(parts[0], "bearer") {
 		return ""
 	}
 
@@ -161,17 +174,22 @@ func extractBearerToken(r *http.Request) string {
 // handleUnauthorized handles unauthorized requests.
 // For API requests (Accept: application/json), returns 401.
 // For browser requests, redirects to login page.
-func (j jwtMiddleware) handleUnauthorized(w http.ResponseWriter, r *http.Request) {
-	accept := r.Header.Get("Accept")
+func (j jwtMiddleware) handleUnauthorized(responseWriter http.ResponseWriter, req *http.Request) {
+	accept := req.Header.Get("Accept")
 
 	// API request - return JSON error
 	if strings.Contains(accept, "application/json") {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusUnauthorized)
-		_, _ = w.Write([]byte(`{"error":"unauthorized","message":"authentication required"}`))
+		responseWriter.Header().Set("Content-Type", "application/json")
+		responseWriter.WriteHeader(http.StatusUnauthorized)
+
+		_, writeErr := responseWriter.Write([]byte(`{"error":"unauthorized","message":"authentication required"}`))
+		if writeErr != nil {
+			return
+		}
+
 		return
 	}
 
 	// Browser request - redirect to login
-	http.Redirect(w, r, j.cfg.GetString("AUTH_LOGIN_URL"), http.StatusFound)
+	http.Redirect(responseWriter, req, j.cfg.GetString("AUTH_LOGIN_URL"), http.StatusFound)
 }

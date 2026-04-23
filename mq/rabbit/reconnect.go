@@ -34,10 +34,11 @@ func (c *Connection) Channel() (*Channel, error) {
 
 	go func() {
 		for {
-			reason, ok := <-channel.Channel.NotifyClose(make(chan *amqp.Error))
+			reason, ok := <-channel.NotifyClose(make(chan *amqp.Error))
 			// exit this goroutine if closed by developer
 			if !ok || channel.IsClosed() {
 				c.log.Error("channel closed")
+
 				err = channel.Close() // close again, ensure closed flag set when connection closed
 				if err != nil {
 					c.log.Error(err.Error())
@@ -56,6 +57,7 @@ func (c *Connection) Channel() (*Channel, error) {
 				newCh, errConnectToChannel := c.Connection.Channel()
 				if errConnectToChannel == nil {
 					c.log.Info("channel recreate success")
+
 					channel.Channel = newCh
 
 					break

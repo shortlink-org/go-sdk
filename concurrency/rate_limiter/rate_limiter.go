@@ -1,3 +1,4 @@
+// Package rate_limiter implements a token-bucket style limiter driven by a time ticker.
 package rate_limiter
 
 import (
@@ -7,8 +8,10 @@ import (
 	"time"
 )
 
+// ErrRateLimiterCanceled is returned when Wait is unblocked by context cancellation.
 var ErrRateLimiterCanceled = errors.New("rate limiter context canceled")
 
+// RateLimiter limits work to a maximum of limit acquisitions per interval.
 type RateLimiter struct {
 	mu   sync.Mutex
 	done chan struct{}
@@ -18,11 +21,12 @@ type RateLimiter struct {
 	limit   int64
 }
 
+// New starts a rate limiter that allows up to limit acquisitions per interval.
 func New(ctx context.Context, limit int64, interval time.Duration) (*RateLimiter, error) {
 	ticker := time.NewTicker(interval)
 	done := make(chan struct{})
 
-	rl := &RateLimiter{
+	rateLimiter := &RateLimiter{
 		mu:      sync.Mutex{},
 		limiter: make(chan struct{}, limit),
 		ticker:  ticker,
@@ -30,19 +34,20 @@ func New(ctx context.Context, limit int64, interval time.Duration) (*RateLimiter
 		done:    done,
 	}
 
-	go rl.refill()
+	go rateLimiter.refill()
 
 	// Graceful shutdown: when the context is canceled, signal via the done channel.
 	go func() {
 		<-ctx.Done()
 		close(done)
 		ticker.Stop()
-		close(rl.limiter)
+		close(rateLimiter.limiter)
 	}()
 
-	return rl, nil
+	return rateLimiter, nil
 }
 
+// Wait blocks until a token is available or the limiter is stopped.
 func (r *RateLimiter) Wait() error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
@@ -55,7 +60,7 @@ func (r *RateLimiter) Wait() error {
 	}
 }
 
-// refill refills tokens periodically
+// refill refills tokens periodically.
 func (r *RateLimiter) refill() {
 	for {
 		select {
@@ -69,6 +74,7 @@ func (r *RateLimiter) refill() {
 			}
 		case <-r.done:
 			r.ticker.Stop()
+
 			return
 		}
 	}

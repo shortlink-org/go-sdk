@@ -82,7 +82,9 @@ func TestJSONMarshalerUnmarshalEmptyPayload(t *testing.T) {
 	msg := wmmessage.NewMessageWithContext(context.Background(), "id", nil)
 
 	var cmd testCommand
-	if err := m.Unmarshal(msg, &cmd); err == nil {
+
+	err := m.Unmarshal(msg, &cmd)
+	if err == nil {
 		t.Fatal("expected error for empty payload")
 	}
 }
@@ -91,7 +93,9 @@ func TestJSONMarshalerUnmarshalNilMessage(t *testing.T) {
 	m := NewJSONMarshaler(NewShortlinkNamer("svc"))
 
 	var cmd testCommand
-	if err := m.Unmarshal(nil, &cmd); err == nil {
+
+	err := m.Unmarshal(nil, &cmd)
+	if err == nil {
 		t.Fatal("expected error for nil message")
 	}
 }
@@ -121,6 +125,7 @@ func TestJSONMarshalerNameFromMessage(t *testing.T) {
 	m := NewJSONMarshaler(namer)
 
 	cmd := &testCommand{OrderId: "123"}
+
 	msg, err := m.Marshal(context.Background(), cmd)
 	if err != nil {
 		t.Fatalf("Marshal failed: %v", err)

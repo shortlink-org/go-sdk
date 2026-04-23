@@ -21,21 +21,23 @@ func TestMain(m *testing.M) {
 }
 
 func Test_WorkerPool(t *testing.T) {
-	wp := worker_pool.New(10)
+	t.Parallel()
 
-	f := func() (any, error) {
+	workerPool := worker_pool.New(10)
+
+	task := func() (any, error) {
 		// some operation
-		return nil, nil
+		return 0, nil
 	}
 
-	wg := sync.WaitGroup{}
+	waitGroup := sync.WaitGroup{}
 	done := make(chan struct{})
 
 	go func() {
 		for range 1000 {
-			wp.Push(f)
-			wg.Go(func() {
-				<-wp.Result
+			workerPool.Push(task)
+			waitGroup.Go(func() {
+				<-workerPool.Result
 			})
 		}
 
@@ -43,11 +45,11 @@ func Test_WorkerPool(t *testing.T) {
 	}()
 
 	<-done
-	wg.Wait()
-	close(wp.Result)
+	waitGroup.Wait()
+	close(workerPool.Result)
 
 	t.Cleanup(func() {
-		wp.Close()
+		workerPool.Close()
 	})
 }
 
@@ -55,16 +57,18 @@ func Test_WorkerPool(t *testing.T) {
 // Tests that tasks are properly distributed across workers, executed concurrently,
 // and results are collected correctly without timing dependencies.
 func TestWorkerPoolWithSynctest(t *testing.T) {
+	t.Parallel()
+
 	synctest.Test(t, func(t *testing.T) {
 		const (
 			numWorkers = 3
 			numTasks   = 10
 		)
 
-		wp := worker_pool.New(numWorkers)
+		workerPool := worker_pool.New(numWorkers)
 
 		var (
-			completedTasks int64
+			completedTasks atomic.Int64
 			results        []any
 			resultWg       sync.WaitGroup
 		)
@@ -75,14 +79,15 @@ func TestWorkerPoolWithSynctest(t *testing.T) {
 		taskFunc := func() (any, error) {
 			// Simulate processing time - executes instantly in synctest
 			time.Sleep(10 * time.Millisecond)
-			return atomic.AddInt64(&completedTasks, 1), nil
+
+			return completedTasks.Add(1), nil
 		}
 
 		// Start background result collector goroutine
 		go func() {
 			defer resultWg.Done()
 
-			for result := range wp.Result {
+			for result := range workerPool.Result {
 				results = append(results, result.Value)
 				if len(results) == numTasks {
 					return
@@ -92,20 +97,20 @@ func TestWorkerPoolWithSynctest(t *testing.T) {
 
 		// Submit all tasks to the worker pool for concurrent execution
 		for range numTasks {
-			wp.Push(taskFunc)
+			workerPool.Push(taskFunc)
 		}
 
 		// Wait for all tasks to be processed and results collected
 		resultWg.Wait()
 
 		// Properly shutdown worker pool and cleanup resources
-		wp.Close()
-		close(wp.Result)
+		workerPool.Close()
+		close(workerPool.Result)
 
 		// Ensure all worker goroutines have terminated
 		synctest.Wait()
 
-		require.Equal(t, int64(numTasks), atomic.LoadInt64(&completedTasks))
+		require.Equal(t, int64(numTasks), completedTasks.Load())
 		require.Len(t, results, numTasks)
 	})
 }
@@ -114,14 +119,16 @@ func TestWorkerPoolWithSynctest(t *testing.T) {
 // Tests single worker task execution with controlled timing to ensure tasks are
 // processed correctly and results are returned as expected.
 func TestWorkerPoolSimpleWithSynctest(t *testing.T) {
+	t.Parallel()
+
 	synctest.Test(t, func(t *testing.T) {
 		// Test isolated worker functionality without complex pool management
-		var taskExecuted int64
+		var taskExecuted atomic.Int64
 
 		taskFunc := func() (any, error) {
 			// Simulate task processing time
 			time.Sleep(50 * time.Millisecond)
-			atomic.AddInt64(&taskExecuted, 1)
+			taskExecuted.Add(1)
 
 			return "completed", nil
 		}
@@ -150,7 +157,7 @@ func TestWorkerPoolSimpleWithSynctest(t *testing.T) {
 		// Ensure all concurrent operations have completed
 		synctest.Wait()
 
-		require.Equal(t, int64(1), atomic.LoadInt64(&taskExecuted))
+		require.Equal(t, int64(1), taskExecuted.Load())
 		require.Equal(t, "completed", res.Value)
 		require.NoError(t, res.Error)
 	})

@@ -5,7 +5,7 @@ import (
 	"time"
 )
 
-// Batch is a structure for batch processing
+// Batch is a structure for batch processing..
 type Batch[T any] struct {
 	done     chan struct{}
 	errChan  chan error

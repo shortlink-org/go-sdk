@@ -33,6 +33,7 @@ func TestPartitionedMapSetAndGet(t *testing.T) {
 	if !ok {
 		t.Errorf("Expected key '%s' to exist", testKey)
 	}
+
 	if val != testValue {
 		t.Errorf("Expected value '%s', got '%s'", testValue, val)
 	}
@@ -77,7 +78,8 @@ func TestPartitionedMapLen(t *testing.T) {
 
 	// Add some elements
 	for i := range 5 {
-		if err := m.Set(fmt.Sprintf("key%d", i), fmt.Sprintf("value%d", i)); err != nil {
+		err := m.Set(fmt.Sprintf("key%d", i), fmt.Sprintf("value%d", i))
+		if err != nil {
 			t.Errorf("Failed to set value: %v", err)
 		}
 	}

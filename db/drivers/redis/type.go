@@ -2,9 +2,10 @@ package redis
 
 import (
 	"github.com/redis/rueidis"
-	"github.com/shortlink-org/go-sdk/config"
 	"go.opentelemetry.io/otel/sdk/metric"
 	"go.opentelemetry.io/otel/trace"
+
+	"github.com/shortlink-org/go-sdk/config"
 )
 
 // Config - config

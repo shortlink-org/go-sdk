@@ -1,3 +1,4 @@
+// Package auth builds an Authzed SpiceDB client from application configuration.
 package auth
 
 import (
@@ -8,6 +9,7 @@ import (
 	rpc "github.com/shortlink-org/go-sdk/grpc"
 )
 
+// New returns an Authzed API client using cfg and optional gRPC client options.
 func New(cfg *config.Config, options ...rpc.Option) (*authzed.Client, error) {
 	cfg.SetDefault("SPICE_DB_COMMON_KEY", "secret-shortlink-preshared-key")
 	cfg.SetDefault("SPICE_DB_TIMEOUT", "5s")

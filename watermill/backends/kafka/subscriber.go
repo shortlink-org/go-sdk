@@ -8,11 +8,10 @@ import (
 	"time"
 
 	"github.com/IBM/sarama"
-	"github.com/hashicorp/go-multierror"
-	"github.com/pkg/errors"
-
 	"github.com/ThreeDotsLabs/watermill"
 	"github.com/ThreeDotsLabs/watermill/message"
+	"github.com/hashicorp/go-multierror"
+	"github.com/pkg/errors"
 )
 
 type Subscriber struct {
@@ -32,7 +31,8 @@ func NewSubscriber(
 ) (*Subscriber, error) {
 	config.setDefaults()
 
-	if err := config.Validate(); err != nil {
+	err := config.Validate()
+	if err != nil {
 		return nil, err
 	}
 
@@ -102,15 +102,19 @@ func (c *SubscriberConfig) setDefaults() {
 	if c.OverwriteSaramaConfig == nil {
 		c.OverwriteSaramaConfig = DefaultSaramaSubscriberConfig()
 	}
+
 	if c.NackResendSleep == 0 {
 		c.NackResendSleep = time.Millisecond * 100
 	}
+
 	if c.ReconnectRetrySleep == 0 {
 		c.ReconnectRetrySleep = time.Second
 	}
+
 	if c.Unmarshaler == nil {
 		c.Unmarshaler = DefaultMarshaler{}
 	}
+
 	if c.WaitForTopicCreationTimeout == 0 {
 		c.WaitForTopicCreationTimeout = 10 * time.Second
 	}
@@ -120,6 +124,7 @@ func (c SubscriberConfig) Validate() error {
 	if len(c.Brokers) == 0 {
 		return errors.New("missing brokers")
 	}
+
 	if c.Unmarshaler == nil {
 		return errors.New("missing unmarshaler")
 	}
@@ -206,7 +211,7 @@ func (s *Subscriber) handleReconnects(
 			s.logger.Debug("Closing subscriber, no reconnect needed", logFields)
 			return
 		case <-ctx.Done():
-			s.logger.Debug("Ctx cancelled, no reconnect needed", logFields)
+			s.logger.Debug("Ctx canceled, no reconnect needed", logFields)
 			return
 		default:
 			s.logger.Debug("Not closing, reconnecting", logFields)
@@ -215,6 +220,7 @@ func (s *Subscriber) handleReconnects(
 		s.logger.Info("Reconnecting consumer", logFields)
 
 		var err error
+
 		consumeClosed, err = s.consumeMessages(ctx, topic, output, logFields)
 		if err != nil {
 			s.logger.Error("Cannot reconnect messages consumer", err, logFields)
@@ -222,6 +228,7 @@ func (s *Subscriber) handleReconnects(
 			if s.config.ReconnectRetrySleep != NoSleep {
 				time.Sleep(s.config.ReconnectRetrySleep)
 			}
+
 			continue
 		}
 	}
@@ -242,10 +249,11 @@ func (s *Subscriber) consumeMessages(
 	}
 
 	ctx, cancel := context.WithCancel(ctx)
+
 	go func() {
 		select {
 		case <-s.closing:
-			s.logger.Debug("Closing subscriber, cancelling consumeMessages", logFields)
+			s.logger.Debug("Closing subscriber, canceling consumeMessages", logFields)
 			cancel()
 		case <-ctx.Done():
 			// avoid goroutine leak
@@ -257,22 +265,27 @@ func (s *Subscriber) consumeMessages(
 	} else {
 		consumeMessagesClosed, err = s.consumeGroupMessages(ctx, client, topic, output, logFields, s.config.Tracer)
 	}
+
 	if err != nil {
 		s.logger.Debug(
-			"Starting consume failed, cancelling context",
+			"Starting consume failed, canceling context",
 			logFields.Add(watermill.LogFields{"err": err}),
 		)
 		cancel()
 		// Close client before returning error to prevent resource leak
-		if closeErr := client.Close(); closeErr != nil && !errors.Is(closeErr, sarama.ErrClosedClient) {
+		closeErr := client.Close()
+		if closeErr != nil && !errors.Is(closeErr, sarama.ErrClosedClient) {
 			s.logger.Error("Failed to close client after consume error", closeErr, logFields)
 		}
+
 		return nil, err
 	}
 
 	go func() {
 		<-consumeMessagesClosed
-		if err := client.Close(); err != nil {
+
+		err := client.Close()
+		if err != nil {
 			if !errors.Is(err, sarama.ErrClosedClient) {
 				s.logger.Error("Cannot close client", err, logFields)
 			}
@@ -320,7 +333,8 @@ func (s *Subscriber) consumeGroupMessages(
 			cancelHandleGroupErrors()
 			<-handleGroupErrorsDone
 
-			if err := group.Close(); err != nil {
+			err := group.Close()
+			if err != nil {
 				s.logger.Info("Group close with error", logFields.Add(watermill.LogFields{"err": err.Error()}))
 			}
 
@@ -337,12 +351,13 @@ func (s *Subscriber) consumeGroupMessages(
 				s.logger.Debug("Subscriber is closing, stopping group.Consume loop", logFields)
 				break ConsumeLoop
 			case <-ctx.Done():
-				s.logger.Debug("Ctx was cancelled, stopping group.Consume loop", logFields)
+				s.logger.Debug("Ctx was canceled, stopping group.Consume loop", logFields)
 				break ConsumeLoop
 			}
 
-			if err := group.Consume(ctx, []string{topic}, handler); err != nil {
-				if err == sarama.ErrUnknown {
+			err := group.Consume(ctx, []string{topic}, handler)
+			if err != nil {
+				if errors.Is(err, sarama.ErrUnknown) {
 					// this is info, because it is often just noise
 					s.logger.Info("Received unknown Sarama error", logFields.Add(watermill.LogFields{"err": err.Error()}))
 				} else {
@@ -352,7 +367,7 @@ func (s *Subscriber) consumeGroupMessages(
 				break ConsumeLoop
 			}
 
-			// this is expected behaviour to run Consume again after it exited
+			// this is expected behavior to run Consume again after it exited
 			// see: https://github.com/ThreeDotsLabs/watermill/issues/210
 			s.logger.Debug("Consume stopped without any error, running consume again", logFields)
 		}
@@ -370,6 +385,7 @@ func (s *Subscriber) handleGroupErrors(
 
 	go func() {
 		defer close(done)
+
 		errs := group.Errors()
 
 		for {
@@ -418,9 +434,11 @@ func (s *Subscriber) consumeWithoutConsumerGroups(
 
 		partitionConsumer, err := consumer.ConsumePartition(topic, partition, s.config.OverwriteSaramaConfig.Consumer.Offsets.Initial)
 		if err != nil {
-			if err := client.Close(); err != nil && err != sarama.ErrClosedClient {
+			err := client.Close()
+			if err != nil && !errors.Is(err, sarama.ErrClosedClient) {
 				s.logger.Error("Cannot close client", err, partitionLogFields)
 			}
+
 			return nil, errors.Wrap(err, "failed to start consumer for partition")
 		}
 
@@ -431,10 +449,12 @@ func (s *Subscriber) consumeWithoutConsumerGroups(
 		messageHandler := s.createMessagesHandler(output)
 
 		partitionConsumersWg.Add(1)
+
 		go s.consumePartition(ctx, partitionConsumer, messageHandler, partitionConsumersWg, partitionLogFields)
 	}
 
 	closed := make(chan struct{})
+
 	go func() {
 		partitionConsumersWg.Wait()
 		close(closed)
@@ -451,12 +471,13 @@ func (s *Subscriber) consumePartition(
 	logFields watermill.LogFields,
 ) {
 	defer func() {
-		if err := partitionConsumer.Close(); err != nil {
+		err := partitionConsumer.Close()
+		if err != nil {
 			s.logger.Error("Cannot close partition consumer", err, logFields)
 		}
+
 		partitionConsumersWg.Done()
 		s.logger.Debug("consumePartition stopped", logFields)
-
 	}()
 
 	kafkaMessages := partitionConsumer.Messages()
@@ -468,7 +489,9 @@ func (s *Subscriber) consumePartition(
 				s.logger.Debug("kafkaMsg is closed, stopping consumePartition", logFields)
 				return
 			}
-			if err := messageHandler.processMessage(ctx, kafkaMsg, nil, logFields); err != nil {
+
+			err := messageHandler.processMessage(ctx, kafkaMsg, nil, logFields)
+			if err != nil {
 				return
 			}
 		case <-s.closing:
@@ -476,7 +499,7 @@ func (s *Subscriber) consumePartition(
 			return
 
 		case <-ctx.Done():
-			s.logger.Debug("Ctx was cancelled, stopping consumePartition", logFields)
+			s.logger.Debug("Ctx was canceled, stopping consumePartition", logFields)
 			return
 		}
 	}
@@ -526,20 +549,23 @@ func (h consumerGroupHandler) ConsumeClaim(sess sarama.ConsumerGroupSession, cla
 
 	for kafkaMsg := range claim.Messages() {
 		h.logger.Debug("Message claimed", logFields)
-		if err := h.messageHandler.processMessage(h.ctx, kafkaMsg, sess, logFields); err != nil {
+
+		err := h.messageHandler.processMessage(h.ctx, kafkaMsg, sess, logFields)
+		if err != nil {
 			return err
 		}
+
 		select {
 		case <-h.closing:
 			h.logger.Debug("Subscriber is closing, stopping consumerGroupHandler", logFields)
 			return nil
 
 		case <-h.ctx.Done():
-			h.logger.Debug("Ctx was cancelled, stopping consumerGroupHandler", logFields)
+			h.logger.Debug("Ctx was canceled, stopping consumerGroupHandler", logFields)
 			return nil
 
 		case <-sess.Context().Done():
-			h.logger.Debug("Session ctx was cancelled, stopping consumerGroupHandler", logFields)
+			h.logger.Debug("Session ctx was canceled, stopping consumerGroupHandler", logFields)
 			return nil
 		default:
 			continue
@@ -586,6 +612,7 @@ func (h messageHandler) processMessage(
 
 	ctx, cancelCtx := context.WithCancel(ctx)
 	msg.SetContext(ctx)
+
 	defer cancelCtx()
 
 	receivedMsgLogFields = receivedMsgLogFields.Add(watermill.LogFields{
@@ -601,7 +628,7 @@ ResendLoop:
 			h.logger.Trace("Closing, message discarded", receivedMsgLogFields)
 			return nil
 		case <-ctx.Done():
-			h.logger.Trace("Closing, ctx cancelled before sent to consumer", receivedMsgLogFields)
+			h.logger.Trace("Closing, ctx canceled before sent to consumer", receivedMsgLogFields)
 			return nil
 		}
 
@@ -610,6 +637,7 @@ ResendLoop:
 			if sess != nil {
 				if sess.Context().Err() == nil {
 					sess.MarkMessage(kafkaMsg, "")
+
 					if !h.saramaConfig.Consumer.Offsets.AutoCommit.Enable {
 						// AutoCommit is disabled, so we should commit offset explicitly
 						sess.Commit()
@@ -620,11 +648,14 @@ ResendLoop:
 							"err": sess.Context().Err().Error(),
 						},
 					)
-					h.logger.Trace("Closing, session ctx cancelled before ack", logFields)
+					h.logger.Trace("Closing, session ctx canceled before ack", logFields)
+
 					return nil
 				}
 			}
+
 			h.logger.Trace("Message Acked", receivedMsgLogFields)
+
 			break ResendLoop
 		case <-msg.Nacked():
 			h.logger.Trace("Message Nacked", receivedMsgLogFields)
@@ -642,7 +673,7 @@ ResendLoop:
 			h.logger.Trace("Closing, message discarded before ack", receivedMsgLogFields)
 			return nil
 		case <-ctx.Done():
-			h.logger.Trace("Closing, ctx cancelled before ack", receivedMsgLogFields)
+			h.logger.Trace("Closing, ctx canceled before ack", receivedMsgLogFields)
 			return nil
 		}
 	}
@@ -663,8 +694,10 @@ func (s *Subscriber) SubscribeInitializeWithContext(ctx context.Context, topic s
 	if err != nil {
 		return errors.Wrap(err, "cannot create cluster admin")
 	}
+
 	defer func() {
-		if closeErr := clusterAdmin.Close(); closeErr != nil {
+		closeErr := clusterAdmin.Close()
+		if closeErr != nil {
 			err = multierror.Append(err, closeErr)
 		}
 	}()
@@ -679,7 +712,8 @@ func (s *Subscriber) SubscribeInitializeWithContext(ctx context.Context, topic s
 		ctx, cancel := context.WithTimeout(ctx, s.config.WaitForTopicCreationTimeout)
 		defer cancel()
 
-		if err := s.waitForTopicCreation(ctx, clusterAdmin, topic); err != nil {
+		err := s.waitForTopicCreation(ctx, clusterAdmin, topic)
+		if err != nil {
 			return errors.Wrap(err, "failed to wait for topic creation")
 		}
 	}
@@ -697,7 +731,7 @@ func (s *Subscriber) waitForTopicCreation(ctx context.Context, clusterAdmin sara
 	for {
 		select {
 		case <-ctx.Done():
-			return errors.Wrap(ctx.Err(), "context cancelled while waiting for topic creation")
+			return errors.Wrap(ctx.Err(), "context canceled while waiting for topic creation")
 		default:
 		}
 
@@ -713,6 +747,7 @@ func (s *Subscriber) waitForTopicCreation(ctx context.Context, clusterAdmin sara
 					s.logger.Debug("Topic and partitions creation confirmed", logFields.Add(watermill.LogFields{
 						"attempt": attempt + 1,
 					}))
+
 					return nil
 				}
 			}
@@ -727,7 +762,7 @@ func (s *Subscriber) waitForTopicCreation(ctx context.Context, clusterAdmin sara
 		select {
 		case <-ctx.Done():
 			timer.Stop()
-			return errors.Wrap(ctx.Err(), "context cancelled while waiting for topic creation")
+			return errors.Wrap(ctx.Err(), "context canceled while waiting for topic creation")
 		case <-timer.C:
 			// Continue to next attempt
 		}
@@ -743,6 +778,7 @@ func (s *Subscriber) verifyPartitionsReady(clusterAdmin sarama.ClusterAdmin, top
 			"attempt": attempt + 1,
 			"error":   err.Error(),
 		}))
+
 		return false
 	}
 
@@ -750,6 +786,7 @@ func (s *Subscriber) verifyPartitionsReady(clusterAdmin sarama.ClusterAdmin, top
 		s.logger.Debug("No topic metadata returned", logFields.Add(watermill.LogFields{
 			"attempt": attempt + 1,
 		}))
+
 		return false
 	}
 
@@ -759,6 +796,7 @@ func (s *Subscriber) verifyPartitionsReady(clusterAdmin sarama.ClusterAdmin, top
 			"attempt": attempt + 1,
 			"error":   topicMeta.Err.Error(),
 		}))
+
 		return false
 	}
 
@@ -770,6 +808,7 @@ func (s *Subscriber) verifyPartitionsReady(clusterAdmin sarama.ClusterAdmin, top
 			"expected_partitions":  expectedPartitions,
 			"available_partitions": len(topicMeta.Partitions),
 		}))
+
 		return false
 	}
 
@@ -781,13 +820,16 @@ func (s *Subscriber) verifyPartitionsReady(clusterAdmin sarama.ClusterAdmin, top
 				"partition": partition.ID,
 				"error":     partition.Err.Error(),
 			}))
+
 			return false
 		}
+
 		if partition.Leader == -1 {
 			s.logger.Debug("Partition has no leader", logFields.Add(watermill.LogFields{
 				"attempt":   attempt + 1,
 				"partition": partition.ID,
 			}))
+
 			return false
 		}
 	}
@@ -804,7 +846,8 @@ func (s *Subscriber) PartitionOffset(topic string) (PartitionOffset, error) {
 	}
 
 	defer func() {
-		if closeErr := client.Close(); closeErr != nil {
+		closeErr := client.Close()
+		if closeErr != nil {
 			err = multierror.Append(err, closeErr)
 		}
 	}()

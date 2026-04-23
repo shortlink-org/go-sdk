@@ -36,7 +36,7 @@ func main() {
 
 		// Convert the filter string into a map for quick lookup
 		if *filter != "" {
-			for _, name := range strings.Split(*filter, ";") {
+			for name := range strings.SplitSeq(*filter, ";") {
 				filterMap[name] = struct{}{}
 			}
 		}
@@ -90,6 +90,7 @@ func generateRichModel(gen *protogen.Plugin, file *protogen.File, message *proto
 		if field.GoName == "" {
 			continue
 		}
+
 		_, usedImports := protobufToGoType(field)
 		importManager.addImports(usedImports)
 	}
@@ -139,6 +140,7 @@ func generateGetters(g *protogen.GeneratedFile, message *protogen.Message, struc
 		if field.GoName == "" {
 			continue
 		}
+
 		goType, _ := protobufToGoType(field)
 		if goType == "" {
 			continue
@@ -209,10 +211,11 @@ func protobufToGoTypeSingle(field *protogen.Field) (string, map[string]bool) {
 		return "float64", nil
 	case protoreflect.MessageKind, protoreflect.GroupKind:
 		if field.Message != nil && field.Message.GoIdent.GoImportPath != "" {
-			if field.Message.GoIdent.GoName == "Timestamp" {
+			switch field.Message.GoIdent.GoName {
+			case "Timestamp":
 				imports["google.golang.org/protobuf/types/known/timestamppb"] = true
 				return "*timestamppb.Timestamp", imports
-			} else if field.Message.GoIdent.GoName == "FieldMask" {
+			case "FieldMask":
 				imports["google.golang.org/protobuf/types/known/fieldmaskpb"] = true
 				return "fieldmaskpb.FieldMask", imports
 			}

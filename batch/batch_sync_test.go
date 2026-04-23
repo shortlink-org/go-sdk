@@ -12,8 +12,24 @@ import (
 	"github.com/shortlink-org/go-sdk/config"
 )
 
+func collectNonNilErrors(errChan <-chan error) []error {
+	var errors []error
+
+	for err := range errChan {
+		if err != nil {
+			errors = append(errors, err)
+		}
+	}
+
+	return errors
+}
+
 func TestNewSync(t *testing.T) {
+	t.Parallel()
+
 	t.Run("Returns cleanly after context cancellation", func(t *testing.T) {
+		t.Parallel()
+
 		ctx, cancel := context.WithCancel(context.Background())
 
 		aggrCB := func(args []*Item[string]) error {
@@ -30,8 +46,8 @@ func TestNewSync(t *testing.T) {
 		done := make(chan struct{})
 
 		var (
-			b   *Batch[string]
-			err error
+			resultBatch *Batch[string]
+			err         error
 		)
 
 		go func() {
@@ -44,7 +60,7 @@ func TestNewSync(t *testing.T) {
 				return
 			}
 
-			b, err = NewSync(ctx, cfg, aggrCB)
+			resultBatch, err = NewSync(ctx, cfg, aggrCB)
 
 			close(done)
 		}()
@@ -57,7 +73,7 @@ func TestNewSync(t *testing.T) {
 		// Wait for NewSync to return.
 		<-done
 
-		require.NotNil(t, b)
+		require.NotNil(t, resultBatch)
 		require.NoError(t, err)
 	})
 }
@@ -66,94 +82,75 @@ func TestNewSync(t *testing.T) {
 // This test validates both size-based and time-based flush mechanisms using synctest
 // to eliminate timing dependencies and ensure consistent test execution.
 func TestBatchProcessingWithSynctest(t *testing.T) {
-	synctest.Test(t, func(t *testing.T) {
-		ctx, cancel := context.WithCancel(context.Background())
-		defer cancel()
+	t.Parallel()
 
-		var (
-			processedItems []string
-			callbackCount  int64
-		)
+	synctest.Test(t, testBatchProcessingWithSynctestInner)
+}
 
-		aggrCB := func(items []*Item[string]) error {
-			atomic.AddInt64(&callbackCount, 1)
+func testBatchProcessingWithSynctestInner(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
-			for _, item := range items {
-				processedItems = append(processedItems, item.Item)
-				item.CallbackChannel <- item.Item
+	var callbackCount atomic.Int64
 
-				close(item.CallbackChannel)
-			}
+	aggrCB := func(items []*Item[string]) error {
+		callbackCount.Add(1)
 
-			return nil
+		for _, item := range items {
+			item.CallbackChannel <- item.Item
+
+			close(item.CallbackChannel)
 		}
 
-		// Configure batch with 100ms flush interval and size threshold of 3 items
-		cfg, err := config.New()
-		require.NoError(t, err)
+		return nil
+	}
 
-		batch, errChan := New(ctx, cfg, aggrCB, WithInterval[string](100*time.Millisecond), WithSize[string](3))
+	cfg, err := config.New()
+	require.NoError(t, err)
 
-		// Add items below the size threshold to test time-based flushing
-		ch1 := batch.Push("item1")
-		ch2 := batch.Push("item2")
+	batchInst, errChan := New(ctx, cfg, aggrCB, WithInterval[string](100*time.Millisecond), WithSize[string](3))
 
-		// Ensure no premature flushing occurs before size threshold is met
-		synctest.Wait()
+	ch1 := batchInst.Push("item1")
+	ch2 := batchInst.Push("item2")
 
-		// Verify no processing has occurred yet since size threshold not reached
-		require.Equal(t, int64(0), atomic.LoadInt64(&callbackCount))
+	synctest.Wait()
+	require.Equal(t, int64(0), callbackCount.Load())
 
-		// Add third item to trigger size-based flush mechanism
-		ch3 := batch.Push("item3")
+	ch3 := batchInst.Push("item3")
 
-		// Allow size-based flush to complete
-		synctest.Wait()
+	synctest.Wait()
 
-		// Verify size-based flush processed all three items
-		require.Equal(t, int64(1), atomic.LoadInt64(&callbackCount))
-		require.Equal(t, "item1", <-ch1)
-		require.Equal(t, "item2", <-ch2)
-		require.Equal(t, "item3", <-ch3)
+	require.Equal(t, int64(1), callbackCount.Load())
+	require.Equal(t, "item1", <-ch1)
+	require.Equal(t, "item2", <-ch2)
+	require.Equal(t, "item3", <-ch3)
 
-		// Add single item to test time-based flush behavior
-		ch4 := batch.Push("item4")
+	ch4 := batchInst.Push("item4")
 
-		// Advance fake time to trigger the ticker-based flush (100ms interval)
-		time.Sleep(100 * time.Millisecond)
-		synctest.Wait()
+	time.Sleep(100 * time.Millisecond)
+	synctest.Wait()
 
-		// Verify time-based flush processed the remaining item
-		require.Equal(t, int64(2), atomic.LoadInt64(&callbackCount))
-		require.Equal(t, "item4", <-ch4)
+	require.Equal(t, int64(2), callbackCount.Load())
+	require.Equal(t, "item4", <-ch4)
 
-		// Cancel to clean up and wait for error channel to close
-		cancel()
+	cancel()
 
-		// Wait for error channel to close and check no errors occurred
-		var errors []error
-
-		for err := range errChan {
-			if err != nil {
-				errors = append(errors, err)
-			}
-		}
-
-		require.Empty(t, errors)
-	})
+	require.Empty(t, collectNonNilErrors(errChan))
 }
 
 // TestBatchCancellationWithSynctest verifies proper resource cleanup and graceful shutdown
 // when the batch context is canceled. Ensures that pending items are handled correctly
 // and no goroutines are leaked during cancellation scenarios.
 func TestBatchCancellationWithSynctest(t *testing.T) {
+	t.Parallel()
+
 	synctest.Test(t, func(t *testing.T) {
 		ctx, cancel := context.WithCancel(context.Background())
 
-		var processedCount int64
+		var processedCount atomic.Int64
 
 		aggrCB := func(items []*Item[string]) error {
-			atomic.AddInt64(&processedCount, int64(len(items)))
+			processedCount.Add(int64(len(items)))
 
 			for _, item := range items {
 				item.CallbackChannel <- item.Item
@@ -187,17 +184,7 @@ func TestBatchCancellationWithSynctest(t *testing.T) {
 		require.False(t, ok1, "channel should be closed")
 		require.False(t, ok2, "channel should be closed")
 
-		// Wait for error channel to close
-		var errors []error
-
-		for err := range errChan {
-			if err != nil {
-				errors = append(errors, err)
-			}
-		}
-
-		// Should have no errors from the callback itself
-		require.Empty(t, errors)
+		require.Empty(t, collectNonNilErrors(errChan))
 	})
 }
 
@@ -205,14 +192,16 @@ func TestBatchCancellationWithSynctest(t *testing.T) {
 // Verifies that batches are flushed according to the configured interval when
 // the size threshold is not reached, ensuring predictable batch processing behavior.
 func TestBatchTimeBasedFlushWithSynctest(t *testing.T) {
+	t.Parallel()
+
 	synctest.Test(t, func(t *testing.T) {
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
 
-		var flushCount int64
+		var flushCount atomic.Int64
 
 		aggrCB := func(items []*Item[string]) error {
-			atomic.AddInt64(&flushCount, 1)
+			flushCount.Add(1)
 
 			for _, item := range items {
 				item.CallbackChannel <- item.Item
@@ -235,7 +224,7 @@ func TestBatchTimeBasedFlushWithSynctest(t *testing.T) {
 		// Advance time to the first interval flush (50ms)
 		time.Sleep(50 * time.Millisecond)
 		synctest.Wait()
-		require.Equal(t, int64(1), atomic.LoadInt64(&flushCount))
+		require.Equal(t, int64(1), flushCount.Load())
 		require.Equal(t, "item1", <-ch1)
 
 		// Add more items
@@ -245,15 +234,15 @@ func TestBatchTimeBasedFlushWithSynctest(t *testing.T) {
 		// Advance time to the next interval flush
 		time.Sleep(50 * time.Millisecond)
 		synctest.Wait()
-		require.Equal(t, int64(2), atomic.LoadInt64(&flushCount))
+		require.Equal(t, int64(2), flushCount.Load())
 		require.Equal(t, "item2", <-ch2)
 		require.Equal(t, "item3", <-ch3)
 
 		// Clean up
 		cancel()
 
-		for range errChan {
-			// Drain error channel
+		for err := range errChan {
+			_ = err
 		}
 	})
 }

@@ -3,6 +3,8 @@ package http_client
 import (
 	"net/http"
 	"time"
+
+	"github.com/bhope/hedge"
 )
 
 type config struct {
@@ -14,6 +16,8 @@ type config struct {
 	deadlineThreshold time.Duration
 	metrics           *Metrics
 	base              http.RoundTripper
+	hedgeEnabled      bool
+	hedgeOpts         []hedge.Option
 }
 
 // Option configures an HTTP client during construction.
@@ -23,6 +27,7 @@ type Option func(*config) error
 func WithClientName(name string) Option {
 	return func(c *config) error {
 		c.clientName = name
+
 		return nil
 	}
 }
@@ -45,6 +50,7 @@ func WithRateLimit(rate float64, burst int) Option {
 func WithJitter(fraction float64) Option {
 	return func(c *config) error {
 		c.jitter = fraction
+
 		return nil
 	}
 }
@@ -55,16 +61,18 @@ func WithJitter(fraction float64) Option {
 func WithServerHeaderJitter(fraction float64) Option {
 	return func(c *config) error {
 		c.headerJitter = fraction
+
 		return nil
 	}
 }
 
 // WithDeadlineThreshold sets the minimum time before a context deadline
 // at which requests will be rejected early. If a request's deadline is
-// closer than this threshold, it will be cancelled immediately.
+// closer than this threshold, it will be canceled immediately.
 func WithDeadlineThreshold(t time.Duration) Option {
 	return func(c *config) error {
 		c.deadlineThreshold = t
+
 		return nil
 	}
 }
@@ -73,6 +81,7 @@ func WithDeadlineThreshold(t time.Duration) Option {
 func WithMetrics(m *Metrics) Option {
 	return func(c *config) error {
 		c.metrics = m
+
 		return nil
 	}
 }
@@ -86,6 +95,18 @@ func WithBaseTransport(rt http.RoundTripper) Option {
 		} else {
 			c.base = rt
 		}
+
+		return nil
+	}
+}
+
+// WithHedge enables adaptive hedged requests on the stack below OpenTelemetry
+// (otelhttp remains the outer RoundTripper so each logical Do keeps one trace span).
+// See https://github.com/bhope/hedge
+func WithHedge(opts ...hedge.Option) Option {
+	return func(c *config) error {
+		c.hedgeEnabled = true
+		c.hedgeOpts = append(c.hedgeOpts, opts...)
 
 		return nil
 	}

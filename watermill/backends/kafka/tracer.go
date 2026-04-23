@@ -14,7 +14,7 @@ type SaramaTracer interface {
 
 type OTELSaramaTracer struct{}
 
-func NewOTELSaramaTracer() SaramaTracer {
+func NewOTELSaramaTracer() OTELSaramaTracer {
 	return OTELSaramaTracer{}
 }
 

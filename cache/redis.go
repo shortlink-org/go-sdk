@@ -8,19 +8,19 @@ import (
 	"github.com/redis/go-redis/v9"
 )
 
-// RedisClient wraps the Redis client with additional error handling
+// RedisClient wraps the Redis client with additional error handling.
 type RedisClient struct {
 	client *redis.Client
 }
 
-// NewRedisClient creates a new Redis client wrapper
+// NewRedisClient creates a new Redis client wrapper.
 func NewRedisClient(opts *redis.Options) *RedisClient {
 	return &RedisClient{
 		client: redis.NewClient(opts),
 	}
 }
 
-// Set stores a key-value pair with optional expiration
+// Set stores a key-value pair with optional expiration.
 func (r *RedisClient) Set(ctx context.Context, key string, value any, expiration time.Duration) error {
 	err := r.client.Set(ctx, key, value, expiration).Err()
 	if err != nil {
@@ -30,7 +30,7 @@ func (r *RedisClient) Set(ctx context.Context, key string, value any, expiration
 	return nil
 }
 
-// Get retrieves a value by key
+// Get retrieves a value by key.
 func (r *RedisClient) Get(ctx context.Context, key string) (string, error) {
 	val, err := r.client.Get(ctx, key).Result()
 	if errors.Is(err, redis.Nil) {
@@ -44,7 +44,7 @@ func (r *RedisClient) Get(ctx context.Context, key string) (string, error) {
 	return val, nil
 }
 
-// Delete removes a key
+// Delete removes a key.
 func (r *RedisClient) Delete(ctx context.Context, key string) error {
 	err := r.client.Del(ctx, key).Err()
 	if err != nil {
@@ -54,7 +54,7 @@ func (r *RedisClient) Delete(ctx context.Context, key string) error {
 	return nil
 }
 
-// Exists checks if a key exists
+// Exists checks if a key exists.
 func (r *RedisClient) Exists(ctx context.Context, key string) (bool, error) {
 	n, err := r.client.Exists(ctx, key).Result()
 	if err != nil {
@@ -64,7 +64,7 @@ func (r *RedisClient) Exists(ctx context.Context, key string) (bool, error) {
 	return n > 0, nil
 }
 
-// Close closes the Redis connection
+// Close closes the Redis connection.
 func (r *RedisClient) Close() error {
 	err := r.client.Close()
 	if err != nil {
@@ -81,7 +81,7 @@ func (r *RedisClient) Pipeline() redis.Pipeliner {
 	return r.client.Pipeline()
 }
 
-// Client returns the underlying Redis client
+// Client returns the underlying Redis client.
 func (r *RedisClient) Client() *redis.Client {
 	return r.client
 }

@@ -5,8 +5,9 @@ import (
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/shortlink-org/go-sdk/config"
 	"go.opentelemetry.io/otel/sdk/metric"
+
+	"github.com/shortlink-org/go-sdk/config"
 )
 
 // AfterConnectFunc is a callback executed after each new connection is established.

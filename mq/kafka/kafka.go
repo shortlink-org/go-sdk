@@ -10,9 +10,9 @@ import (
 	"github.com/IBM/sarama"
 	"github.com/dnwe/otelsarama"
 	"github.com/heptiolabs/healthcheck"
+
 	"github.com/shortlink-org/go-sdk/config"
 	"github.com/shortlink-org/go-sdk/logger"
-
 	"github.com/shortlink-org/go-sdk/mq/query"
 )
 
@@ -23,6 +23,7 @@ type Config struct {
 
 type Kafka struct {
 	*Config
+
 	cfg *config.Config
 
 	client   sarama.Client
@@ -50,7 +51,7 @@ func (mq *Kafka) Init(ctx context.Context, log logger.Logger) error {
 		return err
 	}
 
-	if mq.client, err = sarama.NewClient(mq.Config.URI, config); err != nil {
+	if mq.client, err = sarama.NewClient(mq.URI, config); err != nil {
 		return err
 	}
 
@@ -85,7 +86,8 @@ func (mq *Kafka) Init(ctx context.Context, log logger.Logger) error {
 	go func() {
 		<-ctx.Done()
 
-		if errClose := mq.close(); errClose != nil {
+		errClose := mq.close()
+		if errClose != nil {
 			log.Error("Kafka close error",
 				slog.Any("error", errClose),
 			)
@@ -135,7 +137,7 @@ func (mq *Kafka) close() error {
 	return errs
 }
 
-func (mq *Kafka) Publish(_ context.Context, target string, routingKey []byte, payload []byte) error {
+func (mq *Kafka) Publish(_ context.Context, target string, routingKey, payload []byte) error {
 	_, _, err := mq.producer.SendMessage(&sarama.ProducerMessage{
 		Topic:     target,
 		Key:       sarama.StringEncoder(routingKey),
@@ -264,6 +266,7 @@ func (mq *Kafka) setConfig() (*sarama.Config, error) {
 		if saramaConfig.Producer.Retry.Max == 0 {
 			return nil, sarama.ErrInvalidConfig
 		}
+
 		if saramaConfig.Producer.RequiredAcks != sarama.WaitForAll {
 			return nil, sarama.ErrInvalidConfig
 		}

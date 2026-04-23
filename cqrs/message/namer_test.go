@@ -7,8 +7,10 @@ import (
 	wmmessage "github.com/ThreeDotsLabs/watermill/message"
 )
 
-type createInvoiceCommand struct{}
-type invoiceCreatedEvent struct{}
+type (
+	createInvoiceCommand struct{}
+	invoiceCreatedEvent  struct{}
+)
 
 func TestShortlinkNamerCommandName(t *testing.T) {
 	namer := NewShortlinkNamer("Billing")
@@ -28,6 +30,7 @@ func TestShortlinkNamerCommandName(t *testing.T) {
 	if topic := namer.TopicForCommand(name); topic != "billing.command.create_invoice_command.v1" {
 		t.Fatalf("unexpected command topic: %s", topic)
 	}
+
 	if topic := namer.TopicForEvent(eventName); topic != "billing.billing.invoice_created_event.v1" {
 		t.Fatalf("unexpected event topic: %s", topic)
 	}
@@ -48,6 +51,7 @@ func TestNameOfUsesMetadata(t *testing.T) {
 	msg := wmmessage.NewMessageWithContext(context.Background(), "1", []byte("payload"))
 	msg.Metadata.Set(MetadataTypeName, "billing.event.invoice_generated")
 	msg.Metadata.Set(MetadataTypeVersion, "v2")
+
 	if got := NameOf(msg); got != "billing.event.invoice_generated.v2" {
 		t.Fatalf("expected metadata-derived name, got %s", got)
 	}
@@ -55,6 +59,7 @@ func TestNameOfUsesMetadata(t *testing.T) {
 
 func TestTopicForCommandSanitizes(t *testing.T) {
 	name := "Billing.Command.Create Invoice.v1"
+
 	topic := TopicForCommand(name)
 	if topic != "billing.command.create_invoice.v1" {
 		t.Fatalf("unexpected sanitized topic: %s", topic)

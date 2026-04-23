@@ -8,9 +8,12 @@ import (
 	"testing"
 
 	"github.com/prometheus/client_golang/prometheus"
-	"github.com/shortlink-org/go-sdk/http/client/internal/types"
 	"github.com/stretchr/testify/require"
+
+	"github.com/shortlink-org/go-sdk/http/client/internal/types"
 )
+
+const counterDeltaEpsilon = 1e-9
 
 func TestMetrics429Middleware_NoMetrics(t *testing.T) {
 	next := types.RoundTripperFunc(func(req *http.Request) (*http.Response, error) {
@@ -70,10 +73,12 @@ func TestMetrics429Middleware_Not429(t *testing.T) {
 	families, err := reg.Gather()
 	require.NoError(t, err)
 
+	const floatZero = 0.0
+
 	for _, mf := range families {
 		if mf.GetName() == "test_metrics429_rate_limit_429_total" {
 			for _, metric := range mf.GetMetric() {
-				require.Equal(t, float64(0), metric.GetCounter().GetValue())
+				require.InDelta(t, floatZero, metric.GetCounter().GetValue(), counterDeltaEpsilon)
 			}
 		}
 	}
@@ -113,12 +118,15 @@ func TestMetrics429Middleware_Records429(t *testing.T) {
 	require.NoError(t, err)
 
 	var found bool
+
 	for _, mf := range families {
 		if mf.GetName() == "test_metrics429_rate_limit_429_total" {
 			found = true
-			require.Greater(t, len(mf.GetMetric()), 0)
+
+			require.NotEmpty(t, mf.GetMetric())
+
 			for _, metric := range mf.GetMetric() {
-				require.Equal(t, float64(1), metric.GetCounter().GetValue())
+				require.InDelta(t, 1.0, metric.GetCounter().GetValue(), counterDeltaEpsilon)
 			}
 		}
 	}
@@ -145,6 +153,12 @@ func TestMetrics429Middleware_ErrorFromNext(t *testing.T) {
 	require.NoError(t, err)
 
 	resp, err := transport.RoundTrip(req)
+	if resp != nil {
+		t.Cleanup(func() {
+			require.NoError(t, resp.Body.Close())
+		})
+	}
+
 	require.Error(t, err)
 	require.Nil(t, resp)
 	require.Equal(t, http.ErrServerClosed, err)

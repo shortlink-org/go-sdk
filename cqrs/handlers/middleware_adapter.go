@@ -17,7 +17,9 @@ func Chain(h wmmessage.HandlerFunc, middlewares ...wmmessage.HandlerMiddleware) 
 		if mw == nil {
 			continue
 		}
+
 		h = mw(h)
 	}
+
 	return h
 }

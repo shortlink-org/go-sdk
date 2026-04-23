@@ -31,6 +31,7 @@ func DecorateHandler(h wmmessage.HandlerFunc, cfg DecoratorConfig) wmmessage.Han
 			defaultCfg := defaultCircuitBreakerSettings()
 			settings = &defaultCfg
 		}
+
 		cb := wmmid.NewCircuitBreaker(*settings)
 		decorated = cb.Middleware(decorated)
 	}

@@ -14,7 +14,6 @@ func TestThunkFib(t *testing.T) {
 	}
 
 	for i := range cache {
-		i := i
 		cache[i] = New(func() int { return fib(i) })
 	}
 
@@ -22,7 +21,7 @@ func TestThunkFib(t *testing.T) {
 	cache[1].o.Set(1)
 
 	//nolint:revive // it's test
-	assert.Equal(t, cache[40].Force(), 102334155)
+	assert.Equal(t, 102334155, cache[40].Force())
 }
 
 func TestMemoizedFib(t *testing.T) {
@@ -32,6 +31,7 @@ func TestMemoizedFib(t *testing.T) {
 	}
 
 	var fib func(int) int
+
 	fib = func(n int) int {
 		if result, ok := mem[n]; ok {
 			return result
@@ -44,5 +44,5 @@ func TestMemoizedFib(t *testing.T) {
 	}
 
 	//nolint:revive // it's test
-	assert.Equal(t, fib(40), 102334155)
+	assert.Equal(t, 102334155, fib(40))
 }

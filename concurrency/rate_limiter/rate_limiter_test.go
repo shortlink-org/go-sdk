@@ -14,20 +14,22 @@ import (
 )
 
 func TestRateLimiter(t *testing.T) {
+	t.Parallel()
+
 	sum := int64(0)
 
 	// Use a context with a timeout to prevent test from running indefinitely
 	ctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)
 	defer cancel()
 
-	rl, err := rate_limiter.New(ctx, 100, 5*time.Millisecond)
+	rateLimiter, err := rate_limiter.New(ctx, 100, 5*time.Millisecond)
 	require.NoError(t, err)
 
-	var wg errgroup.Group
+	var errGroup errgroup.Group
 
 	for range 10000 {
-		wg.Go(func() error {
-			errWait := rl.Wait()
+		errGroup.Go(func() error {
+			errWait := rateLimiter.Wait()
 			if errWait != nil {
 				return errWait
 			}
@@ -38,7 +40,7 @@ func TestRateLimiter(t *testing.T) {
 		})
 	}
 
-	err = wg.Wait()
+	err = errGroup.Wait()
 	require.NoError(t, err)
 	require.Equal(t, int64(10000), atomic.LoadInt64(&sum))
 }
@@ -47,23 +49,25 @@ func TestRateLimiter(t *testing.T) {
 // Tests that tokens are properly consumed and that subsequent requests block until
 // token refill occurs, ensuring correct rate limiting enforcement.
 func TestRateLimiterWithSynctest(t *testing.T) {
+	t.Parallel()
+
 	synctest.Test(t, func(t *testing.T) {
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
 
 		// Initialize rate limiter with 2 initial tokens, refilling every 100ms
-		rl, err := rate_limiter.New(ctx, 2, 100*time.Millisecond)
+		rateLimiter, err := rate_limiter.New(ctx, 2, 100*time.Millisecond)
 		require.NoError(t, err)
 
 		// Consume both available tokens - should succeed immediately
-		require.NoError(t, rl.Wait())
-		require.NoError(t, rl.Wait())
+		require.NoError(t, rateLimiter.Wait())
+		require.NoError(t, rateLimiter.Wait())
 
 		// Third request should block waiting for token refill
 		done := make(chan error, 1)
 
 		go func() {
-			done <- rl.Wait()
+			done <- rateLimiter.Wait()
 		}()
 
 		// Verify the third request is blocked waiting for refill
@@ -91,21 +95,23 @@ func TestRateLimiterWithSynctest(t *testing.T) {
 // Ensures that blocked rate limiter operations return the appropriate cancellation error
 // and that resources are cleaned up correctly when the context is canceled.
 func TestRateLimiterCancellation(t *testing.T) {
+	t.Parallel()
+
 	synctest.Test(t, func(t *testing.T) {
 		ctx, cancel := context.WithCancel(context.Background())
 
 		// Create rate limiter with single token and long refill interval
-		rl, err := rate_limiter.New(ctx, 1, 1*time.Second)
+		rateLimiter, err := rate_limiter.New(ctx, 1, 1*time.Second)
 		require.NoError(t, err)
 
 		// Consume the available token
-		require.NoError(t, rl.Wait())
+		require.NoError(t, rateLimiter.Wait())
 
 		// Launch goroutine that will block waiting for token refill
 		done := make(chan error, 1)
 
 		go func() {
-			done <- rl.Wait()
+			done <- rateLimiter.Wait()
 		}()
 
 		// Verify the goroutine is blocked waiting for token
@@ -127,6 +133,8 @@ func TestRateLimiterCancellation(t *testing.T) {
 // a simplified token bucket implementation. Tests token consumption and refill behavior
 // in a controlled environment to ensure rate limiting mechanics work correctly.
 func TestSimpleRateLimiterWithSynctest(t *testing.T) {
+	t.Parallel()
+
 	synctest.Test(t, func(t *testing.T) {
 		// Create a simple rate limiter scenario without persistent background goroutines
 		limiter := make(chan struct{}, 2)

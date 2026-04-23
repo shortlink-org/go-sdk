@@ -7,6 +7,7 @@ package notify
 
 import (
 	"context"
+	"slices"
 
 	"go.uber.org/atomic"
 )
@@ -42,11 +43,8 @@ func UnSubscribe(event uint32, subscriber Subscriber[any]) {
 	subscribers.mu.Lock()
 	defer subscribers.mu.Unlock()
 
-	for _, v := range subscribers.subscriberMap[event] {
-		if subscriber == v {
-			delete(subscribers.subscriberMap, event)
-			break
-		}
+	if slices.Contains(subscribers.subscriberMap[event], subscriber) {
+		delete(subscribers.subscriberMap, event)
 	}
 }
 

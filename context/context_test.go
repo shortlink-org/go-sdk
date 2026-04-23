@@ -32,7 +32,8 @@ func TestNew(t *testing.T) {
 		t.Fatalf("expected context.Canceled, got %v", c.Err())
 	}
 
-	if got := context.Cause(c); !errors.Is(got, cause) {
+	got := context.Cause(c)
+	if !errors.Is(got, cause) {
 		t.Fatalf("expected cause %v, got %v", cause, got)
 	}
 }
@@ -52,7 +53,8 @@ func TestNew_NilCause(t *testing.T) {
 		t.Fatalf("expected context.Canceled, got %v", c.Err())
 	}
 
-	if got := context.Cause(c); !errors.Is(got, context.Canceled) {
+	got := context.Cause(c)
+	if !errors.Is(got, context.Canceled) {
 		t.Fatalf("expected cause context.Canceled, got %v", got)
 	}
 }

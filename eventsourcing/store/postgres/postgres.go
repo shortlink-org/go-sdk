@@ -100,6 +100,7 @@ func (e *EventStore) Load(ctx context.Context, aggregateID string) (*eventsourci
 		Where(squirrel.Eq{
 			"aggregate_id": aggregateID,
 		})
+
 	q, args, err := querySnaphot.ToSql()
 	if err != nil {
 		return nil, nil, err
@@ -143,6 +144,7 @@ func (e *EventStore) Load(ctx context.Context, aggregateID string) (*eventsourci
 		event := eventsourcing.Event{
 			AggregateId: aggregateID,
 		}
+
 		err = rows.Scan(&event.AggregateType, &event.Id, &event.Type, &event.Payload, &event.Version)
 		if err != nil {
 			return nil, nil, err

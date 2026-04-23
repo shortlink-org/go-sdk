@@ -1,6 +1,4 @@
-/*
-Get free port
-*/
+// Package freeport returns an ephemeral TCP port bound on localhost.
 package freeport
 
 import (
@@ -14,16 +12,16 @@ func GetFreePort() (int, error) {
 		return 0, err
 	}
 
-	l, err := net.ListenTCP("tcp", addr)
+	tcpListener, err := net.ListenTCP("tcp", addr)
 	if err != nil {
 		return 0, err
 	}
 
 	defer func() {
-		_ = l.Close()
+		_ = tcpListener.Close() //nolint:errcheck // best-effort close of ephemeral listener
 	}()
 
-	port, ok := l.Addr().(*net.TCPAddr)
+	port, ok := tcpListener.Addr().(*net.TCPAddr)
 	if !ok {
 		return 0, ErrNoFreePort
 	}

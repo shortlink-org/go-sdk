@@ -104,7 +104,7 @@ type JWKSConfig struct {
 }
 
 // NewJWKSFetcher creates a new JWKS fetcher.
-func NewJWKSFetcher(cfg JWKSConfig) JWKSFetcher {
+func NewJWKSFetcher(cfg JWKSConfig) *jwksFetcher {
 	if cfg.CacheTTL == 0 {
 		cfg.CacheTTL = DefaultJWKSCacheTTL
 	}
@@ -298,12 +298,13 @@ func (fetcher *jwksFetcher) recordFetchFailure(duration time.Duration) {
 			fetcher.backoff = fetcher.backoffMax
 		}
 	}
+
 	fetcher.nextRetry = fetcher.clock.Now().Add(fetcher.backoff)
 	fetcher.fetchMu.Unlock()
 }
 
 func (fetcher *jwksFetcher) fetchJWKSBody(ctx context.Context) ([]byte, error) {
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, fetcher.url, nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, fetcher.url, http.NoBody)
 	if err != nil {
 		return nil, fmt.Errorf("create request: %w", err)
 	}
@@ -314,7 +315,7 @@ func (fetcher *jwksFetcher) fetchJWKSBody(ctx context.Context) ([]byte, error) {
 	}
 
 	defer func() {
-		_ = resp.Body.Close()
+		_ = resp.Body.Close() //nolint:errcheck // response body close; errors logged at call site if needed
 	}()
 
 	if resp.StatusCode != http.StatusOK {
@@ -339,7 +340,8 @@ func (fetcher *jwksFetcher) parseJWKS(body []byte) (map[string]*rsa.PublicKey, e
 
 	keys := make(map[string]*rsa.PublicKey)
 
-	for _, key := range jwks.Keys {
+	for i := range jwks.Keys {
+		key := &jwks.Keys[i]
 		if key.Kty != "RSA" {
 			continue
 		}
@@ -377,7 +379,7 @@ type jwkKey struct {
 	E   string `json:"e"`
 }
 
-func parseRSAPublicKey(key jwkKey) (*rsa.PublicKey, error) {
+func parseRSAPublicKey(key *jwkKey) (*rsa.PublicKey, error) {
 	modulusBytes, err := base64.RawURLEncoding.DecodeString(key.N)
 	if err != nil {
 		return nil, fmt.Errorf("decode n: %w", err)

@@ -38,7 +38,7 @@ func main() {
 
 		// Convert the filter string into a map for quick lookup
 		if *filter != "" {
-			for _, name := range strings.Split(*filter, ";") {
+			for name := range strings.SplitSeq(*filter, ";") {
 				filterMap[name] = struct{}{}
 			}
 		}
@@ -56,7 +56,8 @@ func main() {
 			}
 
 			// Generate ORM
-			if err := generateFile(gen, f); err != nil {
+			err := generateFile(gen, f)
+			if err != nil {
 				log.Fatal(err)
 			}
 		}
@@ -70,6 +71,7 @@ func protocVersion(gen *protogen.Plugin) string {
 	if v == nil {
 		return "(unknown)"
 	}
+
 	var suffix string
 	if s := v.GetSuffix(); s != "" {
 		suffix = "-" + s

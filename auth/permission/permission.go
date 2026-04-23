@@ -1,3 +1,4 @@
+// Package permission constructs an Authzed client with observability interceptors.
 package permission
 
 import (
@@ -11,7 +12,13 @@ import (
 	"github.com/shortlink-org/go-sdk/observability/metrics"
 )
 
-func New(log logger.Logger, tracer trace.TracerProvider, monitor *metrics.Monitoring, cfg *config.Config) (*authzed.Client, error) {
+// New returns an Authzed client wired with metrics, tracing, logging, and timeouts.
+func New(
+	log logger.Logger,
+	tracer trace.TracerProvider,
+	monitor *metrics.Monitoring,
+	cfg *config.Config,
+) (*authzed.Client, error) {
 	// Initialize gRPC Client's interceptor.
 	// NOTE: Do NOT use WithAuthForward() here - SpiceDB requires its own preshared key authentication,
 	// not forwarded user JWT tokens. The preshared key is set via grpc.WithPerRPCCredentials() in auth.New().

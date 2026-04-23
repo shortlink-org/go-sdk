@@ -4,7 +4,6 @@ import (
 	"testing"
 
 	"github.com/IBM/sarama"
-
 	"github.com/ThreeDotsLabs/watermill"
 	"github.com/ThreeDotsLabs/watermill-kafka/v3/pkg/kafka"
 	"github.com/ThreeDotsLabs/watermill/message"

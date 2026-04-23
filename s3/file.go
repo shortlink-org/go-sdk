@@ -10,7 +10,7 @@ import (
 )
 
 // UploadFile uploads a file to S3 with context
-func (c *Client) UploadFile(ctx context.Context, bucketName string, objectName string, reader *bytes.Reader) error {
+func (c *Client) UploadFile(ctx context.Context, bucketName, objectName string, reader *bytes.Reader) error {
 	_, err := c.client.PutObject(ctx, bucketName, objectName, reader, int64(reader.Len()), minio.PutObjectOptions{})
 	if err != nil {
 		return err
@@ -20,7 +20,7 @@ func (c *Client) UploadFile(ctx context.Context, bucketName string, objectName s
 }
 
 // DownloadFile downloads a file from S3 with context
-func (c *Client) DownloadFile(ctx context.Context, bucketName string, objectName string, filePath string) error {
+func (c *Client) DownloadFile(ctx context.Context, bucketName, objectName, filePath string) error {
 	err := c.client.FGetObject(ctx, bucketName, objectName, filePath, minio.GetObjectOptions{})
 	if err != nil {
 		return err
@@ -30,7 +30,7 @@ func (c *Client) DownloadFile(ctx context.Context, bucketName string, objectName
 }
 
 // RemoveFile removes a file from S3 with context
-func (c *Client) RemoveFile(ctx context.Context, bucketName string, objectName string) error {
+func (c *Client) RemoveFile(ctx context.Context, bucketName, objectName string) error {
 	err := c.client.RemoveObject(ctx, bucketName, objectName, minio.RemoveObjectOptions{})
 	if err != nil {
 		return err
@@ -48,6 +48,7 @@ func (c *Client) ListFiles(ctx context.Context, bucketName string) ([]string, er
 		if object.Err != nil {
 			return nil, object.Err
 		}
+
 		files = append(files, object.Key)
 	}
 
@@ -55,7 +56,7 @@ func (c *Client) ListFiles(ctx context.Context, bucketName string) ([]string, er
 }
 
 // FileExists checks if a file exists with context
-func (c *Client) FileExists(ctx context.Context, bucketName string, objectName string) (bool, error) {
+func (c *Client) FileExists(ctx context.Context, bucketName, objectName string) (bool, error) {
 	_, err := c.client.StatObject(ctx, bucketName, objectName, minio.StatObjectOptions{})
 	if err != nil {
 		return false, err
@@ -65,7 +66,7 @@ func (c *Client) FileExists(ctx context.Context, bucketName string, objectName s
 }
 
 // GetFileURL returns a URL for a file with context
-func (c *Client) GetFileURL(ctx context.Context, bucketName string, objectName string) (*url.URL, error) {
+func (c *Client) GetFileURL(ctx context.Context, bucketName, objectName string) (*url.URL, error) {
 	//nolint:revive,mnd // default value
 	duration := time.Minute * 60
 

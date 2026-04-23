@@ -4,30 +4,37 @@ import (
 	"context"
 	"net/http"
 	"net/http/httptest"
-	"os"
 	"path/filepath"
+	"sync"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/require"
 
 	"github.com/shortlink-org/go-sdk/config"
 	"github.com/shortlink-org/go-sdk/flight_trace"
 	"github.com/shortlink-org/go-sdk/logger"
-	"github.com/stretchr/testify/require"
 )
 
-const flightDumpDirPerm = 0o700
+// The runtime allows only one active flight recorder; serialize tests and
+// wait for Stop after each cancel so the next New can call Start safely.
+var flightRecorderTestMu sync.Mutex
 
 func TestDebugTraceMiddleware_HeaderTrigger(t *testing.T) {
+	flightRecorderTestMu.Lock()
+	t.Cleanup(func() {
+		time.Sleep(50 * time.Millisecond)
+		flightRecorderTestMu.Unlock()
+	})
+
 	ctx, cancel := context.WithCancel(context.Background())
 	t.Cleanup(cancel)
 
-	// Clean up /tmp/flight_dumps before each test
-	dumpPath := "/tmp/flight_dumps"
-	require.NoError(t, os.RemoveAll(dumpPath))
-	require.NoError(t, os.MkdirAll(dumpPath, flightDumpDirPerm))
+	dumpPath := t.TempDir()
 
 	cfg, err := config.New()
 	require.NoError(t, err)
+
 	cfg.Set("FLIGHT_RECORDER_DUMP_PATH", dumpPath)
 	cfg.Set("FLIGHT_TRACE_LATENCY_THRESHOLD", "200ms")
 
@@ -45,7 +52,7 @@ func TestDebugTraceMiddleware_HeaderTrigger(t *testing.T) {
 		w.WriteHeader(http.StatusOK)
 	}))
 
-	req := httptest.NewRequest(http.MethodGet, "/", http.NoBody)
+	req := httptest.NewRequestWithContext(ctx, http.MethodGet, "/", http.NoBody)
 	req.Header.Set("X-Debug-Trace", "true")
 
 	rr := httptest.NewRecorder()
@@ -53,28 +60,32 @@ func TestDebugTraceMiddleware_HeaderTrigger(t *testing.T) {
 	handler.ServeHTTP(rr, req)
 
 	require.Eventually(t, func() bool {
-		files, err := filepath.Glob(filepath.Join("/tmp/flight_dumps", "*.out"))
-		require.NoError(t, err)
+		files, globErr := filepath.Glob(filepath.Join(dumpPath, "*.out"))
+		require.NoError(t, globErr)
 
 		return len(files) > 0
 	}, time.Second, 50*time.Millisecond, "expected dump file to be created")
 
-	files, err := filepath.Glob("/tmp/flight_dumps/trace-*.out")
+	files, err := filepath.Glob(filepath.Join(dumpPath, "trace-*.out"))
 	require.NoError(t, err)
 	require.NotEmpty(t, files, "dump file name should start with trace- and end with .out")
 }
 
 func TestDebugTraceMiddleware_SlowRequest(t *testing.T) {
+	flightRecorderTestMu.Lock()
+	t.Cleanup(func() {
+		time.Sleep(50 * time.Millisecond)
+		flightRecorderTestMu.Unlock()
+	})
+
 	ctx, cancel := context.WithCancel(context.Background())
 	t.Cleanup(cancel)
 
-	// Clean up /tmp/flight_dumps before each test
-	dumpPath := "/tmp/flight_dumps"
-	require.NoError(t, os.RemoveAll(dumpPath))
-	require.NoError(t, os.MkdirAll(dumpPath, flightDumpDirPerm))
+	dumpPath := t.TempDir()
 
 	cfg, err := config.New()
 	require.NoError(t, err)
+
 	cfg.Set("FLIGHT_RECORDER_DUMP_PATH", dumpPath)
 	cfg.Set("FLIGHT_TRACE_LATENCY_THRESHOLD", "200ms")
 
@@ -92,30 +103,34 @@ func TestDebugTraceMiddleware_SlowRequest(t *testing.T) {
 		w.WriteHeader(http.StatusOK)
 	}))
 
-	req := httptest.NewRequest(http.MethodGet, "/", http.NoBody)
+	req := httptest.NewRequestWithContext(ctx, http.MethodGet, "/", http.NoBody)
 	rr := httptest.NewRecorder()
 
 	handler.ServeHTTP(rr, req)
 
 	require.Eventually(t, func() bool {
-		files, err := filepath.Glob(filepath.Join("/tmp/flight_dumps", "*.out"))
-		require.NoError(t, err)
+		files, globErr := filepath.Glob(filepath.Join(dumpPath, "*.out"))
+		require.NoError(t, globErr)
 
 		return len(files) > 0
 	}, time.Second, 50*time.Millisecond, "expected dump file to be created for slow request")
 }
 
 func TestDebugTraceMiddleware_NoTrigger(t *testing.T) {
+	flightRecorderTestMu.Lock()
+	t.Cleanup(func() {
+		time.Sleep(50 * time.Millisecond)
+		flightRecorderTestMu.Unlock()
+	})
+
 	ctx, cancel := context.WithCancel(context.Background())
 	t.Cleanup(cancel)
 
-	// Clean up /tmp/flight_dumps before each test
-	dumpPath := "/tmp/flight_dumps"
-	require.NoError(t, os.RemoveAll(dumpPath))
-	require.NoError(t, os.MkdirAll(dumpPath, flightDumpDirPerm))
+	dumpPath := t.TempDir()
 
 	cfg, err := config.New()
 	require.NoError(t, err)
+
 	cfg.Set("FLIGHT_RECORDER_DUMP_PATH", dumpPath)
 	cfg.Set("FLIGHT_TRACE_LATENCY_THRESHOLD", "200ms")
 
@@ -133,13 +148,14 @@ func TestDebugTraceMiddleware_NoTrigger(t *testing.T) {
 		w.WriteHeader(http.StatusOK)
 	}))
 
-	req := httptest.NewRequest(http.MethodGet, "/", http.NoBody)
+	req := httptest.NewRequestWithContext(ctx, http.MethodGet, "/", http.NoBody)
 	rr := httptest.NewRecorder()
 
 	handler.ServeHTTP(rr, req)
 
 	time.Sleep(300 * time.Millisecond)
-	files, err := filepath.Glob(filepath.Join("/tmp/flight_dumps", "*.out"))
+
+	files, err := filepath.Glob(filepath.Join(dumpPath, "*.out"))
 	require.NoError(t, err)
-	require.Equal(t, 0, len(files), "no dump files expected")
+	require.Empty(t, files, "no dump files expected")
 }

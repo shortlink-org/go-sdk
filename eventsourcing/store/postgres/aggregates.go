@@ -33,10 +33,12 @@ func (e *EventStore) addAggregate(ctx context.Context, event *eventsourcing.Even
 	}
 
 	row := e.db.QueryRow(ctx, q, args...)
+
 	err = row.Scan()
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil
 	}
+
 	if err.Error() != "" {
 		span.RecordError(err)
 		span.SetStatus(codes.Error, err.Error())

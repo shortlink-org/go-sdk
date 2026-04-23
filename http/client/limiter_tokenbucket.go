@@ -81,6 +81,7 @@ func (l *tokenBucketLimiter) Wait(ctx context.Context) (time.Duration, error) {
 		select {
 		case <-ctx.Done():
 			timer.Stop()
+
 			return total, ctx.Err()
 		case <-timer.C:
 			timer.Stop()

@@ -34,6 +34,7 @@ func (p *testPublisher) Close() error { return nil }
 
 func TestPublishDLQInjectsTraceContext(t *testing.T) {
 	originalPropagator := otel.GetTextMapPropagator()
+
 	otel.SetTextMapPropagator(propagation.TraceContext{})
 	t.Cleanup(func() {
 		otel.SetTextMapPropagator(originalPropagator)

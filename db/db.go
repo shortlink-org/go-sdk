@@ -7,6 +7,9 @@ import (
 	"context"
 	"log/slog"
 
+	"go.opentelemetry.io/otel/sdk/metric"
+	"go.opentelemetry.io/otel/trace"
+
 	"github.com/shortlink-org/go-sdk/config"
 	"github.com/shortlink-org/go-sdk/db/drivers/badger"
 	"github.com/shortlink-org/go-sdk/db/drivers/cockroachdb"
@@ -18,14 +21,13 @@ import (
 	"github.com/shortlink-org/go-sdk/db/drivers/postgres"
 	"github.com/shortlink-org/go-sdk/db/drivers/ram"
 	"github.com/shortlink-org/go-sdk/db/drivers/redis"
+	"github.com/shortlink-org/go-sdk/db/drivers/scylladb"
 	"github.com/shortlink-org/go-sdk/db/drivers/sqlite"
 	"github.com/shortlink-org/go-sdk/logger"
-	"go.opentelemetry.io/otel/sdk/metric"
-	"go.opentelemetry.io/otel/trace"
 )
 
 // New - return implementation of db
-func New(ctx context.Context, log logger.Logger, tracer trace.TracerProvider, metrics *metric.MeterProvider, cfg *config.Config, opts ...Option) (DB, error) {
+func New(ctx context.Context, log logger.Logger, tracer trace.TracerProvider, metrics *metric.MeterProvider, cfg *config.Config, opts ...Option) (*Store, error) {
 	// Apply options
 	options := &Options{}
 	for _, opt := range opts {
@@ -51,6 +53,8 @@ func New(ctx context.Context, log logger.Logger, tracer trace.TracerProvider, me
 		store.DB = mongo.New(cfg)
 	case "redis":
 		store.DB = redis.New(tracer, metrics, cfg)
+	case "scylladb":
+		store.DB = scylladb.New(cfg)
 	case "dgraph":
 		store.DB = dgraph.New(log, cfg)
 	case "leveldb":
@@ -67,7 +71,8 @@ func New(ctx context.Context, log logger.Logger, tracer trace.TracerProvider, me
 		store.DB = ram.New(cfg)
 	}
 
-	if err := store.Init(ctx); err != nil {
+	err := store.Init(ctx)
+	if err != nil {
 		return nil, err
 	}
 
@@ -80,7 +85,7 @@ func New(ctx context.Context, log logger.Logger, tracer trace.TracerProvider, me
 
 // setConfig - set configuration
 func (s *Store) setConfig() {
-	s.cfg.SetDefault("STORE_TYPE", "ram") // Select: postgres, mysql, mongo, redis, dgraph, sqlite, leveldb, badger, neo4j, ram, cockroachdb
+	s.cfg.SetDefault("STORE_TYPE", "ram") // Select: postgres, mysql, mongo, redis, scylladb, dgraph, sqlite, leveldb, badger, neo4j, ram, cockroachdb
 
 	s.typeStore = s.cfg.GetString("STORE_TYPE")
 	if s.typeStore == "" {

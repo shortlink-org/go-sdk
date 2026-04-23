@@ -16,7 +16,6 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/modules/postgres"
-	"github.com/testcontainers/testcontainers-go/wait"
 	"go.opentelemetry.io/otel/metric/noop"
 	"go.uber.org/goleak"
 
@@ -46,12 +45,9 @@ func setupPostgres(t *testing.T) *pgxpool.Pool {
 		postgres.WithDatabase("testdb"),
 		postgres.WithUsername("testuser"),
 		postgres.WithPassword("testpass"),
-		testcontainers.WithWaitStrategy(
-			wait.ForLog("database system is ready to accept connections").
-				WithOccurrence(2).
-				WithStartupTimeout(30*time.Second),
-		),
+		postgres.BasicWaitStrategies(),
 	)
+	testcontainers.CleanupContainer(t, container)
 	require.NoError(t, err, "postgres container: ensure Docker is running")
 
 	connStr, err := container.ConnectionString(ctx, "sslmode=disable")
@@ -62,7 +58,6 @@ func setupPostgres(t *testing.T) *pgxpool.Pool {
 
 	t.Cleanup(func() {
 		pool.Close()
-		_ = container.Terminate(context.Background())
 	})
 
 	return pool

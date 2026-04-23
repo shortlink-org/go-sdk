@@ -3,8 +3,8 @@ package message
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
-	"strings"
 
 	wmmessage "github.com/ThreeDotsLabs/watermill/message"
 	"github.com/google/uuid"
@@ -40,12 +40,15 @@ func (m *JSONMarshaler) Marshal(ctx context.Context, v any) (*wmmessage.Message,
 	if wmMsg.Metadata.Get(MetadataTypeName) == "" {
 		wmMsg.Metadata.Set(MetadataTypeName, typeName)
 	}
+
 	if wmMsg.Metadata.Get(MetadataTypeVersion) == "" {
 		wmMsg.Metadata.Set(MetadataTypeVersion, version)
 	}
+
 	if wmMsg.Metadata.Get(MetadataContentType) == "" {
 		wmMsg.Metadata.Set(MetadataContentType, "application/json")
 	}
+
 	if wmMsg.Metadata.Get(MetadataServiceName) == "" && m.namer != nil {
 		wmMsg.Metadata.Set(MetadataServiceName, m.namer.ServiceName())
 	}
@@ -59,10 +62,11 @@ func (m *JSONMarshaler) Marshal(ctx context.Context, v any) (*wmmessage.Message,
 // Unmarshal decodes JSON payload into provided value.
 func (m *JSONMarshaler) Unmarshal(msg *wmmessage.Message, v any) error {
 	if msg == nil {
-		return fmt.Errorf("message is nil")
+		return errors.New("message is nil")
 	}
+
 	if len(msg.Payload) == 0 {
-		return fmt.Errorf("message payload is empty")
+		return errors.New("message payload is empty")
 	}
 
 	return json.Unmarshal(msg.Payload, v)
@@ -78,6 +82,7 @@ func (m *JSONMarshaler) Name(v any) string {
 			return m.namer.CommandName(v)
 		}
 	}
+
 	return NameOf(v)
 }
 
@@ -86,13 +91,17 @@ func (m *JSONMarshaler) NameFromMessage(msg *wmmessage.Message) string {
 	if msg == nil {
 		return ""
 	}
+
 	typeName := msg.Metadata.Get(MetadataTypeName)
+
 	version := msg.Metadata.Get(MetadataTypeVersion)
 	if typeName != "" {
 		if version == "" {
 			version = defaultVersion
 		}
-		return strings.Join([]string{typeName, version}, ".")
+
+		return typeName + "." + version
 	}
+
 	return NameOf(msg)
 }

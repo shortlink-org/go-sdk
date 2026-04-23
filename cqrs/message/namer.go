@@ -15,9 +15,7 @@ const (
 	defaultVersion = "v1"
 )
 
-var (
-	versionSegment = regexp.MustCompile(`^v[0-9]+$`)
-)
+var versionSegment = regexp.MustCompile(`^v[0-9]+$`)
 
 // MessageKind distinguishes commands from events.
 type MessageKind string
@@ -47,6 +45,7 @@ func NewShortlinkNamer(serviceName string) *ShortlinkNamer {
 	if strings.TrimSpace(serviceName) == "" {
 		serviceName = defaultServiceName()
 	}
+
 	return &ShortlinkNamer{
 		serviceName: normalizeSegment(serviceName),
 		version:     defaultVersion,
@@ -62,6 +61,7 @@ func (n *ShortlinkNamer) ServiceName() string {
 func (n *ShortlinkNamer) CommandName(v any) string {
 	comps := buildNameComponents(v, n.serviceName, string(KindCommand), n.version)
 	comps.Kind = string(KindCommand)
+
 	return comps.String()
 }
 
@@ -86,6 +86,7 @@ func (n *ShortlinkNamer) EventName(v any) string {
 			comps.Kind = n.serviceName
 		}
 	}
+
 	return comps.String()
 }
 
@@ -104,6 +105,7 @@ func NameOf(v any) string {
 	defaultNamer := NewShortlinkNamer(defaultServiceName())
 	kind := inferKind(v)
 	comps := buildNameComponents(v, defaultNamer.serviceName, string(kind), defaultNamer.version)
+
 	return comps.String()
 }
 
@@ -145,12 +147,15 @@ func buildNameComponents(v any, fallbackService, fallbackKind, fallbackVersion s
 	if service := meta[MetadataServiceName]; service != "" {
 		comps.Service = service
 	}
+
 	if kind := meta[MetadataMessageKind]; kind != "" {
 		comps.Kind = kind
 	}
+
 	if typeName := meta[MetadataTypeName]; typeName != "" {
 		assignComponentsFromQualifiedName(&comps, typeName)
 	}
+
 	if version := meta[MetadataTypeVersion]; version != "" {
 		comps.Version = version
 	}
@@ -186,8 +191,9 @@ func assignComponentsFromProto(c *nameComponents, full string) {
 	if full == "" {
 		return
 	}
+
 	parts := strings.Split(full, ".")
-	
+
 	// Extract type name from protobuf package.
 	// Service is already set from namer (fallbackService), so we don't override it.
 	// For events, extract aggregate from protobuf package (e.g., domain.link.v1 -> "link").
@@ -195,7 +201,7 @@ func assignComponentsFromProto(c *nameComponents, full string) {
 	if len(parts) > 0 {
 		typeName := parts[len(parts)-1]
 		c.Name = camelToSnake(typeName)
-		
+
 		// For events, extract aggregate from protobuf package if Kind is still "event"
 		// Format: domain.{aggregate}.v1.TypeName -> aggregate = parts[1]
 		if c.Kind == string(KindEvent) && len(parts) >= 3 {
@@ -212,7 +218,7 @@ func assignComponentsFromProto(c *nameComponents, full string) {
 			}
 		}
 	}
-	
+
 	// Only extract version if it's not already set and protobuf package has version segment
 	if c.Version == "" && len(parts) >= 3 && versionSegment.MatchString(parts[len(parts)-2]) {
 		c.Version = parts[len(parts)-2]
@@ -243,16 +249,19 @@ func camelToSnake(s string) string {
 
 	var b strings.Builder
 	b.Grow(len(s))
+
 	for i, r := range s {
 		if unicode.IsUpper(r) {
 			if i > 0 {
 				b.WriteByte('_')
 			}
+
 			b.WriteRune(unicode.ToLower(r))
 		} else {
 			b.WriteRune(r)
 		}
 	}
+
 	return b.String()
 }
 
@@ -260,16 +269,20 @@ func typeNameOf(v any) string {
 	if v == nil {
 		return ""
 	}
+
 	t := reflect.TypeOf(v)
 	if t == nil {
 		return ""
 	}
+
 	for t.Kind() == reflect.Pointer {
 		if t.Elem() == nil {
 			break
 		}
+
 		t = t.Elem()
 	}
+
 	return t.Name()
 }
 
@@ -277,13 +290,16 @@ func toProto(v any) (proto.Message, bool) {
 	if v == nil {
 		return nil, false
 	}
+
 	if msg, ok := v.(proto.Message); ok {
 		return msg, true
 	}
+
 	val := reflect.ValueOf(v)
 	if !val.IsValid() {
 		return nil, false
 	}
+
 	if val.Kind() == reflect.Pointer && val.IsNil() {
 		// Create zero instance of the pointer element.
 		elem := reflect.New(val.Type().Elem())
@@ -291,6 +307,7 @@ func toProto(v any) (proto.Message, bool) {
 			return msg, true
 		}
 	}
+
 	return nil, false
 }
 
@@ -321,6 +338,7 @@ func inferKind(v any) MessageKind {
 		if strings.EqualFold(kind, string(KindEvent)) {
 			return KindEvent
 		}
+
 		return KindCommand
 	}
 
@@ -336,9 +354,11 @@ func normalizeVersion(v string) string {
 	if versionSegment.MatchString(v) {
 		return strings.ToLower(v)
 	}
+
 	if v == "" {
 		return defaultVersion
 	}
+
 	return strings.ToLower(v)
 }
 
@@ -350,5 +370,6 @@ func defaultServiceName() string {
 	if svc := strings.TrimSpace(os.Getenv("SERVICE_NAME")); svc != "" {
 		return strings.ToLower(svc)
 	}
+
 	return "shortlink"
 }

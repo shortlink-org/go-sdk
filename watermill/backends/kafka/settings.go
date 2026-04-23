@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/IBM/sarama"
+	"github.com/pkg/errors"
 
 	"github.com/shortlink-org/go-sdk/config"
 )
@@ -73,6 +74,7 @@ func loadBackendSettings(cfg *config.Config) (*backendSettings, error) {
 	pubSarama.Producer.Retry.Max = kcfg.producerRetryMax
 	pubSarama.Producer.RequiredAcks = sarama.WaitForAll
 	pubSarama.Producer.Idempotent = kcfg.idempotentProducer
+
 	pubSarama.Producer.Compression = kcfg.compression
 	if kcfg.idempotentProducer {
 		pubSarama.Net.MaxOpenRequests = 1
@@ -100,10 +102,11 @@ func loadBackendSettings(cfg *config.Config) (*backendSettings, error) {
 func newKafkaConfig(cfg *config.Config) (*kafkaConfig, error) {
 	brokers := parseBrokerList(cfg)
 	if len(brokers) == 0 {
-		return nil, fmt.Errorf("WATERMILL_KAFKA_BROKERS must not be empty")
+		return nil, errors.New("WATERMILL_KAFKA_BROKERS must not be empty")
 	}
 
 	serviceName := strings.TrimSpace(cfg.GetString("SERVICE_NAME"))
+
 	defaultGroup := serviceName
 	if defaultGroup == "" {
 		defaultGroup = "watermill"
@@ -111,7 +114,7 @@ func newKafkaConfig(cfg *config.Config) (*kafkaConfig, error) {
 
 	consumerGroup := firstNonEmpty(strings.TrimSpace(cfg.GetString("WATERMILL_KAFKA_CONSUMER_GROUP")), defaultGroup)
 	if consumerGroup == "" {
-		return nil, fmt.Errorf("WATERMILL_KAFKA_CONSUMER_GROUP must not be empty")
+		return nil, errors.New("WATERMILL_KAFKA_CONSUMER_GROUP must not be empty")
 	}
 
 	clientID := firstNonEmpty(strings.TrimSpace(cfg.GetString("WATERMILL_KAFKA_CLIENT_ID")), consumerGroup)
@@ -192,8 +195,10 @@ func filterBrokers(values []string) []string {
 		if value == "" {
 			continue
 		}
+
 		result = append(result, value)
 	}
+
 	return result
 }
 
@@ -232,6 +237,7 @@ func parseKafkaVersion(raw string) (sarama.KafkaVersion, error) {
 		if err != nil {
 			return sarama.KafkaVersion{}, fmt.Errorf("invalid WATERMILL_KAFKA_SARAMA_VERSION: %w", err)
 		}
+
 		return version, nil
 	}
 }
@@ -259,6 +265,7 @@ func firstNonEmpty(values ...string) string {
 			return strings.TrimSpace(v)
 		}
 	}
+
 	return ""
 }
 
@@ -266,6 +273,7 @@ func boolWithDefault(cfg *config.Config, key string, def bool) bool {
 	if cfg.IsSet(key) {
 		return cfg.GetBool(key)
 	}
+
 	return def
 }
 
@@ -275,5 +283,6 @@ func durationWithDefault(cfg *config.Config, key string, def time.Duration) time
 			return dur
 		}
 	}
+
 	return def
 }

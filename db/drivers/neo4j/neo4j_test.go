@@ -4,14 +4,11 @@ package neo4j
 
 import (
 	"context"
-	"fmt"
 	"os"
 	"testing"
-	"time"
 
 	"github.com/stretchr/testify/require"
-	"github.com/testcontainers/testcontainers-go"
-	"github.com/testcontainers/testcontainers-go/wait"
+	"github.com/testcontainers/testcontainers-go/modules/neo4j"
 	"go.uber.org/goleak"
 
 	"github.com/shortlink-org/go-sdk/config"
@@ -29,24 +26,16 @@ func TestNeo4j(t *testing.T) {
 	require.NoError(t, err)
 	store := New(cfg)
 
-	c, err := testcontainers.Run(ctx, "neo4j:4.0.3",
-		testcontainers.WithExposedPorts("7687/tcp"),
-		testcontainers.WithWaitStrategy(
-			wait.ForListeningPort("7687/tcp").WithStartupTimeout(3*time.Minute),
-		),
-	)
+	neo4jContainer, err := neo4j.Run(ctx, "neo4j:5-community")
 	require.NoError(t, err)
 
 	t.Cleanup(func() {
 		cancel()
-		_ = c.Terminate(context.Background())
+		_ = neo4jContainer.Terminate(context.Background())
 	})
 
-	host, err := c.Host(ctx)
+	boltURL, err := neo4jContainer.BoltUrl(ctx)
 	require.NoError(t, err)
-	mapped, err := c.MappedPort(ctx, "7687/tcp")
-	require.NoError(t, err)
-
-	t.Setenv("STORE_NEO4J_URI", fmt.Sprintf("neo4j://%s:%s", host, mapped.Port()))
+	t.Setenv("STORE_NEO4J_URI", boltURL)
 	require.NoError(t, store.Init(ctx))
 }

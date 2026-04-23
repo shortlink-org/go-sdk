@@ -3,7 +3,9 @@ package dlq
 import (
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"maps"
 	"time"
 
 	"github.com/ThreeDotsLabs/watermill/message"
@@ -22,7 +24,7 @@ type DLQEvent struct {
 // BuildDLQMessage serializes the DLQEvent and enriches metadata to keep context.
 func BuildDLQMessage(event DLQEvent) (*message.Message, error) {
 	if event.OriginalMsg == nil {
-		return nil, fmt.Errorf("dlq event missing original message")
+		return nil, errors.New("dlq event missing original message")
 	}
 
 	if event.FailedAt.IsZero() {
@@ -49,7 +51,7 @@ func BuildDLQMessage(event DLQEvent) (*message.Message, error) {
 // MarshalJSON customizes the JSON structure to keep original payload and metadata.
 func (event DLQEvent) MarshalJSON() ([]byte, error) {
 	if event.OriginalMsg == nil {
-		return nil, fmt.Errorf("dlq event missing original message")
+		return nil, errors.New("dlq event missing original message")
 	}
 
 	original := originalMessageJSON{
@@ -96,9 +98,7 @@ func copyMetadata(md message.Metadata) map[string]string {
 	}
 
 	out := make(map[string]string, len(md))
-	for k, v := range md {
-		out[k] = v
-	}
+	maps.Copy(out, md)
 
 	return out
 }

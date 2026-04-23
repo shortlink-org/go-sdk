@@ -46,19 +46,20 @@ func (s span) middleware(next http.Handler) http.Handler {
 			statusCode := wrappedWriter.Status()
 
 			switch {
-			case statusCode >= 200 && statusCode < 400:
+			case statusCode >= http.StatusOK && statusCode < http.StatusBadRequest:
 				// 2xx, 3xx → OK/UNSET
 				span.SetStatus(codes.Ok, "")
-			case statusCode >= 400 && statusCode < 500:
+			case statusCode >= http.StatusBadRequest && statusCode < http.StatusInternalServerError:
 				// 4xx → ERROR with client error message
 				span.SetStatus(codes.Error, http.StatusText(statusCode))
-			case statusCode >= 500:
+			case statusCode >= http.StatusInternalServerError:
 				// 5xx → ERROR
 				span.SetStatus(codes.Error, http.StatusText(statusCode))
+			default:
+				// Unexpected status (e.g. 0 before headers) — leave span status unchanged.
 			}
 		}
 	}
 
 	return http.HandlerFunc(handlerFunc)
 }
-

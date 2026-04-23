@@ -46,14 +46,14 @@ func Middleware() func(http.Handler) http.Handler {
 // MiddlewareWithExtractor allows custom token extraction.
 func MiddlewareWithExtractor(extractor TokenExtractor) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
-		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			token, err := extractor.FromRequest(r)
+		return http.HandlerFunc(func(responseWriter http.ResponseWriter, req *http.Request) {
+			token, err := extractor.FromRequest(req)
 			if err == nil && token != "" {
-				ctx := session_interceptor.WithAuthorization(r.Context(), token)
-				r = r.WithContext(ctx)
+				ctx := session_interceptor.WithAuthorization(req.Context(), token)
+				req = req.WithContext(ctx)
 			}
 
-			next.ServeHTTP(w, r)
+			next.ServeHTTP(responseWriter, req)
 		})
 	}
 }

@@ -9,6 +9,7 @@ import (
 	"github.com/spf13/viper"
 )
 
+// Config wraps Viper-backed settings with a mutex for safe concurrent reads.
 type Config struct {
 	mu sync.RWMutex
 }

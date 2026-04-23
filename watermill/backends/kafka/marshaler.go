@@ -50,6 +50,7 @@ func (DefaultMarshaler) Marshal(topic string, msg *message.Message) (*sarama.Pro
 
 func (DefaultMarshaler) Unmarshal(kafkaMsg *sarama.ConsumerMessage) (*message.Message, error) {
 	var messageID string
+
 	metadata := make(message.Metadata, len(kafkaMsg.Headers))
 
 	for _, header := range kafkaMsg.Headers {
@@ -74,7 +75,7 @@ type kafkaJsonWithPartitioning struct {
 	generatePartitionKey GeneratePartitionKey
 }
 
-func NewWithPartitioningMarshaler(generatePartitionKey GeneratePartitionKey) MarshalerUnmarshaler {
+func NewWithPartitioningMarshaler(generatePartitionKey GeneratePartitionKey) kafkaJsonWithPartitioning {
 	return kafkaJsonWithPartitioning{generatePartitionKey: generatePartitionKey}
 }
 
@@ -88,6 +89,7 @@ func (j kafkaJsonWithPartitioning) Marshal(topic string, msg *message.Message) (
 	if err != nil {
 		return nil, errors.Wrap(err, "cannot generate partition key")
 	}
+
 	kafkaMsg.Key = sarama.ByteEncoder(key)
 
 	return kafkaMsg, nil

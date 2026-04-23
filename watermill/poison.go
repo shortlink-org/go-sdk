@@ -2,6 +2,7 @@ package watermill
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"runtime/debug"
@@ -10,6 +11,7 @@ import (
 
 	"github.com/ThreeDotsLabs/watermill/message"
 	"github.com/ThreeDotsLabs/watermill/message/router/middleware"
+
 	"github.com/shortlink-org/go-sdk/watermill/dlq"
 )
 
@@ -47,6 +49,7 @@ func NewShortlinkPoisonMiddleware(publisher message.Publisher, dlqTopic string) 
 			ctx := ensureContext(msg.Context())
 			ctx = context.WithValue(ctx, originalMessageCtxKey{}, snapshotMessage(msg))
 			msg.SetContext(ctx)
+
 			return h(msg)
 		})
 	}
@@ -135,8 +138,9 @@ func (p *poisonPublisher) resolveTopic(msg *message.Message) (string, error) {
 	if topic == "" {
 		topic = msg.Metadata.Get("topic")
 	}
+
 	if topic == "" {
-		return "", fmt.Errorf("missing topic metadata for DLQ publication")
+		return "", errors.New("missing topic metadata for DLQ publication")
 	}
 
 	return topic + ".DLQ", nil

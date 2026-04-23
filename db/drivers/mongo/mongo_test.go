@@ -4,14 +4,12 @@ package mongo
 
 import (
 	"context"
-	"fmt"
 	"os"
+	"strings"
 	"testing"
-	"time"
 
 	"github.com/stretchr/testify/require"
-	"github.com/testcontainers/testcontainers-go"
-	"github.com/testcontainers/testcontainers-go/wait"
+	"github.com/testcontainers/testcontainers-go/modules/mongodb"
 	"go.uber.org/goleak"
 
 	"github.com/shortlink-org/go-sdk/config"
@@ -29,24 +27,16 @@ func TestMongo(t *testing.T) {
 	require.NoError(t, err)
 	store := New(cfg)
 
-	c, err := testcontainers.Run(ctx, "bitnami/mongodb:latest",
-		testcontainers.WithExposedPorts("27017/tcp"),
-		testcontainers.WithWaitStrategy(
-			wait.ForListeningPort("27017/tcp").WithStartupTimeout(3*time.Minute),
-		),
-	)
+	mongoContainer, err := mongodb.Run(ctx, "mongo:7")
 	require.NoError(t, err)
 
 	t.Cleanup(func() {
 		cancel()
-		_ = c.Terminate(context.Background())
+		_ = mongoContainer.Terminate(context.Background())
 	})
 
-	host, err := c.Host(ctx)
+	uri, err := mongoContainer.ConnectionString(ctx)
 	require.NoError(t, err)
-	mapped, err := c.MappedPort(ctx, "27017/tcp")
-	require.NoError(t, err)
-
-	t.Setenv("STORE_MONGODB_URI", fmt.Sprintf("mongodb://%s:%s/shortlink", host, mapped.Port()))
+	t.Setenv("STORE_MONGODB_URI", strings.TrimSuffix(uri, "/")+"/shortlink")
 	require.NoError(t, store.Init(ctx))
 }

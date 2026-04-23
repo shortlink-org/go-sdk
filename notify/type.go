@@ -6,10 +6,6 @@ import (
 )
 
 // Deprecated: Use github.com/shortlink-org/go-sdk/cqrs instead.
-type Publisher[T any] interface {
-	Subscribe(event *int, subscriber Subscriber[T])
-	UnSubscribe(subscriber Subscriber[T])
-}
 
 // Deprecated: Use github.com/shortlink-org/go-sdk/cqrs instead.
 type Subscriber[T any] interface {

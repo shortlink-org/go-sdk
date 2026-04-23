@@ -1,3 +1,4 @@
+// Package channel provides helpers for composing channels.
 package channel
 
 import (
@@ -8,10 +9,10 @@ import (
 func Merge[T any](items ...<-chan T) <-chan T {
 	out := make(chan T)
 
-	var wg sync.WaitGroup
+	var waitGroup sync.WaitGroup
 
 	for _, item := range items {
-		wg.Go(func() {
+		waitGroup.Go(func() {
 			for n := range item {
 				out <- n
 			}
@@ -19,7 +20,7 @@ func Merge[T any](items ...<-chan T) <-chan T {
 	}
 
 	go func() {
-		wg.Wait()
+		waitGroup.Wait()
 		close(out)
 	}()
 

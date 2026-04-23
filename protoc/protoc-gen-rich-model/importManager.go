@@ -21,9 +21,11 @@ func (im *importManager) addImports(imports map[string]bool) {
 func (im *importManager) writeImports(g *protogen.GeneratedFile) {
 	if len(im.imports) > 0 {
 		g.P("import (")
+
 		for imp := range im.imports {
 			g.P("\t\"", imp, "\"")
 		}
+
 		g.P(")")
 	}
 }

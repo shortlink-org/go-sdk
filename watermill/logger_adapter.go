@@ -2,8 +2,10 @@ package watermill
 
 import (
 	"log/slog"
+	"maps"
 
 	"github.com/ThreeDotsLabs/watermill"
+
 	"github.com/shortlink-org/go-sdk/logger"
 )
 
@@ -22,12 +24,10 @@ func NewWatermillLogger(log logger.Logger) watermill.LoggerAdapter {
 func (l *watermillLoggerAdapter) With(fields watermill.LogFields) watermill.LoggerAdapter {
 	// Merge new fields with existing ones
 	merged := make(watermill.LogFields, len(l.fields)+len(fields))
-	for k, v := range l.fields {
-		merged[k] = v
-	}
-	for k, v := range fields {
-		merged[k] = v
-	}
+	maps.Copy(merged, l.fields)
+
+	maps.Copy(merged, fields)
+
 	return &watermillLoggerAdapter{
 		log:    l.log,
 		fields: merged,
@@ -43,6 +43,7 @@ func (l *watermillLoggerAdapter) mergeFields(fields watermill.LogFields) []slog.
 		if _, overridden := fields[k]; overridden {
 			continue
 		}
+
 		attrs = append(attrs, slog.Any(k, v))
 	}
 
@@ -59,6 +60,7 @@ func (l *watermillLoggerAdapter) Error(msg string, err error, fields watermill.L
 	if err != nil {
 		attrs = append(attrs, slog.Any("error", err))
 	}
+
 	l.log.Error(msg, attrs...)
 }
 

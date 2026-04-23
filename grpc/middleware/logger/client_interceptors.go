@@ -7,12 +7,13 @@ import (
 	"path"
 	"time"
 
-	"github.com/shortlink-org/go-sdk/logger"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/proto"
+
+	"github.com/shortlink-org/go-sdk/logger"
 )
 
 // UnaryClientInterceptor returns a new unary client interceptor that optionally

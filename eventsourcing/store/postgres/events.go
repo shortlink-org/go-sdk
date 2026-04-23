@@ -19,6 +19,7 @@ type Events interface {
 func (e *EventStore) addEvent(ctx context.Context, event *eventsourcing.Event) error {
 	// start tracing
 	_, span := otel.Tracer("aggregate").Start(ctx, "addEvent")
+
 	span.SetAttributes(attribute.String("event_id", event.GetId()))
 	defer span.End()
 
@@ -32,10 +33,12 @@ func (e *EventStore) addEvent(ctx context.Context, event *eventsourcing.Event) e
 	}
 
 	row := e.db.QueryRow(ctx, q, args...)
+
 	err = row.Scan()
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil
 	}
+
 	if err.Error() != "" {
 		span.RecordError(err)
 		span.SetStatus(codes.Error, err.Error())

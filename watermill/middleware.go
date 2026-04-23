@@ -8,10 +8,11 @@ import (
 	"github.com/ThreeDotsLabs/watermill"
 	"github.com/ThreeDotsLabs/watermill/message"
 	wmmid "github.com/ThreeDotsLabs/watermill/message/router/middleware"
-	"github.com/shortlink-org/go-sdk/logger"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/metric"
 	"go.opentelemetry.io/otel/trace"
+
+	"github.com/shortlink-org/go-sdk/logger"
 )
 
 // ----------- BASE MIDDLEWARE (panic, correlation, retry) ------------
@@ -39,14 +40,14 @@ func configureBaseMiddlewares(router *message.Router, log logger.Logger, wmLogge
 
 	if opts.Retry.Enabled {
 		retryMiddleware := wmmid.Retry{
-			MaxRetries:        opts.Retry.MaxRetries,
-			InitialInterval:   opts.Retry.InitialInterval,
-			MaxInterval:       opts.Retry.MaxInterval,
-			Multiplier:        opts.Retry.Multiplier,
-			MaxElapsedTime:    opts.Retry.MaxElapsedTime,
+			MaxRetries:          opts.Retry.MaxRetries,
+			InitialInterval:     opts.Retry.InitialInterval,
+			MaxInterval:         opts.Retry.MaxInterval,
+			Multiplier:          opts.Retry.Multiplier,
+			MaxElapsedTime:      opts.Retry.MaxElapsedTime,
 			RandomizationFactor: opts.Retry.Jitter,
 			ResetContextOnRetry: opts.Retry.ResetContextOnRetry,
-			Logger:             wmLogger,
+			Logger:              wmLogger,
 		}
 		router.AddMiddleware(retryMiddleware.Middleware)
 
@@ -144,6 +145,7 @@ func (m *MetricsMiddleware) HandlerMiddleware() message.HandlerMiddleware {
 			start := time.Now()
 
 			topic := msg.Metadata.Get("received_topic")
+
 			ctx := msg.Context()
 			if ctx == nil {
 				ctx = context.Background()
@@ -222,7 +224,9 @@ func (pw *publisherWrapper) publishWithMetrics(topic string, msgs ...*message.Me
 		if span != nil {
 			span.RecordError(err)
 		}
+
 		pw.metrics.errors.Add(ctx, 1, metric.WithAttributes(pw.metrics.errorAttributes(ctx, topic, "publish", err)...))
+
 		return err
 	}
 
@@ -238,6 +242,7 @@ func TraceID(ctx context.Context) string {
 	if !spanCtx.IsValid() {
 		return ""
 	}
+
 	return spanCtx.TraceID().String()
 }
 
@@ -246,6 +251,7 @@ func SpanID(ctx context.Context) string {
 	if !spanCtx.IsValid() {
 		return ""
 	}
+
 	return spanCtx.SpanID().String()
 }
 
@@ -256,22 +262,28 @@ func (m *MetricsMiddleware) topicAttributes(ctx context.Context, topic string) [
 	if traceID := TraceID(ctx); traceID != "" {
 		attrs = append(attrs, attribute.String("trace_id", traceID))
 	}
+
 	if spanID := SpanID(ctx); spanID != "" {
 		attrs = append(attrs, attribute.String("span_id", spanID))
 	}
+
 	return attrs
 }
 
 func (m *MetricsMiddleware) errorAttributes(ctx context.Context, topic, stage string, err error) []attribute.KeyValue {
 	attrs := m.topicAttributes(ctx, topic)
+
 	attrs = append(attrs, attribute.String("stage", stage))
 	if err == nil {
 		return attrs
 	}
+
 	errStr := err.Error()
 	if len(errStr) > metricErrorMaxLen {
 		errStr = errStr[:metricErrorMaxLen]
 	}
+
 	attrs = append(attrs, attribute.String("error", errStr))
+
 	return attrs
 }

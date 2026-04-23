@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/bhope/hedge"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 
 	"github.com/shortlink-org/go-sdk/http/client/internal/types"
@@ -14,6 +15,7 @@ import (
 	"github.com/shortlink-org/go-sdk/http/client/middleware/tokenbucket"
 )
 
+// New constructs an HTTP client with optional rate limiting, hedging, and middleware.
 func New(opts ...Option) (*http.Client, error) {
 	cfg := new(config)
 	cfg.base = http.DefaultTransport
@@ -38,9 +40,14 @@ func New(opts ...Option) (*http.Client, error) {
 		limiter = l
 	}
 
+	base := cfg.base
+	if cfg.hedgeEnabled {
+		base = hedge.New(cfg.base, cfg.hedgeOpts...)
+	}
+
 	// OTEL HTTP wrapping for propagation
 	otelTransport := otelhttp.NewTransport(
-		cfg.base,
+		base,
 		otelhttp.WithPropagators(nil), // uses global by default
 	)
 
