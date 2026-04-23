@@ -5,7 +5,7 @@ go 1.26.2
 require (
 	github.com/authzed/authzed-go v1.8.0
 	github.com/shortlink-org/go-sdk/grpc v0.0.0-20260417231502-a845b14b1f44
-	github.com/shortlink-org/go-sdk/logger v0.0.0-20260417235820-0f1877a4135b
+	github.com/shortlink-org/go-sdk/logger v0.0.0-20260423005905-959e3e589a42
 	github.com/shortlink-org/go-sdk/observability v0.0.0-20260415234714-8c7f9b03b6b3
 	go.opentelemetry.io/otel/trace v1.43.0
 	google.golang.org/grpc v1.80.0
@@ -13,6 +13,7 @@ require (
 
 require (
 	github.com/Unleash/unleash-go-sdk/v6 v6.4.0 // indirect
+	github.com/bhope/hedge v1.0.1 // indirect
 	github.com/golang-jwt/jwt/v5 v5.3.1 // indirect
 	github.com/hashicorp/golang-lru/v2 v2.0.7 // indirect
 	github.com/klauspost/compress v1.18.5 // indirect
