@@ -3,7 +3,7 @@ module github.com/shortlink-org/go-sdk/kratos
 go 1.26.2
 
 require (
-	github.com/ory/client-go v1.22.3
+	github.com/ory/client-go v1.22.36
 	github.com/shortlink-org/go-sdk/config v0.0.0-20260419222854-fd069f4d5106
 	github.com/shortlink-org/go-sdk/logger v0.0.0-20260417235820-0f1877a4135b
 	github.com/spf13/viper v1.21.0
