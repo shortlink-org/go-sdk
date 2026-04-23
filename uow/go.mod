@@ -1,6 +1,6 @@
 module github.com/shortlink-org/go-sdk/uow
 
-go 1.25.5
+go 1.26.2
 
 require github.com/jackc/pgx/v5 v5.9.2
 

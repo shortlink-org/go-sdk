@@ -1,6 +1,6 @@
 module github.com/shortlink-org/go-sdk/graceful_shutdown
 
-go 1.25.5
+go 1.26.2
 
 require github.com/stretchr/testify v1.11.1
 

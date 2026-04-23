@@ -1,6 +1,6 @@
 module github.com/shortlink-org/go-sdk/saga
 
-go 1.25.5
+go 1.26.2
 
 require (
 	github.com/shortlink-org/go-sdk/logger v0.0.0-20260417235820-0f1877a4135b

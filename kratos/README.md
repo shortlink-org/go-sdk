@@ -49,6 +49,6 @@ All errors are logged and returned to the caller. According to security best pra
 
 ## Requirements
 
-- go 1.25.5 or higher
+- go 1.26.2 or higher
 - Ory Kratos Admin API must be accessible
 - Valid Kratos identity with email in traits

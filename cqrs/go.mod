@@ -1,6 +1,6 @@
 module github.com/shortlink-org/go-sdk/cqrs
 
-go 1.25.5
+go 1.26.2
 
 replace (
 	github.com/shortlink-org/go-sdk/logger => ../logger
