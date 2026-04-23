@@ -9,7 +9,7 @@ require (
 	github.com/prometheus/client_golang v1.23.2
 	github.com/shortlink-org/go-sdk/config v0.0.0-20260419222854-fd069f4d5106
 	github.com/shortlink-org/go-sdk/http v0.0.0-20260415234714-8c7f9b03b6b3
-	github.com/shortlink-org/go-sdk/logger v0.0.0-20260417235820-0f1877a4135b
+	github.com/shortlink-org/go-sdk/logger v0.0.0-20260423005905-959e3e589a42
 	go.opentelemetry.io/contrib/propagators/b3 v1.43.0
 	go.opentelemetry.io/otel v1.43.0
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc v1.43.0

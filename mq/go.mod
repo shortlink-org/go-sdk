@@ -10,7 +10,7 @@ require (
 	github.com/rabbitmq/amqp091-go v1.11.0
 	github.com/redis/rueidis v1.0.74
 	github.com/shortlink-org/go-sdk/db v0.0.0-20260410230549-a64f68ccd6e5
-	github.com/shortlink-org/go-sdk/logger v0.0.0-20260417235820-0f1877a4135b
+	github.com/shortlink-org/go-sdk/logger v0.0.0-20260423005905-959e3e589a42
 	github.com/stretchr/testify v1.11.1
 	github.com/testcontainers/testcontainers-go v0.42.0
 	github.com/testcontainers/testcontainers-go/modules/kafka v0.42.0
