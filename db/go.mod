@@ -5,7 +5,7 @@ go 1.26.2
 require (
 	github.com/XSAM/otelsql v0.42.0
 	github.com/aerospike/aerospike-client-go v4.5.2+incompatible
-	github.com/couchbase/gocb/v2 v2.12.1
+	github.com/couchbase/gocb/v2 v2.12.2
 	github.com/dgraph-io/badger/v4 v4.9.1
 	github.com/dgraph-io/dgo/v2 v2.2.0
 	github.com/exaring/otelpgx v0.10.0
@@ -91,9 +91,9 @@ require (
 	github.com/codemodus/kace v0.5.1 // indirect
 	github.com/coreos/go-semver v0.3.1 // indirect
 	github.com/coreos/go-systemd/v22 v22.5.0 // indirect
-	github.com/couchbase/gocbcore/v10 v10.9.1 // indirect
+	github.com/couchbase/gocbcore/v10 v10.9.2 // indirect
 	github.com/couchbase/gocbcoreps v0.1.5-0.20260107140814-1c3a03f888f8 // indirect
-	github.com/couchbase/goprotostellar v1.0.5 // indirect
+	github.com/couchbase/goprotostellar v1.0.6-0.20260407143512-d7af25156dcc // indirect
 	github.com/couchbaselabs/gocbconnstr/v2 v2.0.0 // indirect
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc // indirect
 	github.com/dgraph-io/ristretto/v2 v2.2.0 // indirect
