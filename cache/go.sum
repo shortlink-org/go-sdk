@@ -466,6 +466,8 @@ github.com/prometheus/procfs v0.20.1/go.mod h1:o9EMBZGRyvDrSPH1RqdxhojkuXstoe4Ul
 github.com/redis/go-redis/v9 v9.0.0-rc.4/go.mod h1:Vo3EsyWnicKnSKCA7HhgnvnyA74wOA69Cd2Meli5mmA=
 github.com/redis/go-redis/v9 v9.18.0 h1:pMkxYPkEbMPwRdenAzUNyFNrDgHx9U+DrBabWNfSRQs=
 github.com/redis/go-redis/v9 v9.18.0/go.mod h1:k3ufPphLU5YXwNTUcCRXGxUoF1fqxnhFQmscfkCoDA0=
+github.com/redis/go-redis/v9 v9.19.0 h1:XPVaaPSnG6RhYf7p+rmSa9zZfeVAnWsH5h3lxthOm/k=
+github.com/redis/go-redis/v9 v9.19.0/go.mod h1:v/M13XI1PVCDcm01VtPFOADfZtHf8YW3baQf57KlIkA=
 github.com/redis/rueidis v1.0.74 h1:J5ZNyxMqX+sDQxQztRI928W6TrERpo+pHSwhftnX7NA=
 github.com/redis/rueidis v1.0.74/go.mod h1:lfdcZzJ1oKGKL37vh9fO3ymwt+0TdjkkUCJxbgpmcgQ=
 github.com/redis/rueidis/mock v1.0.74 h1:2/HxU6lREIvjEvwdo8gGj3Xo8TIZbKEDDYEPNgfggMo=
@@ -496,6 +498,8 @@ github.com/shortlink-org/go-sdk/config v0.0.0-20260419222854-fd069f4d5106 h1:Uhe
 github.com/shortlink-org/go-sdk/config v0.0.0-20260419222854-fd069f4d5106/go.mod h1:SgqtI/Y3GTHOorKylL0ELCkZCSgrrtPX5zkaX1Y5uqQ=
 github.com/shortlink-org/go-sdk/http v0.0.0-20260415234714-8c7f9b03b6b3 h1:PGT9Sl+zC624wmcavyNoBLj4Nl8mQ21g8YnFB+yIUeE=
 github.com/shortlink-org/go-sdk/http v0.0.0-20260415234714-8c7f9b03b6b3/go.mod h1:jYkPYBCHVsHVtB5V2qWL5ZOnS1EXTJoxWMPOy7HROH8=
+github.com/shortlink-org/go-sdk/http v0.0.0-20260424225420-a63676f29741 h1:0HIZF8zUfY/YKE8rNpR56/ZmTUcG9G0S29REVo0/dYY=
+github.com/shortlink-org/go-sdk/http v0.0.0-20260424225420-a63676f29741/go.mod h1:vZm0bp3ptttDW2ac8E71owvH+uKP+STx65+tqvooVJc=
 github.com/shortlink-org/go-sdk/logger v0.0.0-20260417235820-0f1877a4135b h1:DG7CBLqpy0WRANWrXXG4w9vlr8CNPKsPDFNrJSknNL8=
 github.com/shortlink-org/go-sdk/logger v0.0.0-20260417235820-0f1877a4135b/go.mod h1:ggDWhcBopvLmoJctQLTWSIBiBHr9KHwEhg4Vrmw7RW8=
 github.com/shortlink-org/go-sdk/logger v0.0.0-20260423005905-959e3e589a42 h1:9v01WG8PkicjUW/WFMp170roHFlsVXB7emW3jx5Lxh4=
@@ -597,6 +601,8 @@ go.mongodb.org/mongo-driver v1.17.2 h1:gvZyk8352qSfzyZ2UMWcpDpMSGEr1eqE4T793Sqyh
 go.mongodb.org/mongo-driver v1.17.2/go.mod h1:Hy04i7O2kC4RS06ZrhPRqj/u4DTYkFDAAccj+rVKqgQ=
 go.mongodb.org/mongo-driver/v2 v2.5.0 h1:yXUhImUjjAInNcpTcAlPHiT7bIXhshCTL3jVBkF3xaE=
 go.mongodb.org/mongo-driver/v2 v2.5.0/go.mod h1:yOI9kBsufol30iFsl1slpdq1I0eHPzybRWdyYUs8K/0=
+go.mongodb.org/mongo-driver/v2 v2.5.1 h1:j2U/Qp+wvueSpqitLCSZPT/+ZpVc1xzuwdHWwl7d8ro=
+go.mongodb.org/mongo-driver/v2 v2.5.1/go.mod h1:yOI9kBsufol30iFsl1slpdq1I0eHPzybRWdyYUs8K/0=
 go.opencensus.io v0.21.0/go.mod h1:mSImk1erAIZhrmZN+AvHh14ztQfjbGwt4TtuofqLduU=
 go.opencensus.io v0.22.0/go.mod h1:+kGneAE2xo2IficOXnaByMWTGM9T73dGwxeWcUqIpI8=
 go.opencensus.io v0.22.2/go.mod h1:yxeiOL68Rb0Xd1ddK5vPZ/oVn4vY4Ynel7k9FzqtOIw=
