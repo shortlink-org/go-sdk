@@ -3,7 +3,7 @@ module github.com/shortlink-org/go-sdk/watermill
 go 1.26.2
 
 require (
-	github.com/IBM/sarama v1.47.0
+	github.com/IBM/sarama v1.48.0
 	github.com/ThreeDotsLabs/watermill v1.5.1
 	github.com/ThreeDotsLabs/watermill-kafka/v3 v3.1.2
 	github.com/dnwe/otelsarama v0.0.0-20240308230250-9388d9d40bc0
