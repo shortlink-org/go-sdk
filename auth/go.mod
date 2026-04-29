@@ -3,7 +3,7 @@ module github.com/shortlink-org/go-sdk/auth
 go 1.26.2
 
 require (
-	github.com/authzed/authzed-go v1.8.0
+	github.com/authzed/authzed-go v1.9.0
 	github.com/shortlink-org/go-sdk/grpc v0.0.0-20260417231502-a845b14b1f44
 	github.com/shortlink-org/go-sdk/logger v0.0.0-20260423005905-959e3e589a42
 	github.com/shortlink-org/go-sdk/observability v0.0.0-20260415234714-8c7f9b03b6b3
