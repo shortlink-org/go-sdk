@@ -10,7 +10,7 @@ require (
 	github.com/grpc-ecosystem/go-grpc-middleware/v2 v2.3.3
 	github.com/prometheus/client_golang v1.23.2
 	github.com/shortlink-org/go-sdk/auth v0.0.0-20260424225420-a63676f29741
-	github.com/shortlink-org/go-sdk/flight_trace v0.0.0-20260424225420-a63676f29741
+	github.com/shortlink-org/go-sdk/flight_trace v0.0.0-20260429091243-40ae8b9e1433
 	github.com/shortlink-org/go-sdk/logger v0.0.0-20260423005905-959e3e589a42
 	github.com/stretchr/testify v1.11.1
 	go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc v0.68.0
