@@ -93,10 +93,16 @@ github.com/segmentio/asm v1.2.0/go.mod h1:BqMnlJP91P8d+4ibuonYZw9mfnzI9HfxselHZr
 github.com/segmentio/encoding v0.5.4 h1:OW1VRern8Nw6ITAtwSZ7Idrl3MXCFwXHPgqESYfvNt0=
 github.com/shortlink-org/go-sdk/auth v0.0.0-20260417231502-a845b14b1f44 h1:S2ApOKaGpMTbs4EbnQJE1JrKMeqBe1NtzZqbAJHyiQc=
 github.com/shortlink-org/go-sdk/auth v0.0.0-20260417231502-a845b14b1f44/go.mod h1:6oOu2oPXl2g2d9TNZlO2dF6x/51COZVOsWMP4LGcw/I=
+github.com/shortlink-org/go-sdk/auth v0.0.0-20260424225420-a63676f29741 h1:ol/TJO9mHVXB42TnS+Fqq7yav6UMkTjvQK5a+y9jxz8=
+github.com/shortlink-org/go-sdk/auth v0.0.0-20260424225420-a63676f29741/go.mod h1:skhFPb/3B6KIorqJNZQPcdtPa0eOpDNk7YMgGsRfSDY=
 github.com/shortlink-org/go-sdk/flight_trace v0.0.0-20260410230549-a64f68ccd6e5 h1:Ee0pmu+C+/QnWR2lq69p2qrT+8LYEe/FjUpl2RS7KYQ=
 github.com/shortlink-org/go-sdk/flight_trace v0.0.0-20260410230549-a64f68ccd6e5/go.mod h1:FOZ+GqUmcV6fUGkaw2JBsExIPSDk3/TxG4jbkjok7B4=
+github.com/shortlink-org/go-sdk/flight_trace v0.0.0-20260424225420-a63676f29741 h1:/3DStMcqr0tKfhW8XuY/bLaPhvOhA1vRG8lI9D7YYyw=
+github.com/shortlink-org/go-sdk/flight_trace v0.0.0-20260424225420-a63676f29741/go.mod h1:lNvixS3zzLtfz73PoMsh3cexcmzDmtLEQiFzEHUQty8=
 github.com/shortlink-org/go-sdk/http v0.0.0-20260415234714-8c7f9b03b6b3 h1:PGT9Sl+zC624wmcavyNoBLj4Nl8mQ21g8YnFB+yIUeE=
 github.com/shortlink-org/go-sdk/http v0.0.0-20260415234714-8c7f9b03b6b3/go.mod h1:jYkPYBCHVsHVtB5V2qWL5ZOnS1EXTJoxWMPOy7HROH8=
+github.com/shortlink-org/go-sdk/http v0.0.0-20260424225420-a63676f29741 h1:0HIZF8zUfY/YKE8rNpR56/ZmTUcG9G0S29REVo0/dYY=
+github.com/shortlink-org/go-sdk/http v0.0.0-20260424225420-a63676f29741/go.mod h1:vZm0bp3ptttDW2ac8E71owvH+uKP+STx65+tqvooVJc=
 github.com/sourcegraph/conc v0.3.1-0.20240121214520-5f936abd7ae8 h1:+jumHNA0Wrelhe64i8F6HNlS8pkoyMv5sreGx2Ry5Rw=
 github.com/sourcegraph/conc v0.3.1-0.20240121214520-5f936abd7ae8/go.mod h1:3n1Cwaq1E1/1lhQhtRK2ts/ZwZEhjcQeJQ1RuC6Q/8U=
 github.com/spf13/afero v1.15.0 h1:b/YBCLWAJdFWJTN9cLhiXXcD7mzKn9Dm86dNnfyQw1I=
@@ -194,6 +200,8 @@ google.golang.org/genproto/googleapis/api v0.0.0-20260401024825-9d38bb4040a9 h1:
 google.golang.org/genproto/googleapis/api v0.0.0-20260401024825-9d38bb4040a9/go.mod h1:7QBABkRtR8z+TEnmXTqIqwJLlzrZKVfAUm7tY3yGv0M=
 google.golang.org/genproto/googleapis/rpc v0.0.0-20260406210006-6f92a3bedf2d h1:wT2n40TBqFY6wiwazVK9/iTWbsQrgk5ZfCSVFLO9LQA=
 google.golang.org/genproto/googleapis/rpc v0.0.0-20260406210006-6f92a3bedf2d/go.mod h1:4Hqkh8ycfw05ld/3BWL7rJOSfebL2Q+DVDeRgYgxUU8=
+google.golang.org/genproto/googleapis/rpc v0.0.0-20260414002931-afd174a4e478 h1:RmoJA1ujG+/lRGNfUnOMfhCy5EipVMyvUE+KNbPbTlw=
+google.golang.org/genproto/googleapis/rpc v0.0.0-20260414002931-afd174a4e478/go.mod h1:4Hqkh8ycfw05ld/3BWL7rJOSfebL2Q+DVDeRgYgxUU8=
 google.golang.org/grpc v1.80.0 h1:Xr6m2WmWZLETvUNvIUmeD5OAagMw3FiKmMlTdViWsHM=
 google.golang.org/grpc v1.80.0/go.mod h1:ho/dLnxwi3EDJA4Zghp7k2Ec1+c2jqup0bFkw07bwF4=
 google.golang.org/protobuf v1.36.11 h1:fV6ZwhNocDyBLK0dj+fg8ektcVegBBuEolpbTQyBNVE=
