@@ -3,7 +3,7 @@ module github.com/shortlink-org/go-sdk/saga
 go 1.26.2
 
 require (
-	github.com/shortlink-org/go-sdk/logger v0.0.0-20260423005905-959e3e589a42
+	github.com/shortlink-org/go-sdk/logger v0.0.0-20260429091243-40ae8b9e1433
 	github.com/stretchr/testify v1.11.1
 	go.opentelemetry.io/otel v1.43.0
 	go.opentelemetry.io/otel/trace v1.43.0

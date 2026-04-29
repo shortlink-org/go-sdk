@@ -52,6 +52,8 @@ github.com/shortlink-org/go-sdk/logger v0.0.0-20260417235820-0f1877a4135b h1:DG7
 github.com/shortlink-org/go-sdk/logger v0.0.0-20260417235820-0f1877a4135b/go.mod h1:ggDWhcBopvLmoJctQLTWSIBiBHr9KHwEhg4Vrmw7RW8=
 github.com/shortlink-org/go-sdk/logger v0.0.0-20260423005905-959e3e589a42 h1:9v01WG8PkicjUW/WFMp170roHFlsVXB7emW3jx5Lxh4=
 github.com/shortlink-org/go-sdk/logger v0.0.0-20260423005905-959e3e589a42/go.mod h1:pMlS8NlWkMZ72jSf3TqlSN3lqMUyJO9xSgiRdq+FlQI=
+github.com/shortlink-org/go-sdk/logger v0.0.0-20260429091243-40ae8b9e1433 h1:wYxe2FVWThH1GN7gHgIhhf2BxykVj+iH7xLPaqGjziE=
+github.com/shortlink-org/go-sdk/logger v0.0.0-20260429091243-40ae8b9e1433/go.mod h1:pMlS8NlWkMZ72jSf3TqlSN3lqMUyJO9xSgiRdq+FlQI=
 github.com/sourcegraph/conc v0.3.1-0.20240121214520-5f936abd7ae8 h1:+jumHNA0Wrelhe64i8F6HNlS8pkoyMv5sreGx2Ry5Rw=
 github.com/sourcegraph/conc v0.3.1-0.20240121214520-5f936abd7ae8/go.mod h1:3n1Cwaq1E1/1lhQhtRK2ts/ZwZEhjcQeJQ1RuC6Q/8U=
 github.com/spf13/afero v1.15.0 h1:b/YBCLWAJdFWJTN9cLhiXXcD7mzKn9Dm86dNnfyQw1I=
