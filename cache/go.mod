@@ -8,7 +8,7 @@ require (
 	github.com/redis/rueidis v1.0.74
 	github.com/redis/rueidis/rueidiscompat v1.0.74
 	github.com/shortlink-org/go-sdk/db v0.0.0-20260424225420-a63676f29741
-	github.com/shortlink-org/go-sdk/observability v0.0.0-20260415234714-8c7f9b03b6b3
+	github.com/shortlink-org/go-sdk/observability v0.0.0-20260429091243-40ae8b9e1433
 	github.com/stretchr/testify v1.11.1
 	github.com/testcontainers/testcontainers-go v0.42.0
 	github.com/testcontainers/testcontainers-go/modules/redis v0.42.0
@@ -111,7 +111,7 @@ require (
 	github.com/redis/rueidis/rueidisotel v1.0.74 // indirect
 	github.com/sagikazarmark/locafero v0.11.0 // indirect
 	github.com/shortlink-org/go-sdk/config v0.0.0-20260419222854-fd069f4d5106
-	github.com/shortlink-org/go-sdk/http v0.0.0-20260415234714-8c7f9b03b6b3 // indirect
+	github.com/shortlink-org/go-sdk/http v0.0.0-20260424225420-a63676f29741 // indirect
 	github.com/shortlink-org/go-sdk/logger v0.0.0-20260423005905-959e3e589a42 // indirect
 	github.com/sirupsen/logrus v1.9.4 // indirect
 	github.com/sourcegraph/conc v0.3.1-0.20240121214520-5f936abd7ae8 // indirect
@@ -129,7 +129,7 @@ require (
 	github.com/xdg-go/stringprep v1.0.4 // indirect
 	github.com/youmark/pkcs8 v0.0.0-20240726163527-a2c0da244d78 // indirect
 	go.mongodb.org/mongo-driver v1.17.2 // indirect
-	go.mongodb.org/mongo-driver/v2 v2.5.0 // indirect
+	go.mongodb.org/mongo-driver/v2 v2.5.1 // indirect
 	go.opentelemetry.io/auto/sdk v1.2.1 // indirect
 	go.opentelemetry.io/otel v1.43.0 // indirect
 	go.opentelemetry.io/otel/exporters/prometheus v0.65.0 // indirect

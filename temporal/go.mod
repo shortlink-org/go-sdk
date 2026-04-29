@@ -6,7 +6,7 @@ require (
 	github.com/shortlink-org/go-sdk/config v0.0.0-20260419222854-fd069f4d5106
 	github.com/shortlink-org/go-sdk/grpc v0.0.0-20260417231502-a845b14b1f44
 	github.com/shortlink-org/go-sdk/logger v0.0.0-20260423005905-959e3e589a42
-	github.com/shortlink-org/go-sdk/observability v0.0.0-20260415234714-8c7f9b03b6b3
+	github.com/shortlink-org/go-sdk/observability v0.0.0-20260429091243-40ae8b9e1433
 	go.opentelemetry.io/otel v1.43.0
 	go.opentelemetry.io/otel/trace v1.43.0
 	go.temporal.io/sdk v1.42.0
@@ -46,9 +46,9 @@ require (
 	github.com/prometheus/procfs v0.20.1 // indirect
 	github.com/robfig/cron v1.2.0 // indirect
 	github.com/sagikazarmark/locafero v0.11.0 // indirect
-	github.com/shortlink-org/go-sdk/auth v0.0.0-20260417231502-a845b14b1f44 // indirect
-	github.com/shortlink-org/go-sdk/flight_trace v0.0.0-20260410230549-a64f68ccd6e5 // indirect
-	github.com/shortlink-org/go-sdk/http v0.0.0-20260415234714-8c7f9b03b6b3 // indirect
+	github.com/shortlink-org/go-sdk/auth v0.0.0-20260424225420-a63676f29741 // indirect
+	github.com/shortlink-org/go-sdk/flight_trace v0.0.0-20260424225420-a63676f29741 // indirect
+	github.com/shortlink-org/go-sdk/http v0.0.0-20260424225420-a63676f29741 // indirect
 	github.com/sourcegraph/conc v0.3.1-0.20240121214520-5f936abd7ae8 // indirect
 	github.com/spf13/afero v1.15.0 // indirect
 	github.com/spf13/cast v1.10.0 // indirect
