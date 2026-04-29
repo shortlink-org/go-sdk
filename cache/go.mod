@@ -4,7 +4,7 @@ go 1.26.2
 
 require (
 	github.com/go-redis/cache/v9 v9.0.0
-	github.com/redis/go-redis/v9 v9.18.0
+	github.com/redis/go-redis/v9 v9.19.0
 	github.com/redis/rueidis v1.0.74
 	github.com/redis/rueidis/rueidiscompat v1.0.74
 	github.com/shortlink-org/go-sdk/db v0.0.0-20260424225420-a63676f29741
