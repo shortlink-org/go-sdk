@@ -5,13 +5,13 @@ go 1.26.2
 require (
 	github.com/XSAM/otelsql v0.42.0
 	github.com/aerospike/aerospike-client-go v4.5.2+incompatible
+	github.com/apache/cassandra-gocql-driver/v2 v2.1.1
 	github.com/couchbase/gocb/v2 v2.12.4
 	github.com/dgraph-io/badger/v4 v4.9.1
 	github.com/dgraph-io/dgo/v2 v2.2.0
 	github.com/exaring/otelpgx v0.10.0
 	github.com/geldata/gel-go v1.4.3
 	github.com/go-sql-driver/mysql v1.9.3
-	github.com/gocql/gocql/v2 v2.1.1
 	github.com/golang-migrate/migrate/v4 v4.19.1
 	github.com/jackc/pgx/v5 v5.9.2
 	github.com/johejo/golang-migrate-extra v0.0.0-20211005021153-c17dd75f8b4a
@@ -57,7 +57,6 @@ require (
 	github.com/felixge/httpsnoop v1.0.4 // indirect
 	github.com/go-ole/go-ole v1.2.6 // indirect
 	github.com/goccy/go-yaml v1.18.0 // indirect
-	github.com/hailocab/go-hostpool v0.0.0-20160125115350-e80d13ce29ed // indirect
 	github.com/hashicorp/golang-lru/v2 v2.0.7 // indirect
 	github.com/launchdarkly/eventsource v1.10.0 // indirect
 	github.com/lufia/plan9stats v0.0.0-20211012122336-39d0f177ccd0 // indirect
@@ -91,7 +90,7 @@ require (
 	github.com/codemodus/kace v0.5.1 // indirect
 	github.com/coreos/go-semver v0.3.1 // indirect
 	github.com/coreos/go-systemd/v22 v22.5.0 // indirect
-	github.com/couchbase/gocbcore/v10 v10.9.2 // indirect
+	github.com/couchbase/gocbcore/v10 v10.9.3 // indirect
 	github.com/couchbase/gocbcoreps v0.1.5-0.20260107140814-1c3a03f888f8 // indirect
 	github.com/couchbase/goprotostellar v1.0.6-0.20260407143512-d7af25156dcc // indirect
 	github.com/couchbaselabs/gocbconnstr/v2 v2.0.0 // indirect
@@ -165,8 +164,8 @@ require (
 	golang.org/x/sync v0.20.0 // indirect
 	golang.org/x/sys v0.43.0 // indirect
 	golang.org/x/text v0.36.0 // indirect
-	google.golang.org/genproto/googleapis/api v0.0.0-20260401024825-9d38bb4040a9 // indirect
-	google.golang.org/genproto/googleapis/rpc v0.0.0-20260406210006-6f92a3bedf2d // indirect
+	google.golang.org/genproto/googleapis/api v0.0.0-20260414002931-afd174a4e478 // indirect
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20260414002931-afd174a4e478 // indirect
 	google.golang.org/protobuf v1.36.11 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )

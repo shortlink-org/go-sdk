@@ -7,7 +7,7 @@ import (
 	"os"
 	"testing"
 
-	"github.com/gocql/gocql"
+	gocql "github.com/apache/cassandra-gocql-driver/v2"
 	"github.com/stretchr/testify/require"
 	"github.com/testcontainers/testcontainers-go"
 	tcscylla "github.com/testcontainers/testcontainers-go/modules/scylladb"
