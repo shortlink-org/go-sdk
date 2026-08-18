@@ -7,7 +7,7 @@ import (
 	"github.com/XSAM/otelsql"
 	_ "github.com/go-sql-driver/mysql"
 	"go.opentelemetry.io/otel/sdk/metric"
-	semconv "go.opentelemetry.io/otel/semconv/v1.37.0"
+	semconv "go.opentelemetry.io/otel/semconv/v1.43.0"
 	"go.opentelemetry.io/otel/trace"
 
 	"github.com/shortlink-org/go-sdk/config"
