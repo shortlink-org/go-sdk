@@ -1,7 +1,11 @@
 package kafka
 
 import (
+	"sync"
+
 	"github.com/IBM/sarama"
+	"github.com/dnwe/otelsarama"
+	"go.opentelemetry.io/otel"
 
 	"github.com/shortlink-org/go-sdk/mq/query"
 )
@@ -11,16 +15,26 @@ type Consumer struct {
 	// response channel
 	ch query.Response
 
-	session *sarama.ConsumerGroupSession
-	ready   chan bool
+	// ready is closed once the first session has been set up. Setup runs again
+	// after every rebalance, so the close is guarded by readyOnce.
+	ready     chan struct{}
+	readyOnce sync.Once
+}
+
+// newConsumer creates a consumer group handler delivering messages to ch.
+func newConsumer(ch query.Response) *Consumer {
+	return &Consumer{
+		ch:    ch,
+		ready: make(chan struct{}),
+	}
 }
 
 // Setup is run at the beginning of a new session, before ConsumeClaim
-func (consumer *Consumer) Setup(s sarama.ConsumerGroupSession) error {
-	consumer.session = &s
-
+func (consumer *Consumer) Setup(sarama.ConsumerGroupSession) error {
 	// Mark the consumer as ready
-	close(consumer.ready)
+	consumer.readyOnce.Do(func() {
+		close(consumer.ready)
+	})
 
 	return nil
 }
@@ -49,8 +63,19 @@ func (consumer *Consumer) ConsumeClaim(session sarama.ConsumerGroupSession, clai
 
 			session.MarkMessage(message, "")
 
-			consumer.ch.Chan <- query.ResponseMessage{
-				Body: message.Value,
+			// Restore the trace context injected by the producer, so that the subscriber
+			// continues the original trace instead of starting a detached one.
+			ctx := otel.GetTextMapPropagator().Extract(session.Context(), otelsarama.NewConsumerMessageCarrier(message))
+
+			// A subscriber that stops reading must not pin the session: a blocked send
+			// here would outlive the rebalance timeout and get the member evicted.
+			select {
+			case consumer.ch.Chan <- query.ResponseMessage{
+				Context: ctx,
+				Body:    message.Value,
+			}:
+			case <-session.Context().Done():
+				return nil
 			}
 		// Should return when `session.Context()` is done.
 		// If not, will raise `ErrRebalanceInProgress` or `read tcp <ip>:<port>: i/o timeout` when kafka rebalance. See:
