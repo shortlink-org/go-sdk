@@ -14,8 +14,14 @@ import (
 )
 
 // New creates a MongoDB store configured via cfg.
-func New(cfg *config.Config) *Store {
-	return &Store{cfg: cfg}
+func New(cfg *config.Config, opts ...Option) *Store {
+	s := &Store{cfg: cfg}
+
+	for _, opt := range opts {
+		opt(s)
+	}
+
+	return s
 }
 
 // Init - initialize
@@ -35,6 +41,11 @@ func (s *Store) Init(ctx context.Context) error {
 		// SetMonitor(otelmongo.NewMonitor()).
 		SetRetryReads(true).
 		SetRetryWrites(true)
+
+	// Driver options are applied last, so that they can override the defaults above.
+	for _, fn := range s.clientOptions {
+		fn(opts)
+	}
 
 	s.client, err = mongo.Connect(opts)
 	if err != nil {
