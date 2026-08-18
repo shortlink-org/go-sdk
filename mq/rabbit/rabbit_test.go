@@ -67,4 +67,36 @@ func TestRabbitMQ(t *testing.T) {
 
 		require.NoError(t, mq.UnSubscribe("test"))
 	})
+
+	t.Run("Recovery", func(t *testing.T) {
+		respCh := make(chan query.ResponseMessage, 1)
+		msg := query.Response{Chan: respCh}
+
+		err := mq.Subscribe(ctx, "recovery", msg)
+		require.NoError(t, err)
+
+		require.NoError(t, mq.Check(ctx))
+
+		// Drop the connection broker-side: amqp091-go must reconnect, re-declare the
+		// exchange, queue and binding, and re-subscribe the consumer onto respCh.
+		_, _, err = ctr.Exec(ctx, []string{"rabbitmqctl", "close_all_connections", "recovery test"})
+		require.NoError(t, err)
+
+		require.Eventually(t, func() bool {
+			return mq.Check(ctx) == nil
+		}, time.Minute, 200*time.Millisecond, "connection recovers")
+
+		require.Eventually(t, func() bool {
+			return mq.Publish(ctx, "recovery", []byte("rk"), []byte("recovered")) == nil
+		}, time.Minute, 200*time.Millisecond, "publish after recovery")
+
+		select {
+		case <-time.After(time.Minute):
+			t.Fatal("timeout waiting for message after recovery")
+		case resp := <-respCh:
+			require.Equal(t, []byte("recovered"), resp.Body)
+		}
+
+		require.NoError(t, mq.UnSubscribe("recovery"))
+	})
 }

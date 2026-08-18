@@ -14,6 +14,7 @@ import (
 // Subscribe binds a durable queue to a fanout exchange named target, then delivers messages to message.Chan.
 // The exchange is created if missing (durable fanout). Publish must use the same exchange name as target with any routing key.
 // Returns immediately; a background goroutine reads deliveries until ctx is done or the subscription channel is closed.
+// The exchange, queue, binding and consumer are restored automatically after a connection loss.
 func (mq *MQ) Subscribe(ctx context.Context, target string, message query.Response) error {
 	mq.mu.Lock()
 	if _, exists := mq.subs[target]; exists {
@@ -68,7 +69,9 @@ func (mq *MQ) Subscribe(ctx context.Context, target string, message query.Respon
 		return fmt.Errorf("failed to bind queue: %w", err)
 	}
 
-	msgs, err := subCh.Consume(ctx, q.Name, "", true, false, false, false, nil)
+	// The consumer is tracked for topology recovery: after a reconnect amqp091-go
+	// re-subscribes it onto this very delivery channel, so msgs stays valid.
+	msgs, err := subCh.ConsumeWithContext(ctx, q.Name, "", true, false, false, false, nil)
 	if err != nil {
 		_ = subCh.Close()
 		mq.mu.Unlock()

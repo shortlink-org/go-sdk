@@ -3,8 +3,10 @@ package rabbit
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log/slog"
 	"sync"
+	"sync/atomic"
 
 	amqp "github.com/rabbitmq/amqp091-go"
 
@@ -16,23 +18,30 @@ type MQ struct {
 	mu sync.Mutex
 	// subs holds one AMQP channel per subscribe target (exchange name).
 	// Publish uses mq.ch; consume paths use dedicated channels to avoid concurrent use of one channel.
-	subs map[string]*Channel
+	subs map[string]*amqp.Channel
 
 	config *Config
 	cfg    *config.Config
 
 	log  logger.Logger
-	conn *Connection
-	ch   *Channel
+	conn *amqp.Connection
+	ch   *amqp.Channel
+
+	// state mirrors the connection life cycle reported by the amqp091-go recovery.
+	state atomic.Int32
 }
 
 func New(log logger.Logger, cfg *config.Config) *MQ {
-	return &MQ{
+	mq := &MQ{
 		log:    log,
 		cfg:    cfg,
 		config: loadConfig(cfg), // Set configuration
-		subs:   make(map[string]*Channel),
+		subs:   make(map[string]*amqp.Channel),
 	}
+
+	mq.state.Store(int32(amqp.StateClosed))
+
+	return mq
 }
 
 // Init initializes the RabbitMQ connection and sets up the channel.
@@ -48,6 +57,9 @@ func (mq *MQ) Init(ctx context.Context, log logger.Logger) error {
 	// create a channel
 	mq.ch, err = mq.conn.Channel()
 	if err != nil {
+		// Drop the connection so its recovery machinery does not outlive the failed Init.
+		_ = mq.conn.Close()
+
 		return err
 	}
 
@@ -67,41 +79,46 @@ func (mq *MQ) Init(ctx context.Context, log logger.Logger) error {
 }
 
 // close gracefully closes subscription channels, the publish channel, and the connection.
+// Entities the broker already tore down report amqp.ErrClosed, which is not a shutdown failure.
 func (mq *MQ) close() error {
 	var errs error
 
-	mq.mu.Lock()
-	for _, subCh := range mq.subs {
-		err := subCh.Close()
-		if err != nil {
+	closeEntity := func(closer func() error) {
+		err := closer()
+		if err != nil && !errors.Is(err, amqp.ErrClosed) {
 			errs = errors.Join(errs, err)
 		}
 	}
 
-	mq.subs = make(map[string]*Channel)
+	mq.mu.Lock()
+	for _, subCh := range mq.subs {
+		closeEntity(subCh.Close)
+	}
+
+	mq.subs = make(map[string]*amqp.Channel)
 	mq.mu.Unlock()
 
 	if mq.ch != nil {
-		err := mq.ch.Close()
-		if err != nil {
-			errs = errors.Join(errs, err)
-		}
+		closeEntity(mq.ch.Close)
 	}
 
 	if mq.conn != nil {
-		err := mq.conn.Close()
-		if err != nil {
-			errs = errors.Join(errs, err)
-		}
+		closeEntity(mq.conn.Close)
 	}
 
 	return errs
 }
 
-// Check verifies the connection status.
+// Check verifies the connection status. A connection that is recovering is reported
+// as unhealthy: publishing fails until the recovery completes.
 func (mq *MQ) Check(_ context.Context) error {
-	if mq.conn.IsClosed() {
+	if mq.conn == nil {
 		return amqp.ErrClosed
+	}
+
+	state := amqp.LifeCycleState(mq.state.Load())
+	if state != amqp.StateOpen {
+		return fmt.Errorf("rabbit connection is %s: %w", state, amqp.ErrClosed)
 	}
 
 	return nil
