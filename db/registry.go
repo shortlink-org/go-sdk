@@ -1,6 +1,7 @@
 package db
 
 import (
+	"errors"
 	"fmt"
 	"sort"
 	"sync"
@@ -34,6 +35,9 @@ type Factory func(deps Deps) (DB, error)
 var (
 	registryMu sync.RWMutex
 	registry   = map[string]Factory{}
+
+	// registerErrs collects what Register could not accept, for New to report.
+	registerErrs error
 )
 
 // Register makes a driver available under name. Drivers call it from init, so
@@ -41,21 +45,37 @@ var (
 //
 //	import _ "github.com/shortlink-org/go-sdk/db/drivers/postgres"
 //
-// Register panics on a nil factory or a duplicate name, since both mean the
-// program is wired wrong.
+// A nil factory or a duplicate name is recorded instead of raised: Register runs
+// from init, where there is no caller to hand an error to and a panic would take
+// the process down before main. New reports what was recorded, so the wiring
+// mistake still surfaces — as an error the caller decides what to do with.
 func Register(name string, factory Factory) {
 	registryMu.Lock()
 	defer registryMu.Unlock()
 
 	if factory == nil {
-		panic("db: Register factory is nil for driver " + name)
+		registerErrs = errors.Join(registerErrs, &RegisterError{Driver: name, Reason: "factory is nil"})
+
+		return
 	}
 
 	if _, dup := registry[name]; dup {
-		panic("db: Register called twice for driver " + name)
+		registerErrs = errors.Join(registerErrs, &RegisterError{Driver: name, Reason: "registered twice"})
+
+		return
 	}
 
 	registry[name] = factory
+}
+
+// RegistrationError reports what Register could not accept, or nil when every
+// driver registered cleanly. New calls it, so checking it separately is only
+// needed to inspect the registry before building a store.
+func RegistrationError() error {
+	registryMu.RLock()
+	defer registryMu.RUnlock()
+
+	return registerErrs
 }
 
 // Drivers returns the names of the registered drivers, sorted.

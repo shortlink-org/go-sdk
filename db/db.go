@@ -31,12 +31,19 @@ func New(
 	cfg *config.Config,
 	opts ...Option,
 ) (*Store, error) {
+	// A driver that could not register would otherwise look like one that was
+	// never imported, so report the registration failure itself.
+	err := RegistrationError()
+	if err != nil {
+		return nil, err
+	}
+
 	options := &Options{driverOptions: make(map[string][]any)}
 	for _, opt := range opts {
 		opt(options)
 	}
 
-	err := checkOptionTargets(options)
+	err = checkOptionTargets(options)
 	if err != nil {
 		return nil, err
 	}

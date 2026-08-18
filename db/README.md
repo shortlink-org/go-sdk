@@ -91,8 +91,11 @@ func init() {
 }
 ```
 
-`db.Register` panics on a duplicate name, so a collision surfaces at startup
-rather than silently shadowing a driver.
+A driver that cannot register — a duplicate name or a nil factory — is recorded
+and reported by `db.New` as `RegisterError`, so a collision surfaces instead of
+silently shadowing a driver. Registration happens in `init`, where there is no
+caller to return an error to, so nothing panics: the failure waits until there
+is someone to hand it to.
 
 ### URI format
 

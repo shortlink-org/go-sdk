@@ -8,6 +8,19 @@ import (
 // ErrGetConnection - error gets connection
 var ErrGetConnection = errors.New("error get connection")
 
+// RegisterError - a driver could not be registered.
+//
+// Register runs from init, where there is no caller to hand an error to, so the
+// problem is recorded and reported by New.
+type RegisterError struct {
+	Driver string
+	Reason string
+}
+
+func (e *RegisterError) Error() string {
+	return "db: cannot register driver " + e.Driver + ": " + e.Reason
+}
+
 // UnknownStoreTypeError - unknown store type error
 type UnknownStoreTypeError struct {
 	StoreType string
