@@ -210,6 +210,8 @@ github.com/redis/rueidis/mock v1.0.74 h1:2/HxU6lREIvjEvwdo8gGj3Xo8TIZbKEDDYEPNgf
 github.com/redis/rueidis/mock v1.0.74/go.mod h1:NWl9MkyhR7XMTWcjK9voFvFevkSl+UyD3WCvlZPCtLk=
 github.com/redis/rueidis/rueidiscompat v1.0.74 h1:AdvxfjbeBbCsbol5JrN+66r+XvC0rkBAloe22Tbst/Y=
 github.com/redis/rueidis/rueidiscompat v1.0.74/go.mod h1:MLmPKLG5q5rt8LER+FAJCKmiTRp0Pk447EpolZXB3pM=
+github.com/redis/rueidis/rueidiscompat v1.0.77 h1:S1xiLQsFv8XQ46e0LelC8ihGqbDzVRocXXZLzVAeh64=
+github.com/redis/rueidis/rueidiscompat v1.0.77/go.mod h1:aXCvRVUTvTHZY0owHuz9JjveO1hyuzyDWrpJh8/E3Ds=
 github.com/redis/rueidis/rueidisotel v1.0.77 h1:pUQzJaAXeBsiCn7+V0dJrKHQBG5ArsWotLHF6373wSg=
 github.com/redis/rueidis/rueidisotel v1.0.77/go.mod h1:Z8bXGJbGGNOQDqgCm9K8jacUGurtiJktfsPzErqKFxs=
 github.com/rogpeppe/go-internal v1.6.1/go.mod h1:xXDCJY+GAPziupqXw64V24skbSoqbTEfhy4qGm1nDQc=
