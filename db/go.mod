@@ -7,7 +7,7 @@ require (
 	github.com/aerospike/aerospike-client-go v4.5.2+incompatible
 	github.com/apache/cassandra-gocql-driver/v2 v2.1.1
 	github.com/couchbase/gocb/v2 v2.12.4
-	github.com/dgraph-io/badger/v4 v4.9.1
+	github.com/dgraph-io/badger/v4 v4.9.6
 	github.com/dgraph-io/dgo/v2 v2.2.0
 	github.com/exaring/otelpgx v0.10.0
 	github.com/geldata/gel-go v1.4.3
