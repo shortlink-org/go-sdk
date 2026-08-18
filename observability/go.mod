@@ -4,7 +4,7 @@ go 1.26.2
 
 require (
 	github.com/felixge/fgprof v0.9.5
-	github.com/grafana/otel-profiling-go v0.5.1
+	github.com/grafana/otel-profiling-go v0.6.0
 	github.com/heptiolabs/healthcheck v0.0.0-20211123025425-613501dd5deb
 	github.com/prometheus/client_golang v1.23.2
 	github.com/shortlink-org/go-sdk/config v0.0.0-20260419222854-fd069f4d5106
