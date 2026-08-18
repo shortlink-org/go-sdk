@@ -3,9 +3,9 @@ package server_test
 import (
 	"testing"
 
-	"github.com/spf13/viper"
 	"github.com/stretchr/testify/require"
 
+	"github.com/shortlink-org/go-sdk/config"
 	rpc "github.com/shortlink-org/go-sdk/grpc"
 	"github.com/shortlink-org/go-sdk/logger"
 	"github.com/shortlink-org/go-sdk/raft/server"
@@ -22,13 +22,17 @@ func Test_Raft(t *testing.T) {
 	log, err := logger.New(conf)
 	require.NoError(t, err, "Error init a logger")
 
+	// Init config
+	cfg, err := config.New()
+	require.NoError(t, err, "Error init a config")
+
 	// Step 1. Create 3 nodes ===================================================
 	peers := []string{"127.0.0.1:50051", "127.0.0.1:50052", "127.0.0.1:50053"}
 
 	// node 1 -----------------------------------------------------
 	//nolint:mnd,revive // It's okay to have magic numbers here
-	viper.Set("GRPC_SERVER_PORT", 50051)
-	serverRPC1, err := rpc.InitServer(ctx, log, nil, nil)
+	cfg.Set("GRPC_SERVER_PORT", 50051)
+	serverRPC1, err := rpc.InitServer(ctx, log, nil, nil, nil, cfg)
 	require.NoError(t, err)
 
 	node1, err := server.New(ctx, serverRPC1, peers, server.WithLogger(log))
@@ -36,8 +40,8 @@ func Test_Raft(t *testing.T) {
 
 	// node 2 -----------------------------------------------------
 	//nolint:mnd,revive // It's okay to have magic numbers here
-	viper.Set("GRPC_SERVER_PORT", 50052)
-	serverRPC2, err := rpc.InitServer(ctx, log, nil, nil)
+	cfg.Set("GRPC_SERVER_PORT", 50052)
+	serverRPC2, err := rpc.InitServer(ctx, log, nil, nil, nil, cfg)
 	require.NoError(t, err)
 
 	node2, err := server.New(ctx, serverRPC2, peers, server.WithLogger(log))
@@ -45,8 +49,8 @@ func Test_Raft(t *testing.T) {
 
 	// node 3 -----------------------------------------------------
 	//nolint:mnd,revive // It's okay to have magic numbers here
-	viper.Set("GRPC_SERVER_PORT", 50053)
-	serverRPC3, err := rpc.InitServer(ctx, log, nil, nil)
+	cfg.Set("GRPC_SERVER_PORT", 50053)
+	serverRPC3, err := rpc.InitServer(ctx, log, nil, nil, nil, cfg)
 	require.NoError(t, err)
 
 	node3, err := server.New(ctx, serverRPC3, peers, server.WithLogger(log))
