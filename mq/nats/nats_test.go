@@ -48,7 +48,7 @@ func TestNATS(t *testing.T) {
 		err := mq.Subscribe(ctx, "test", msg)
 		require.Nil(t, err, "Cannot subscribe")
 
-		err = mq.Publish(ctx, "", []byte("test"), []byte("test"))
+		err = mq.Publish(ctx, "test", []byte("key"), []byte("test"))
 		require.Nil(t, err, "Cannot publish")
 
 		select {

@@ -2,6 +2,7 @@ package redis
 
 import (
 	"context"
+	"errors"
 	"log/slog"
 
 	"github.com/redis/rueidis"
@@ -14,6 +15,11 @@ import (
 	"github.com/shortlink-org/go-sdk/logger"
 	"github.com/shortlink-org/go-sdk/mq/query"
 )
+
+// ErrNotImplemented is returned by the Pub/Sub operations: the Redis backend only
+// establishes the connection so far. Selecting MQ_TYPE=redis therefore fails on use
+// instead of taking the process down.
+var ErrNotImplemented = errors.New("redis: message queue is not implemented")
 
 type Redis struct {
 	client rueidis.Client //nolint:unused // TODO implement me
@@ -63,15 +69,15 @@ func (r *Redis) close() error {
 
 func (r *Redis) Publish(_ context.Context, _ string, _, _ []byte) error {
 	// TODO implement me
-	panic("implement me")
+	return ErrNotImplemented
 }
 
 func (r *Redis) Subscribe(_ context.Context, _ string, _ query.Response) error {
 	// TODO implement me
-	panic("implement me")
+	return ErrNotImplemented
 }
 
 func (r *Redis) UnSubscribe(_ string) error {
 	// TODO implement me
-	panic("implement me")
+	return ErrNotImplemented
 }
