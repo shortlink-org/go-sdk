@@ -12,6 +12,11 @@ import (
 // Config wraps Viper-backed settings with a mutex for safe concurrent reads.
 type Config struct {
 	mu sync.RWMutex
+
+	// featureToggle reports whether FeatureToogleRun initialized the Unleash
+	// client, so Close knows whether there is anything to shut down.
+	featureToggle bool
+	closeOnce     sync.Once
 }
 
 // New - read .env and ENV variables.
