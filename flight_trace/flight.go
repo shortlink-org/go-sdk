@@ -7,10 +7,14 @@ import (
 	"path/filepath"
 	"runtime/trace"
 	"sort"
+	"sync"
 	"time"
 
 	"github.com/shortlink-org/go-sdk/config"
 )
+
+// defaultMaxDumps is how many dump files are kept when the setting is unset or invalid.
+const defaultMaxDumps = 100
 
 var (
 	ErrRecorderNotInitialized = errors.New("flight recorder not initialized")
@@ -25,7 +29,17 @@ var (
 type Recorder struct {
 	fr       *trace.FlightRecorder
 	dumpPath string
-	cfg      *config.Config
+
+	// maxDumps is read once at construction: the cleanup runs on background
+	// goroutines, and config reads reach into a process-wide viper that another
+	// goroutine may be writing.
+	maxDumps int
+
+	// mu serializes every use of fr. Stop resets state that WriteTo reads, and
+	// the recorder rejects a WriteTo that overlaps another one, so both the
+	// shutdown and the dumps have to take turns.
+	mu      sync.Mutex
+	stopped bool
 }
 
 // New initializes the Flight Recorder and starts background cleanup.
@@ -34,7 +48,7 @@ func New(ctx context.Context, cfg *config.Config) (*Recorder, error) {
 	cfg.SetDefault("FLIGHT_RECORDER_MIN_AGE", "1s")
 	cfg.SetDefault("FLIGHT_RECORDER_MAX_BYTES", 20*1024*1024)
 	cfg.SetDefault("FLIGHT_RECORDER_DUMP_PATH", "/tmp/flight_dumps")
-	cfg.SetDefault("FLIGHT_RECORDER_MAX_DUMPS", 100)
+	cfg.SetDefault("FLIGHT_RECORDER_MAX_DUMPS", defaultMaxDumps)
 	cfg.SetDefault("FLIGHT_RECORDER_CLEANUP_INTERVAL", "10m")
 
 	if !cfg.GetBool("FLIGHT_RECORDER_ENABLED") {
@@ -56,16 +70,21 @@ func New(ctx context.Context, cfg *config.Config) (*Recorder, error) {
 		return nil, ErrStartRecorder
 	}
 
+	maxDumps := cfg.GetInt("FLIGHT_RECORDER_MAX_DUMPS")
+	if maxDumps <= 0 {
+		maxDumps = defaultMaxDumps
+	}
+
 	rec := &Recorder{
 		fr:       fr,
 		dumpPath: dumpPath,
-		cfg:      cfg,
+		maxDumps: maxDumps,
 	}
 
 	// Graceful shutdown
 	go func() {
 		<-ctx.Done()
-		fr.Stop()
+		rec.stop()
 	}()
 
 	// Periodic cleanup
@@ -80,7 +99,10 @@ func (wr *Recorder) DumpToFile(fileName string) error {
 		return ErrRecorderNotInitialized
 	}
 
-	if wr.fr == nil || !wr.fr.Enabled() {
+	wr.mu.Lock()
+	defer wr.mu.Unlock()
+
+	if wr.fr == nil || wr.stopped || !wr.fr.Enabled() {
 		return ErrRecorderNotStarted
 	}
 
@@ -99,6 +121,20 @@ func (wr *Recorder) DumpToFile(fileName string) error {
 	return nil
 }
 
+// stop ends the recording. It is idempotent, and it waits for a dump that is
+// already in flight instead of pulling the buffer out from under it.
+func (wr *Recorder) stop() {
+	wr.mu.Lock()
+	defer wr.mu.Unlock()
+
+	if wr.fr == nil || wr.stopped {
+		return
+	}
+
+	wr.stopped = true
+	wr.fr.Stop()
+}
+
 // DumpToFileAsync runs DumpToFile asynchronously.
 func (wr *Recorder) DumpToFileAsync(fileName string) {
 	go func() {
@@ -108,13 +144,8 @@ func (wr *Recorder) DumpToFileAsync(fileName string) {
 
 // cleanupOldDumps keeps only the N newest dump files, deleting older ones.
 func (wr *Recorder) cleanupOldDumps() {
-	maxDumps := wr.cfg.GetInt("FLIGHT_RECORDER_MAX_DUMPS")
-	if maxDumps <= 0 {
-		maxDumps = 100
-	}
-
 	files, err := filepath.Glob(filepath.Join(wr.dumpPath, "flight-*.out"))
-	if err != nil || len(files) <= maxDumps {
+	if err != nil || len(files) <= wr.maxDumps {
 		return
 	}
 
@@ -125,7 +156,7 @@ func (wr *Recorder) cleanupOldDumps() {
 		return fi.ModTime().After(fj.ModTime()) // newest first
 	})
 
-	for _, old := range files[maxDumps:] {
+	for _, old := range files[wr.maxDumps:] {
 		_ = os.Remove(old)
 	}
 }
