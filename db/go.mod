@@ -9,7 +9,7 @@ require (
 	github.com/couchbase/gocb/v2 v2.12.4
 	github.com/dgraph-io/badger/v4 v4.9.1
 	github.com/dgraph-io/dgo/v2 v2.2.0
-	github.com/exaring/otelpgx v0.10.0
+	github.com/exaring/otelpgx v0.11.1
 	github.com/geldata/gel-go v1.4.3
 	github.com/go-sql-driver/mysql v1.10.0
 	github.com/golang-migrate/migrate/v4 v4.19.1
