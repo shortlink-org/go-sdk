@@ -121,6 +121,11 @@ func (m *Monitoring) SetHandler() (*http.ServeMux, error) {
 			// Opt into OpenMetrics to support exemplars.
 			EnableOpenMetrics: true,
 
+			// Overlapping scrapes share one collection cycle instead of each
+			// starting its own, which keeps goroutines from piling up when the
+			// scrape rate outpaces collection.
+			CoalesceGather: true,
+
 			ErrorHandling: promhttp.ContinueOnError,
 		},
 	))
@@ -139,13 +144,39 @@ func (m *Monitoring) SetHandler() (*http.ServeMux, error) {
 }
 
 // SetPrometheus - Create a new Prometheus registry
+//
+// Collectors go into this registry, not the global one: /metrics serves
+// m.Prometheus, so anything registered globally would never be exposed.
 func (m *Monitoring) SetPrometheus() error {
 	m.Prometheus = prometheus.NewRegistry()
 
-	// Add Go module build info.
-	err := prometheus.Register(collectors.NewBuildInfoCollector())
-	if err != nil {
-		return err
+	collectorSet := []prometheus.Collector{
+		// Go module build info.
+		collectors.NewBuildInfoCollector(),
+
+		// Go runtime metrics, including the scheduler ones added in Go 1.26
+		// (goroutines created, runnable, and not-in-Go).
+		collectors.NewGoCollector(
+			collectors.WithGoCollectorRuntimeMetrics(
+				collectors.MetricsGC,
+				collectors.MetricsMemory,
+				collectors.MetricsScheduler,
+			),
+		),
+
+		// Process metrics: CPU, memory, file descriptors.
+		collectors.NewProcessCollector(collectors.ProcessCollectorOpts{
+			PidFn:        nil,
+			Namespace:    "",
+			ReportErrors: false,
+		}),
+	}
+
+	for _, collector := range collectorSet {
+		err := m.Prometheus.Register(collector)
+		if err != nil {
+			return err
+		}
 	}
 
 	return nil

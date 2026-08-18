@@ -17,25 +17,34 @@ type metrics struct {
 	latency *prometheus.HistogramVec
 }
 
-func NewMetrics() (func(next http.Handler) http.Handler, error) {
+// NewMetrics returns the middleware and registers its collectors with reg.
+//
+// The registry is explicit because the exposed one is rarely the global
+// default: observability serves its own registry, and metrics registered
+// globally never reach that /metrics. Pass prometheus.DefaultRegisterer to
+// keep the previous behaviour.
+func NewMetrics(reg prometheus.Registerer) (func(next http.Handler) http.Handler, error) {
 	collector := &metrics{
 		reqs: prometheus.NewCounterVec(prometheus.CounterOpts{ //nolint:exhaustruct // Prometheus options intentionally use defaults
 			Name: "http_requests_total",
 			Help: "Total number of HTTP requests made.",
 		}, []string{"status", "method", "path"}),
 		latency: prometheus.NewHistogramVec(prometheus.HistogramOpts{ //nolint:exhaustruct // Prometheus options intentionally use defaults
-			Name:    "http_request_duration_seconds",
-			Help:    "The HTTP request latencies in seconds.",
+			Name: "http_request_duration_seconds",
+			Help: "The HTTP request latencies in seconds.",
+			// Declared for OpenMetrics, which exposes the unit separately
+			// instead of leaving it implicit in the metric name.
+			Unit:    "seconds",
 			Buckets: prometheus.DefBuckets,
 		}, []string{"status", "method", "path"}),
 	}
 
-	err := prometheus.Register(collector.reqs)
+	err := reg.Register(collector.reqs)
 	if err != nil {
 		return nil, err
 	}
 
-	err = prometheus.Register(collector.latency)
+	err = reg.Register(collector.latency)
 	if err != nil {
 		return nil, err
 	}

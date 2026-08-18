@@ -15,7 +15,7 @@ import (
 func Test_NewMetrics(t *testing.T) {
 	const delta = 1e-9
 	// middlewares
-	middlewares, err := NewMetrics()
+	middlewares, err := NewMetrics(prometheus.NewRegistry())
 	require.NoError(t, err)
 
 	// Create a new HTTP router with the Prometheus middleware
