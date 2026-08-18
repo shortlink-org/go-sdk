@@ -3,7 +3,6 @@ package metrics_middleware
 import (
 	"net/http"
 	"strconv"
-	"strings"
 	"time"
 
 	"github.com/go-chi/chi/v5"
@@ -65,9 +64,11 @@ func (m *metrics) middleware(next http.Handler) http.Handler {
 }
 
 func (m *metrics) writeMetrics(req *http.Request, start time.Time, code string) {
-	rctx := chi.RouteContext(req.Context())
-	routePattern := strings.Join(rctx.RoutePatterns, "")
-	routePattern = strings.ReplaceAll(routePattern, "/*/", "/")
+	// RoutePattern collapses consecutive wildcards and trims the trailing
+	// slash, so "/api/*/*/users/" and "/api/users" share one label value
+	// instead of inflating the metric cardinality. It is nil-safe, which
+	// keeps the middleware usable outside a chi router.
+	routePattern := chi.RouteContext(req.Context()).RoutePattern()
 
 	m.reqs.WithLabelValues(code, req.Method, routePattern).Inc()
 	observer := m.latency.WithLabelValues(code, req.Method, routePattern)
