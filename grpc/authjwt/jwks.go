@@ -51,6 +51,7 @@ var (
 		prometheus.HistogramOpts{
 			Name:    "jwks_fetch_seconds",
 			Help:    "Time spent fetching JWKS.",
+			Unit:    "seconds",
 			Buckets: prometheus.DefBuckets,
 		},
 	)

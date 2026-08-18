@@ -48,6 +48,7 @@ var (
 		prometheus.HistogramOpts{
 			Name:    "auth_identity_resolution_seconds",
 			Help:    "Time spent resolving user identity in gRPC interceptors.",
+			Unit:    "seconds",
 			Buckets: prometheus.DefBuckets,
 		},
 		[]string{"source", "outcome", "reason"},

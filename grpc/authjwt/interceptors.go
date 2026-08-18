@@ -42,6 +42,7 @@ var (
 		prometheus.HistogramOpts{
 			Name:    "grpc_jwt_validation_seconds",
 			Help:    "Time spent validating JWT in gRPC interceptors",
+			Unit:    "seconds",
 			Buckets: prometheus.DefBuckets,
 		},
 		[]string{"outcome"},

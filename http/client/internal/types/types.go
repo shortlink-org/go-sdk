@@ -50,6 +50,7 @@ func NewMetrics(namespace, subsystem string) *Metrics {
 				Subsystem: subsystem,
 				Name:      "rate_limit_wait_seconds",
 				Help:      "Time spent waiting due to rate limiting (server headers or local bucket).",
+				Unit:      "seconds",
 				Buckets:   prometheus.DefBuckets,
 			},
 			[]string{LabelClient, LabelHost, LabelMethod, LabelSource},
