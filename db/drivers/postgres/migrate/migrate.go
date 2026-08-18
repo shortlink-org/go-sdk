@@ -19,9 +19,9 @@ import (
 // Migration applies migrations from the given filesystem to the database.
 // The filesystem should contain a "migrations" directory with migration files.
 func Migration(ctx context.Context, store db.DB, fsys fs.FS, tableName string) error {
-	client, ok := store.GetConn().(*pgxpool.Pool)
-	if !ok {
-		return db.ErrGetConnection
+	client, err := db.Conn[*pgxpool.Pool](store)
+	if err != nil {
+		return err
 	}
 
 	var retErr error

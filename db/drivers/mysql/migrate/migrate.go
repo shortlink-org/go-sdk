@@ -15,9 +15,9 @@ import (
 
 // Migration - apply migration to db
 func Migration(_ context.Context, store db.DB, fs embed.FS, tableName string) error {
-	client, ok := store.GetConn().(*sql.DB)
-	if !ok {
-		return db.ErrGetConnection
+	client, err := db.Conn[*sql.DB](store)
+	if err != nil {
+		return err
 	}
 
 	driverMigrations, err := iofs.New(fs, "migrations")

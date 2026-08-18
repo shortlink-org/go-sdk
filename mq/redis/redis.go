@@ -25,8 +25,6 @@ func New(cfg *config.Config) *Redis {
 }
 
 func (r *Redis) Init(ctx context.Context, log logger.Logger) error {
-	var ok bool
-
 	mq := dbredis.New(trace.NewNoopTracerProvider(), metric.NewMeterProvider(), r.cfg)
 
 	err := mq.Init(ctx)
@@ -34,9 +32,9 @@ func (r *Redis) Init(ctx context.Context, log logger.Logger) error {
 		return err
 	}
 
-	r.client, ok = mq.GetConn().(rueidis.Client)
-	if !ok {
-		return db.ErrGetConnection
+	r.client, err = db.Conn[rueidis.Client](mq)
+	if err != nil {
+		return err
 	}
 
 	// Graceful shutdown

@@ -60,6 +60,11 @@ func (s *Store) Init(ctx context.Context) error {
 	return nil
 }
 
+// GetConn - get connect
+func (s *Store) GetConn() any {
+	return s.client
+}
+
 // setConfig - set configuration
 func (s *Store) setConfig() {
 	defaultURI := "couchbase://localhost"

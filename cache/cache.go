@@ -34,9 +34,9 @@ func New(
 		return nil, &InitCacheError{err}
 	}
 
-	conn, ok := store.GetConn().(rueidis.Client)
-	if !ok {
-		return nil, db2.ErrGetConnection
+	conn, err := db2.Conn[rueidis.Client](store)
+	if err != nil {
+		return nil, err
 	}
 
 	adapter := &client{

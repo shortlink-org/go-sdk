@@ -1,77 +1,75 @@
 /*
 Data Base package
+
+A driver becomes selectable by being imported for its side effect:
+
+	import _ "github.com/shortlink-org/go-sdk/db/drivers/postgres"
+
+Only the drivers actually imported are linked into the binary. The in-memory
+"ram" driver is built in and needs no import.
 */
 package db
 
 import (
 	"context"
 	"log/slog"
+	"sort"
 
 	"go.opentelemetry.io/otel/sdk/metric"
 	"go.opentelemetry.io/otel/trace"
 
 	"github.com/shortlink-org/go-sdk/config"
-	"github.com/shortlink-org/go-sdk/db/drivers/badger"
-	"github.com/shortlink-org/go-sdk/db/drivers/cockroachdb"
-	"github.com/shortlink-org/go-sdk/db/drivers/dgraph"
-	"github.com/shortlink-org/go-sdk/db/drivers/leveldb"
-	"github.com/shortlink-org/go-sdk/db/drivers/mongo"
-	"github.com/shortlink-org/go-sdk/db/drivers/mysql"
-	"github.com/shortlink-org/go-sdk/db/drivers/neo4j"
-	"github.com/shortlink-org/go-sdk/db/drivers/postgres"
-	"github.com/shortlink-org/go-sdk/db/drivers/ram"
-	"github.com/shortlink-org/go-sdk/db/drivers/redis"
-	"github.com/shortlink-org/go-sdk/db/drivers/scylladb"
-	"github.com/shortlink-org/go-sdk/db/drivers/sqlite"
 	"github.com/shortlink-org/go-sdk/logger"
 )
 
 // New - return implementation of db
-func New(ctx context.Context, log logger.Logger, tracer trace.TracerProvider, metrics *metric.MeterProvider, cfg *config.Config, opts ...Option) (*Store, error) {
-	// Apply options
-	options := &Options{}
+func New(
+	ctx context.Context,
+	log logger.Logger,
+	tracer trace.TracerProvider,
+	metrics *metric.MeterProvider,
+	cfg *config.Config,
+	opts ...Option,
+) (*Store, error) {
+	options := &Options{driverOptions: make(map[string][]any)}
 	for _, opt := range opts {
 		opt(options)
 	}
 
-	//nolint:exhaustruct // fix later, use constructor
+	err := checkOptionTargets(options)
+	if err != nil {
+		return nil, err
+	}
+
+	typeStore := storeType(cfg)
+
+	factory, ok := lookup(typeStore)
+	if !ok {
+		return nil, &UnknownStoreTypeError{
+			StoreType:  typeStore,
+			Registered: Drivers(),
+		}
+	}
+
+	driver, err := factory(Deps{
+		Log:     log,
+		Tracer:  tracer,
+		Metrics: metrics,
+		Cfg:     cfg,
+		driver:  typeStore,
+		options: options.driverOptions[typeStore],
+	})
+	if err != nil {
+		return nil, err
+	}
+
 	store := &Store{
-		cfg: cfg,
+		DB:        driver,
+		typeStore: typeStore,
+		cfg:       cfg,
 	}
 
-	// Set configuration
-	store.setConfig()
-
-	switch store.typeStore {
-	case "cockroachdb":
-		store.DB = cockroachdb.New(cfg)
-	case "postgres":
-		store.DB = postgres.New(tracer, metrics, cfg, options.PostgresOptions...)
-	case "mysql":
-		store.DB = mysql.New(tracer, metrics, cfg)
-	case "mongo":
-		store.DB = mongo.New(cfg)
-	case "redis":
-		store.DB = redis.New(tracer, metrics, cfg)
-	case "scylladb":
-		store.DB = scylladb.New(cfg)
-	case "dgraph":
-		store.DB = dgraph.New(log, cfg)
-	case "leveldb":
-		store.DB = leveldb.New(cfg)
-	case "badger":
-		store.DB = badger.New(cfg)
-	case "ram":
-		store.DB = ram.New(cfg)
-	case "neo4j":
-		store.DB = neo4j.New(cfg)
-	case "sqlite":
-		store.DB = sqlite.New(tracer, metrics, cfg)
-	default:
-		store.DB = ram.New(cfg)
-	}
-
-	err := store.Init(ctx)
+	err = store.Init(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -83,12 +81,37 @@ func New(ctx context.Context, log logger.Logger, tracer trace.TracerProvider, me
 	return store, nil
 }
 
-// setConfig - set configuration
-func (s *Store) setConfig() {
-	s.cfg.SetDefault("STORE_TYPE", "ram") // Select: postgres, mysql, mongo, redis, scylladb, dgraph, sqlite, leveldb, badger, neo4j, ram, cockroachdb
+// storeType - resolve the configured store type
+func storeType(cfg *config.Config) string {
+	cfg.SetDefault("STORE_TYPE", defaultStoreType)
 
-	s.typeStore = s.cfg.GetString("STORE_TYPE")
-	if s.typeStore == "" {
-		s.typeStore = "ram"
+	typeStore := cfg.GetString("STORE_TYPE")
+	if typeStore == "" {
+		return defaultStoreType
 	}
+
+	return typeStore
+}
+
+// checkOptionTargets - reject options addressed to a driver that is not
+// registered. Options for a registered but unselected driver are legitimate
+// and stay silent; a name nothing answers to is a wiring mistake.
+func checkOptionTargets(options *Options) error {
+	targets := make([]string, 0, len(options.driverOptions))
+	for driver := range options.driverOptions {
+		targets = append(targets, driver)
+	}
+
+	sort.Strings(targets)
+
+	for _, driver := range targets {
+		if _, ok := lookup(driver); !ok {
+			return &UnknownOptionTargetError{
+				Driver:     driver,
+				Registered: Drivers(),
+			}
+		}
+	}
+
+	return nil
 }

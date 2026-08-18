@@ -23,13 +23,13 @@ var (
 )
 
 func New(ctx context.Context, store db.DB) (*EventStore, error) {
-	conn, ok := store.GetConn().(*pgxpool.Pool)
-	if !ok {
-		return nil, db.ErrGetConnection
+	conn, err := db.Conn[*pgxpool.Pool](store)
+	if err != nil {
+		return nil, err
 	}
 
 	// Migration ---------------------------------------------------------------------------------------------------
-	err := migrate.Migration(ctx, store, migrations, "eventsourcing")
+	err = migrate.Migration(ctx, store, migrations, "eventsourcing")
 	if err != nil {
 		return nil, err
 	}
