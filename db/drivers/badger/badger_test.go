@@ -25,7 +25,7 @@ func TestBadger(t *testing.T) {
 	require.NoError(t, err)
 	store := New(cfg)
 
-	err := store.Init(ctx)
+	err = store.Init(ctx)
 	require.NoError(t, err)
 
 	t.Run("Close", func(t *testing.T) {

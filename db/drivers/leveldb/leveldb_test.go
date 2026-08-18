@@ -25,7 +25,7 @@ func TestLevelDB(t *testing.T) {
 	require.NoError(t, err)
 	store := New(cfg)
 
-	err := store.Init(ctx)
+	err = store.Init(ctx)
 	require.NoError(t, err)
 
 	t.Cleanup(func() {
