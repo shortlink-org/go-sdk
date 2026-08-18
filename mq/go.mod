@@ -8,7 +8,7 @@ require (
 	github.com/heptiolabs/healthcheck v0.0.0-20211123025425-613501dd5deb
 	github.com/nats-io/nats.go v1.53.1
 	github.com/rabbitmq/amqp091-go v1.14.0
-	github.com/redis/rueidis v1.0.74
+	github.com/redis/rueidis v1.0.77
 	github.com/shortlink-org/go-sdk/db v0.0.0-20260424225420-a63676f29741
 	github.com/shortlink-org/go-sdk/logger v0.0.0-20260423005905-959e3e589a42
 	github.com/stretchr/testify v1.12.0
@@ -17,7 +17,7 @@ require (
 	github.com/testcontainers/testcontainers-go/modules/nats v0.44.0
 	github.com/testcontainers/testcontainers-go/modules/rabbitmq v0.44.0
 	github.com/testcontainers/testcontainers-go/modules/redpanda v0.44.0
-	go.opentelemetry.io/otel v1.44.0
+	go.opentelemetry.io/otel v1.45.0
 	go.uber.org/goleak v1.3.0
 )
 
@@ -67,7 +67,7 @@ require (
 	github.com/docker/go-units v0.5.0 // indirect
 	github.com/eapache/go-resiliency v1.7.0 // indirect
 	github.com/fsnotify/fsnotify v1.9.0 // indirect
-	github.com/go-logr/logr v1.4.3 // indirect
+	github.com/go-logr/logr v1.4.4 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/go-viper/mapstructure/v2 v2.5.0 // indirect
 	github.com/google/uuid v1.6.0 // indirect
@@ -93,7 +93,7 @@ require (
 	github.com/prometheus/common v0.70.1 // indirect
 	github.com/prometheus/procfs v0.21.1 // indirect
 	github.com/rcrowley/go-metrics v0.0.0-20250401214520-65e299d6c5c9 // indirect
-	github.com/redis/rueidis/rueidisotel v1.0.74 // indirect
+	github.com/redis/rueidis/rueidisotel v1.0.77 // indirect
 	github.com/sagikazarmark/locafero v0.11.0 // indirect
 	github.com/shortlink-org/go-sdk/config v0.0.0-20260419222854-fd069f4d5106
 	github.com/sirupsen/logrus v1.9.4 // indirect
@@ -103,10 +103,10 @@ require (
 	github.com/spf13/pflag v1.0.10 // indirect
 	github.com/subosito/gotenv v1.6.0 // indirect
 	go.opentelemetry.io/auto/sdk v1.2.1 // indirect
-	go.opentelemetry.io/otel/metric v1.44.0 // indirect
-	go.opentelemetry.io/otel/sdk v1.44.0 // indirect
-	go.opentelemetry.io/otel/sdk/metric v1.44.0
-	go.opentelemetry.io/otel/trace v1.44.0
+	go.opentelemetry.io/otel/metric v1.45.0 // indirect
+	go.opentelemetry.io/otel/sdk v1.45.0 // indirect
+	go.opentelemetry.io/otel/sdk/metric v1.45.0
+	go.opentelemetry.io/otel/trace v1.45.0
 	go.yaml.in/yaml/v3 v3.0.5 // indirect
 	golang.org/x/crypto v0.55.0 // indirect
 	golang.org/x/net v0.58.0 // indirect
