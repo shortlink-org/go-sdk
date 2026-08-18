@@ -11,6 +11,19 @@ import (
 // return is easy to forget to check, and every method on it panics.
 var ErrDisabled = errors.New("mq: disabled through MQ_ENABLED")
 
+// RegisterError - a driver could not be registered.
+//
+// Register runs from init, where there is no caller to hand an error to, so the
+// problem is recorded and reported by New.
+type RegisterError struct {
+	Driver string
+	Reason string
+}
+
+func (e *RegisterError) Error() string {
+	return "mq: cannot register driver " + e.Driver + ": " + e.Reason
+}
+
 // UnknownMQTypeError - unknown MQ type error
 type UnknownMQTypeError struct {
 	MQType string

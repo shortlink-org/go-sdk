@@ -29,6 +29,11 @@ An unrecognised `MQ_TYPE` fails `mq.New` with `UnknownMQTypeError` and lists
 the registered drivers — it does **not** fall back to another transport.
 `MQ_ENABLED=false` reports `ErrDisabled` rather than returning a nil bus.
 
+A driver that cannot register — a duplicate name or a nil factory — is recorded
+and reported by `mq.New` as `RegisterError`. Registration happens in `init`,
+where there is no caller to return an error to, so nothing panics: the failure
+waits until there is someone to hand it to.
+
 ### Support MQ
 
 - [x] RabbitMQ

@@ -5,6 +5,7 @@ package mq
 import (
 	"context"
 	"errors"
+	"maps"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -89,11 +90,73 @@ func TestDriverOptionTypeMismatch(t *testing.T) {
 	require.Equal(t, "example", optErr.Driver)
 }
 
-// TestRegisterRejectsDuplicates - a name collision surfaces at startup rather
-// than silently shadowing a driver.
+// withCleanRegistry isolates a test that registers drivers: the registry and the
+// recorded registration errors are process-wide, so a test that dirties them
+// would fail every New that runs after it.
+func withCleanRegistry(t *testing.T) {
+	t.Helper()
+
+	registryMu.Lock()
+	savedRegistry := maps.Clone(registry)
+	savedErrs := registerErrs
+	registryMu.Unlock()
+
+	t.Cleanup(func() {
+		registryMu.Lock()
+		defer registryMu.Unlock()
+
+		registry = savedRegistry
+		registerErrs = savedErrs
+	})
+}
+
+// TestRegisterRejectsDuplicates - a name collision is reported to the caller of
+// New instead of taking the process down from init.
 func TestRegisterRejectsDuplicates(t *testing.T) {
+	withCleanRegistry(t)
+
 	factory := func(Deps) (MQ, error) { return nil, nil } //nolint:nilnil // test stub
 
 	Register("test-duplicate", factory)
-	require.Panics(t, func() { Register("test-duplicate", factory) })
+	require.NoError(t, RegistrationError(), "the first registration is accepted")
+
+	require.NotPanics(t, func() { Register("test-duplicate", factory) })
+
+	var registerErr *RegisterError
+	require.ErrorAs(t, RegistrationError(), &registerErr, "expected RegisterError")
+	require.Equal(t, "test-duplicate", registerErr.Driver)
+}
+
+// TestRegisterRejectsNilFactory - a nil factory is reported the same way, rather
+// than being stored and panicking later on use.
+func TestRegisterRejectsNilFactory(t *testing.T) {
+	withCleanRegistry(t)
+
+	require.NotPanics(t, func() { Register("test-nil", nil) })
+
+	var registerErr *RegisterError
+	require.ErrorAs(t, RegistrationError(), &registerErr, "expected RegisterError")
+	require.Equal(t, "test-nil", registerErr.Driver)
+
+	_, ok := lookup("test-nil")
+	require.False(t, ok, "a rejected driver is not registered")
+}
+
+// TestNewReportsRegistrationFailure - New surfaces the recorded failure instead
+// of reporting the driver as merely unknown.
+func TestNewReportsRegistrationFailure(t *testing.T) {
+	withCleanRegistry(t)
+
+	ctx := context.Background()
+	log, cfg := testDeps(t)
+
+	Register("test-broken", nil)
+
+	cfg.Set("MQ_ENABLED", true)
+
+	bus, err := New(ctx, log, cfg)
+	require.Nil(t, bus)
+
+	var registerErr *RegisterError
+	require.ErrorAs(t, err, &registerErr, "expected RegisterError")
 }
