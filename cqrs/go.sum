@@ -14,6 +14,8 @@ github.com/ThreeDotsLabs/watermill v1.5.1 h1:t5xMivyf9tpmU3iozPqyrCZXHvoV1XQDfih
 github.com/ThreeDotsLabs/watermill v1.5.1/go.mod h1:Uop10dA3VeJWsSvis9qO3vbVY892LARrKAdki6WtXS4=
 github.com/ThreeDotsLabs/watermill-sql/v4 v4.1.4 h1:5eyGtc/vg3KLilM3Zcbs7wAbla7C5Rzj/BYqhOqvNuM=
 github.com/ThreeDotsLabs/watermill-sql/v4 v4.1.4/go.mod h1:Ce2GVZVnyajAh0AkwxSJXwx8ajBBveu1DI/yatan5jc=
+github.com/ThreeDotsLabs/watermill-sql/v4 v4.1.5 h1:bmmzqT3bonjQ/ZrYsffvbBhBILYLKgy+AfzTXksgaNU=
+github.com/ThreeDotsLabs/watermill-sql/v4 v4.1.5/go.mod h1:B/DTDEBSLn3/7PEHtxwPjeDPSmBJaALTFHDsLOoIFkc=
 github.com/Unleash/unleash-go-sdk/v6 v6.5.0 h1:xIqbfh9eShkprn90XiIYw+C+QFG+TvY3sQID3Qg3Xvg=
 github.com/Unleash/unleash-go-sdk/v6 v6.5.0/go.mod h1:rmDj8Db6CSqUNxySvwvLq78GquMlY7j1U2BWYvR7pHI=
 github.com/cenkalti/backoff/v4 v4.3.0 h1:MyRJ/UdXutAwSAT+s3wNd7MfTIcy71VQueUuFK343L8=
