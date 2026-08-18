@@ -1,6 +1,12 @@
 /*
 Message Queue
 
+A driver becomes selectable by being imported for its side effect:
+
+	import _ "github.com/shortlink-org/go-sdk/mq/kafka"
+
+Only the drivers actually imported are linked into the binary.
+
 Deprecated: This package is deprecated. Use github.com/shortlink-org/go-sdk/watermill instead.
 */
 package mq
@@ -8,66 +14,74 @@ package mq
 import (
 	"context"
 	"log/slog"
+	"sort"
 
 	"github.com/shortlink-org/go-sdk/config"
 	"github.com/shortlink-org/go-sdk/logger"
-	"github.com/shortlink-org/go-sdk/mq/kafka"
-	"github.com/shortlink-org/go-sdk/mq/nats"
 	"github.com/shortlink-org/go-sdk/mq/query"
-	"github.com/shortlink-org/go-sdk/mq/rabbit"
-	"github.com/shortlink-org/go-sdk/mq/redis"
 )
 
 // New creates a new MQ instance
 //
-// Deprecated: Use github.com/shortlink-org/go-sdk/watermill instead.
+// When MQ_ENABLED is false it reports ErrDisabled, so a switched-off bus
+// cannot be mistaken for a usable one:
 //
-//nolint:ireturn // It's made by design
-func New(ctx context.Context, log logger.Logger, cfg *config.Config) (*DataBus, error) {
+//	bus, err := mq.New(ctx, log, cfg)
+//	if errors.Is(err, mq.ErrDisabled) {
+//		return nil
+//	}
+//
+// Deprecated: Use github.com/shortlink-org/go-sdk/watermill instead.
+func New(ctx context.Context, log logger.Logger, cfg *config.Config, opts ...Option) (*DataBus, error) {
 	cfg.SetDefault("MQ_ENABLED", "false") // Enabled MQ
 
 	if !cfg.GetBool("MQ_ENABLED") {
-		//nolint:nilnil // It's made by design
-		return nil, nil
+		return nil, ErrDisabled
 	}
 
-	service := DataBus{cfg: cfg}
+	options := &Options{driverOptions: make(map[string][]any)}
+	for _, opt := range opts {
+		opt(options)
+	}
 
-	dataBus, err := service.Use(ctx, log)
+	err := checkOptionTargets(options)
+	if err != nil {
+		return nil, err
+	}
+
+	typeMQ := mqType(cfg)
+
+	factory, ok := lookup(typeMQ)
+	if !ok {
+		return nil, &UnknownMQTypeError{
+			MQType:     typeMQ,
+			Registered: Drivers(),
+		}
+	}
+
+	driver, err := factory(Deps{
+		Log:     log,
+		Cfg:     cfg,
+		driver:  typeMQ,
+		options: options.driverOptions[typeMQ],
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	dataBus := &DataBus{
+		log:    log,
+		mq:     driver,
+		typeMQ: typeMQ,
+		cfg:    cfg,
+	}
+
+	err = dataBus.Init(ctx, log)
 	if err != nil {
 		return nil, err
 	}
 
 	return dataBus, nil
-}
-
-// Use return implementation of MQ
-func (mq *DataBus) Use(ctx context.Context, log logger.Logger) (*DataBus, error) {
-	// Set configuration
-	mq.setConfig()
-
-	// Set logger
-	mq.log = log
-
-	switch mq.typeMQ {
-	case "kafka":
-		mq.mq = kafka.New(mq.cfg)
-	case "nats":
-		mq.mq = nats.New(mq.cfg)
-	case "rabbitmq":
-		mq.mq = rabbit.New(log, mq.cfg)
-	case "redis":
-		mq.mq = redis.New(mq.cfg)
-	default:
-		mq.mq = kafka.New(mq.cfg)
-	}
-
-	err := mq.Init(ctx, log)
-	if err != nil {
-		return nil, err
-	}
-
-	return mq, nil
 }
 
 // Init - init connection
@@ -109,8 +123,37 @@ func (mq *DataBus) Publish(ctx context.Context, target string, key, payload []by
 	return mq.mq.Publish(ctx, target, key, payload)
 }
 
-// setConfig - set configuration
-func (mq *DataBus) setConfig() {
-	mq.cfg.SetDefault("MQ_TYPE", "rabbitmq") // Select: kafka, rabbitmq, nats, redis
-	mq.typeMQ = mq.cfg.GetString("MQ_TYPE")
+// mqType - resolve the configured MQ type
+func mqType(cfg *config.Config) string {
+	cfg.SetDefault("MQ_TYPE", defaultMQType) // Select: kafka, rabbitmq, nats, redis
+
+	typeMQ := cfg.GetString("MQ_TYPE")
+	if typeMQ == "" {
+		return defaultMQType
+	}
+
+	return typeMQ
+}
+
+// checkOptionTargets - reject options addressed to a driver that is not
+// registered. Options for a registered but unselected driver are legitimate
+// and stay silent; a name nothing answers to is a wiring mistake.
+func checkOptionTargets(options *Options) error {
+	targets := make([]string, 0, len(options.driverOptions))
+	for driver := range options.driverOptions {
+		targets = append(targets, driver)
+	}
+
+	sort.Strings(targets)
+
+	for _, driver := range targets {
+		if _, ok := lookup(driver); !ok {
+			return &UnknownOptionTargetError{
+				Driver:     driver,
+				Registered: Drivers(),
+			}
+		}
+	}
+
+	return nil
 }
