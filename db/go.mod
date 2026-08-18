@@ -5,7 +5,7 @@ go 1.26.2
 require (
 	github.com/XSAM/otelsql v0.43.0
 	github.com/aerospike/aerospike-client-go v4.5.2+incompatible
-	github.com/apache/cassandra-gocql-driver/v2 v2.1.1
+	github.com/apache/cassandra-gocql-driver/v2 v2.1.2
 	github.com/couchbase/gocb/v2 v2.12.4
 	github.com/dgraph-io/badger/v4 v4.9.1
 	github.com/dgraph-io/dgo/v2 v2.2.0
