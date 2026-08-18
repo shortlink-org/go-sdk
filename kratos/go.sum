@@ -35,8 +35,8 @@ github.com/launchdarkly/go-test-helpers/v3 v3.1.0 h1:E3bxJMzMoA+cJSF3xxtk2/chr1z
 github.com/launchdarkly/go-test-helpers/v3 v3.1.0/go.mod h1:Ake5+hZFS/DmIGKx/cizhn5W9pGA7pplcR7xCxWiLIo=
 github.com/nbio/st v0.0.0-20140626010706-e9e8d9816f32 h1:W6apQkHrMkS0Muv8G/TipAy/FJl/rCYT0+EuS8+Z0z4=
 github.com/nbio/st v0.0.0-20140626010706-e9e8d9816f32/go.mod h1:9wM+0iRr9ahx58uYLpLIr5fm8diHn0JbqRycJi6w0Ms=
-github.com/ory/client-go v1.22.37 h1:2QbX4yrSGOFkFcIXcwskQ5Y469dzNCU1wFUwryofhDg=
-github.com/ory/client-go v1.22.37/go.mod h1:G1f+5+m/PJVvl40bsRn0QuyVIcXe7EHiWeM7iWpIDjw=
+github.com/ory/client-go v1.22.66 h1:Lto0/KHrrpf3ghdKe8JkC8ZZWI/vlwLfsYw5XgdaXyc=
+github.com/ory/client-go v1.22.66/go.mod h1:G1f+5+m/PJVvl40bsRn0QuyVIcXe7EHiWeM7iWpIDjw=
 github.com/pelletier/go-toml/v2 v2.3.1 h1:MYEvvGnQjeNkRF1qUuGolNtNExTDwct51yp7olPtrEc=
 github.com/pelletier/go-toml/v2 v2.3.1/go.mod h1:2gIqNv+qfxSVS7cM2xJQKtLSTLUE9V8t9Stt+h56mCY=
 github.com/rogpeppe/go-internal v1.14.1 h1:UQB4HGPB6osV0SQTLymcB4TgvyWu6ZyliaW0tI/otEQ=
