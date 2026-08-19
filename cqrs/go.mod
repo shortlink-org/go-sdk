@@ -10,7 +10,7 @@ replace (
 
 require (
 	github.com/ThreeDotsLabs/watermill v1.5.1
-	github.com/ThreeDotsLabs/watermill-sql/v4 v4.1.4
+	github.com/ThreeDotsLabs/watermill-sql/v4 v4.1.5
 	github.com/google/uuid v1.6.0
 	github.com/jackc/pgx/v5 v5.10.0
 	github.com/shortlink-org/go-sdk/logger v0.0.0-20260423005905-959e3e589a42

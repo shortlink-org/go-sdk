@@ -9,7 +9,7 @@ require (
 	github.com/couchbase/gocb/v2 v2.12.4
 	github.com/dgraph-io/badger/v4 v4.9.6
 	github.com/dgraph-io/dgo/v2 v2.2.0
-	github.com/exaring/otelpgx v0.10.0
+	github.com/exaring/otelpgx v0.11.1
 	github.com/geldata/gel-go v1.4.3
 	github.com/go-sql-driver/mysql v1.10.0
 	github.com/golang-migrate/migrate/v4 v4.19.1
@@ -35,7 +35,7 @@ require (
 	github.com/uptrace/go-clickhouse/chdebug v0.3.1
 	github.com/uptrace/go-clickhouse/chotel v0.3.1
 	github.com/uptrace/opentelemetry-go-extra/otelsql v0.3.2
-	go.etcd.io/etcd/client/v3 v3.6.10
+	go.etcd.io/etcd/client/v3 v3.7.1
 	go.mongodb.org/mongo-driver/v2 v2.8.0
 	go.opentelemetry.io/otel v1.45.0
 	go.opentelemetry.io/otel/sdk/metric v1.45.0
@@ -91,7 +91,7 @@ require (
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
 	github.com/codemodus/kace v0.5.1 // indirect
 	github.com/coreos/go-semver v0.3.1 // indirect
-	github.com/coreos/go-systemd/v22 v22.5.0 // indirect
+	github.com/coreos/go-systemd/v22 v22.7.0 // indirect
 	github.com/couchbase/gocbcore/v10 v10.9.3 // indirect
 	github.com/couchbase/gocbcoreps v0.1.5-0.20260107140814-1c3a03f888f8 // indirect
 	github.com/couchbase/goprotostellar v1.0.6-0.20260407143512-d7af25156dcc // indirect
@@ -107,7 +107,6 @@ require (
 	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/go-viper/mapstructure/v2 v2.5.0 // indirect
 	github.com/goccy/go-json v0.10.5 // indirect
-	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/golang/protobuf v1.5.4 // indirect
 	github.com/golang/snappy v1.0.0 // indirect
 	github.com/google/flatbuffers v25.2.10+incompatible // indirect
@@ -147,8 +146,8 @@ require (
 	github.com/xdg/stringprep v1.0.3 // indirect
 	github.com/youmark/pkcs8 v0.0.0-20240726163527-a2c0da244d78 // indirect
 	github.com/yuin/gopher-lua v1.1.2 // indirect
-	go.etcd.io/etcd/api/v3 v3.6.10 // indirect
-	go.etcd.io/etcd/client/pkg/v3 v3.6.10 // indirect
+	go.etcd.io/etcd/api/v3 v3.7.1 // indirect
+	go.etcd.io/etcd/client/pkg/v3 v3.7.1 // indirect
 	go.mongodb.org/mongo-driver v1.17.7 // indirect
 	go.opentelemetry.io/auto/sdk v1.2.1 // indirect
 	go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc v0.70.0 // indirect
