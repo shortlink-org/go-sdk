@@ -47,6 +47,8 @@ github.com/segmentio/encoding v0.5.4 h1:OW1VRern8Nw6ITAtwSZ7Idrl3MXCFwXHPgqESYfv
 github.com/segmentio/encoding v0.5.4/go.mod h1:HS1ZKa3kSN32ZHVZ7ZLPLXWvOVIiZtyJnO1gPH1sKt0=
 github.com/shortlink-org/go-sdk/logger v0.0.0-20260423005905-959e3e589a42 h1:9v01WG8PkicjUW/WFMp170roHFlsVXB7emW3jx5Lxh4=
 github.com/shortlink-org/go-sdk/logger v0.0.0-20260423005905-959e3e589a42/go.mod h1:pMlS8NlWkMZ72jSf3TqlSN3lqMUyJO9xSgiRdq+FlQI=
+github.com/shortlink-org/go-sdk/logger v0.0.0-20260819095532-196f9f34e23d h1:ctB5/ejO3E6VNRVDrI8Xi2vyLpotYlQv9ZvJpMktyyo=
+github.com/shortlink-org/go-sdk/logger v0.0.0-20260819095532-196f9f34e23d/go.mod h1:rskPTgTrDlInaJfVKU9SjJGK99aw+4eZMVxGfPWD9NE=
 github.com/sourcegraph/conc v0.3.1-0.20240121214520-5f936abd7ae8 h1:+jumHNA0Wrelhe64i8F6HNlS8pkoyMv5sreGx2Ry5Rw=
 github.com/sourcegraph/conc v0.3.1-0.20240121214520-5f936abd7ae8/go.mod h1:3n1Cwaq1E1/1lhQhtRK2ts/ZwZEhjcQeJQ1RuC6Q/8U=
 github.com/spf13/afero v1.15.0 h1:b/YBCLWAJdFWJTN9cLhiXXcD7mzKn9Dm86dNnfyQw1I=
