@@ -9,14 +9,13 @@ replace github.com/shortlink-org/go-sdk/watermill => ../../watermill
 replace github.com/shortlink-org/go-sdk/uow => ../../uow
 
 require (
-	github.com/ThreeDotsLabs/watermill v1.5.1
+	github.com/ThreeDotsLabs/watermill v1.5.2
 	github.com/shortlink-org/go-sdk/cqrs v0.0.0-00010101000000-000000000000
 )
 
 require (
-	filippo.io/edwards25519 v1.2.0 // indirect
 	github.com/Masterminds/semver/v3 v3.5.0 // indirect
-	github.com/ThreeDotsLabs/watermill-sql/v4 v4.1.4 // indirect
+	github.com/ThreeDotsLabs/watermill-sql/v4 v4.1.5 // indirect
 	github.com/Unleash/unleash-go-sdk/v6 v6.5.0 // indirect
 	github.com/cenkalti/backoff/v5 v5.0.3 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
@@ -61,6 +60,6 @@ require (
 	golang.org/x/sync v0.22.0 // indirect
 	golang.org/x/sys v0.47.0 // indirect
 	golang.org/x/text v0.41.0 // indirect
-	google.golang.org/protobuf v1.36.11 // indirect
+	google.golang.org/protobuf v1.36.12 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
