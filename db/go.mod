@@ -8,7 +8,7 @@ require (
 	github.com/apache/cassandra-gocql-driver/v2 v2.1.2
 	github.com/couchbase/gocb/v2 v2.12.4
 	github.com/dgraph-io/badger/v4 v4.9.6
-	github.com/dgraph-io/dgo/v2 v2.2.0
+	github.com/dgraph-io/dgo/v250 v250.0.0
 	github.com/exaring/otelpgx v0.11.1
 	github.com/geldata/gel-go v1.4.3
 	github.com/go-sql-driver/mysql v1.10.0
@@ -113,7 +113,7 @@ require (
 	github.com/google/uuid v1.6.0 // indirect
 	github.com/gorilla/websocket v1.5.3 // indirect
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.29.0 // indirect
-	github.com/jackc/pgerrcode v0.0.0-20240316143900-6e2875d9b438 // indirect
+	github.com/jackc/pgerrcode v0.0.0-20240316143900-6e2875d9b438
 	github.com/jackc/pgpassfile v1.0.0 // indirect
 	github.com/jackc/pgservicefile v0.0.0-20240606120523-5a60cdf6a761 // indirect
 	github.com/jackc/puddle/v2 v2.2.2 // indirect
@@ -129,7 +129,6 @@ require (
 	github.com/opencontainers/image-spec v1.1.1 // indirect
 	github.com/pelletier/go-toml/v2 v2.3.1 // indirect
 	github.com/pierrec/lz4/v4 v4.1.27 // indirect
-	github.com/pkg/errors v0.9.1 // indirect
 	github.com/sagikazarmark/locafero v0.11.0 // indirect
 	github.com/shortlink-org/go-sdk/config v0.0.0-20260419222854-fd069f4d5106
 	github.com/sigurn/crc16 v0.0.0-20240131213347-83fcde1e29d1 // indirect

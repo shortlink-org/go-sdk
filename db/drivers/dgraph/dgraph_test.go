@@ -9,6 +9,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/network"
@@ -17,6 +18,15 @@ import (
 
 	"github.com/shortlink-org/go-sdk/config"
 	"github.com/shortlink-org/go-sdk/logger"
+)
+
+// A Dgraph cluster is two processes: zero assigns the tablets, alpha serves
+// the data. They find each other over a private network, so both need an
+// alias that resolves from the other container.
+const (
+	dgraphImage = "dgraph/dgraph:latest"
+	zeroAlias   = "test-dgraph-zero"
+	alphaAlias  = "test-dgraph-alpha"
 )
 
 func TestMain(m *testing.M) {
@@ -46,9 +56,9 @@ func TestDgraph(t *testing.T) {
 	nw, err := network.New(ctx)
 	require.NoError(t, err)
 
-	zero, err := testcontainers.Run(ctx, "dgraph/dgraph:v21.03.0",
-		network.WithNetwork([]string{"test-dgraph-zero"}, nw),
-		testcontainers.WithCmd("dgraph", "zero", "--my=test-dgraph-zero:5080"),
+	zero, err := testcontainers.Run(ctx, dgraphImage,
+		network.WithNetwork([]string{zeroAlias}, nw),
+		testcontainers.WithCmd("dgraph", "zero", "--my="+zeroAlias+":5080"),
 		testcontainers.WithExposedPorts("5080/tcp"),
 		testcontainers.WithWaitStrategy(
 			wait.ForListeningPort("5080/tcp").WithStartupTimeout(3*time.Minute),
@@ -56,9 +66,16 @@ func TestDgraph(t *testing.T) {
 	)
 	require.NoError(t, err)
 
-	alpha, err := testcontainers.Run(ctx, "dgraph/dgraph:v21.03.0",
-		network.WithNetwork([]string{}, nw),
-		testcontainers.WithCmd("dgraph", "alpha", "--my=localhost:7080", "--lru_mb=2048", "--zero=test-dgraph-zero:5080"),
+	// --my has to be the address the other node can dial. Alpha announcing
+	// itself as localhost sends zero to its own container instead.
+	alpha, err := testcontainers.Run(ctx, dgraphImage,
+		network.WithNetwork([]string{alphaAlias}, nw),
+		// Alter is guarded by an IP whitelist that defaults to localhost, and
+		// the client reaches alpha from the bridge address, so the schema
+		// migration is refused without this. Test-only: it opens admin
+		// operations to anything that can reach the port.
+		testcontainers.WithCmd("dgraph", "alpha", "--my="+alphaAlias+":7080", "--zero="+zeroAlias+":5080",
+			"--security", "whitelist=0.0.0.0/0"),
 		testcontainers.WithExposedPorts("9080/tcp"),
 		testcontainers.WithWaitStrategy(
 			wait.ForListeningPort("9080/tcp").WithStartupTimeout(3*time.Minute),
@@ -90,7 +107,18 @@ func TestDgraph(t *testing.T) {
 
 	t.Setenv("STORE_DGRAPH_URI", fmt.Sprintf("%s:%s", host, mapped.Port()))
 
-	require.Eventually(t, func() bool {
-		return store.Init(ctx) == nil
+	// Alpha reports the port open before it will serve an Alter, so Init is
+	// retried. Keeping the last error makes a failure say why, instead of
+	// spending two minutes to report only that it never succeeded.
+	var lastErr error
+
+	ok := assert.Eventually(t, func() bool {
+		lastErr = store.Init(ctx)
+
+		return lastErr == nil
 	}, 2*time.Minute, time.Second, "dgraph init")
+
+	if !ok {
+		require.NoError(t, lastErr, "dgraph never accepted the schema migration")
+	}
 }
