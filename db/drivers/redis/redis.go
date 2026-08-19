@@ -34,13 +34,26 @@ func (s *Store) Init(ctx context.Context) error {
 		}
 	}
 
-	// Connect to Redis
+	// Connect to Redis.
+	//
+	// The instrumentation options are only passed when a provider exists:
+	// rueidisotel calls Meter and Tracer on whatever it is given, and a typed
+	// nil provider panics there rather than degrading to a no-op.
+	options := []rueidisotel.Option{}
+	if s.tracer != nil {
+		options = append(options, rueidisotel.WithTracerProvider(s.tracer))
+	}
+
+	if s.metrics != nil {
+		options = append(options, rueidisotel.WithMeterProvider(s.metrics))
+	}
+
 	s.client, err = rueidisotel.NewClient(rueidis.ClientOption{
 		InitAddress: s.config.Host,
 		Username:    s.config.Username,
 		Password:    s.config.Password,
 		SelectDB:    0, // use default DB
-	}, rueidisotel.WithTracerProvider(s.tracer), rueidisotel.WithMeterProvider(s.metrics))
+	}, options...)
 	if err != nil {
 		return &StoreError{
 			Op:      "init",
