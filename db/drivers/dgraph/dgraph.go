@@ -3,6 +3,7 @@ package dgraph
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/dgraph-io/dgo/v250"
 	"github.com/dgraph-io/dgo/v250/protos/api"
@@ -14,6 +15,10 @@ import (
 	"github.com/shortlink-org/go-sdk/logger"
 )
 
+// connSchemePrefix marks a value that is a full connection string rather than
+// a bare host:port.
+const connSchemePrefix = "dgraph://"
+
 // Config - config
 type Config struct {
 	URL string
@@ -21,13 +26,7 @@ type Config struct {
 
 // Store - store struct
 type Store struct {
-	log logger.Logger
-	// conn is held because dgo.Dgraph.Close cannot be relied on: as of
-	// v250.0.0 NewRoundRobinClient fills a local conns slice and then builds
-	// the client without it, so Close iterates nothing and every connection
-	// outlives the process's shutdown. Owning the connection here is also what
-	// lets Init release it when the migration fails.
-	conn   *grpc.ClientConn
+	log    logger.Logger
 	client *dgo.Dgraph
 	config Config
 	cfg    *config.Config
@@ -48,35 +47,23 @@ func (s *Store) Init(ctx context.Context) error {
 	// Set configuration
 	s.setConfig()
 
-	conn, err := grpc.NewClient(
-		s.config.URL,
-		grpc.WithTransportCredentials(insecure.NewCredentials()),
-		grpc.WithDefaultCallOptions(grpc.UseCompressor(gzip.Name)),
-	)
+	client, err := s.connect()
 	if err != nil {
 		return &StoreError{
 			Driver:  driverName,
 			Op:      "connect",
 			Err:     fmt.Errorf("%w: %w", ErrDgraphClient, err),
-			Details: "failed to create the gRPC connection",
+			Details: "failed to create the Dgraph client",
 		}
 	}
 
-	s.conn = conn
-	// The replacements dgo suggests, NewClient and Open, construct the client
-	// without recording the connections they opened, so their Close is a no-op
-	// and the connection outlives shutdown. Until that is fixed upstream, the
-	// deprecated constructor is the only one that leaves the connection ours
-	// to close.
-	//nolint:staticcheck // dgo v250.0.0: NewClient/Open leak their connections
-	s.client = dgo.NewDgraphClient(api.NewDgraphClient(conn))
+	s.client = client
 
 	errMigrate := s.migrate(ctx)
 	if errMigrate != nil {
-		// The connection is ours until Init succeeds. Returning without
-		// closing it leaks the connection and its resolver goroutine, and a
-		// caller that retries Init leaks one per attempt.
-		s.close(ctx)
+		// The client is ours until Init succeeds, so it is released here
+		// rather than left to the caller, who has no handle on it.
+		s.close()
 
 		return &StoreError{
 			Driver:  driverName,
@@ -90,24 +77,51 @@ func (s *Store) Init(ctx context.Context) error {
 	go func() {
 		<-ctx.Done()
 
-		s.close(ctx)
+		s.close()
 	}()
 
 	return nil
 }
 
-// close releases the connection. Safe to call on a half-built Store.
-func (s *Store) close(ctx context.Context) {
-	if s.conn == nil {
+// connect builds the client from the configured URI.
+//
+// Two forms are accepted. A bare host:port is what this driver has always
+// taken and stays the default. A dgraph:// connection string is the form dgo
+// parses itself, and the only way to reach a server behind ACL credentials,
+// TLS, or a non-default namespace without adding an option per knob:
+//
+//	dgraph://user:pass@host:9080?sslmode=verify-ca&namespace=1
+//
+// Either way the client pings the server before returning, so a failure here
+// means unreachable rather than merely misconfigured.
+func (s *Store) connect() (*dgo.Dgraph, error) {
+	if strings.HasPrefix(s.config.URL, connSchemePrefix) {
+		return dgo.Open(s.config.URL)
+	}
+
+	// Plaintext, as this driver has always been. dgo sets no transport
+	// credentials of its own and fails rather than guessing, so the choice has
+	// to be made here; TLS is reached through the connection-string form.
+	return dgo.NewClient(s.config.URL,
+		dgo.WithGrpcOption(grpc.WithTransportCredentials(insecure.NewCredentials())),
+		dgo.WithGrpcOption(grpc.WithDefaultCallOptions(grpc.UseCompressor(gzip.Name))),
+	)
+}
+
+// close releases the client. Safe to call on a half-built Store.
+//
+// As of dgo v250.0.0 this frees less than it appears to: NewRoundRobinClient,
+// which every constructor goes through, fills a local conns slice and then
+// builds the client without it, so Dgraph.Close ranges over nothing and the
+// gRPC connections stay open. The connections are not reachable through any
+// exported method, so there is nothing this driver can do about it beyond
+// calling Close and expecting it to start working.
+func (s *Store) close() {
+	if s.client == nil {
 		return
 	}
 
-	errClose := s.conn.Close()
-	if errClose != nil {
-		s.log.ErrorWithContext(ctx, errClose.Error())
-	}
-
-	s.conn = nil
+	s.client.Close()
 	s.client = nil
 }
 

@@ -37,6 +37,14 @@ The [postgres driver](./drivers/postgres/) additionally routes reads to a
 streaming replica without giving up read-your-writes — see
 [ADR 0001](./drivers/postgres/ADR/0001-read-replica-routing.md).
 
+`STORE_DGRAPH_URI` takes either a bare `host:port`, which connects in
+plaintext, or a `dgraph://` connection string, which is how ACL credentials,
+TLS, and a non-default namespace are reached:
+
+```
+dgraph://user:pass@host:9080?sslmode=verify-ca&namespace=1
+```
+
 ### Driver-specific options
 
 Most configuration arrives through `*config.Config`, but some cannot be spelled

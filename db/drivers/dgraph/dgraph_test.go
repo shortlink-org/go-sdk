@@ -30,8 +30,15 @@ const (
 )
 
 func TestMain(m *testing.M) {
+	// The dns watcher ignore is not cosmetic: dgo v250.0.0 builds its client
+	// without recording the connections it opened, so Dgraph.Close closes
+	// nothing and one gRPC connection survives per client created — one per
+	// Init attempt, and this test retries. Nothing in the driver can reach
+	// those connections. Drop this line once dgo assigns conns, and the test
+	// will say whether it has.
 	goleak.VerifyTestMain(m, goleak.IgnoreTopFunction("google.golang.org/grpc/internal/grpcsync.(*CallbackSerializer).run"),
-		goleak.IgnoreTopFunction("google.golang.org/grpc.(*addrConn).resetTransport"))
+		goleak.IgnoreTopFunction("google.golang.org/grpc.(*addrConn).resetTransport"),
+		goleak.IgnoreTopFunction("google.golang.org/grpc/internal/resolver/dns.(*dnsResolver).watcher"))
 
 	os.Exit(m.Run())
 }
