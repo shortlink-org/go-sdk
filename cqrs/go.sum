@@ -12,6 +12,8 @@ github.com/Microsoft/go-winio v0.6.2 h1:F2VQgta7ecxGYO8k3ZZz3RS8fVIXVxONVUPlNERo
 github.com/Microsoft/go-winio v0.6.2/go.mod h1:yd8OoFMLzJbo9gZq8j5qaps8bJ9aShtEA8Ipt1oGCvU=
 github.com/ThreeDotsLabs/watermill v1.5.1 h1:t5xMivyf9tpmU3iozPqyrCZXHvoV1XQDfihas4sV0fY=
 github.com/ThreeDotsLabs/watermill v1.5.1/go.mod h1:Uop10dA3VeJWsSvis9qO3vbVY892LARrKAdki6WtXS4=
+github.com/ThreeDotsLabs/watermill v1.5.2 h1:0ES33Eq1jEsP/pWvtE4n8bE0bs+9Jq7boT7wGBCVY6Q=
+github.com/ThreeDotsLabs/watermill v1.5.2/go.mod h1:i9/968UriGphWfEbfMuYSD1qFbYRjb0mE0r+rV0FPp4=
 github.com/ThreeDotsLabs/watermill-sql/v4 v4.1.4 h1:5eyGtc/vg3KLilM3Zcbs7wAbla7C5Rzj/BYqhOqvNuM=
 github.com/ThreeDotsLabs/watermill-sql/v4 v4.1.4/go.mod h1:Ce2GVZVnyajAh0AkwxSJXwx8ajBBveu1DI/yatan5jc=
 github.com/ThreeDotsLabs/watermill-sql/v4 v4.1.5 h1:bmmzqT3bonjQ/ZrYsffvbBhBILYLKgy+AfzTXksgaNU=
