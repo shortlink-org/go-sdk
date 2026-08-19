@@ -2,5 +2,12 @@
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
   "extends": [
     "config:recommended"
+  ],
+  "packageRules": [
+    {
+      "matchPackageNames": ["github.com/shortlink-org/go-sdk/**"],
+      "groupName": "internal go-sdk modules",
+      "automerge": true
+    }
   ]
 }
