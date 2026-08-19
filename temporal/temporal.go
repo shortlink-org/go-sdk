@@ -140,9 +140,15 @@ func New(
 }
 
 // CheckHealth verifies the connection to Temporal server.
+//
+// It goes through the SDK health check, which speaks the gRPC health protocol
+// and treats anything other than SERVING as a failure. Probing GetSystemInfo
+// instead only proves the frontend still answers RPCs, so a node draining
+// during a rolling update reports itself healthy.
+//
 // Reference: https://docs.temporal.io/develop/go/temporal-client
 func CheckHealth(ctx context.Context, c client.Client) error {
-	_, err := c.WorkflowService().GetSystemInfo(ctx, nil)
+	_, err := c.CheckHealth(ctx, &client.CheckHealthRequest{})
 	if err != nil {
 		return fmt.Errorf("temporal health check failed: %w", err)
 	}
