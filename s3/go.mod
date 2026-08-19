@@ -5,7 +5,7 @@ go 1.26.2
 require (
 	github.com/minio/minio-go/v7 v7.3.0
 	github.com/shortlink-org/go-sdk/logger v0.0.0-20260423005905-959e3e589a42
-	github.com/stretchr/testify v1.12.0
+	github.com/stretchr/testify v1.12.1
 	github.com/testcontainers/testcontainers-go v0.44.0
 	go.uber.org/goleak v1.3.0
 )
