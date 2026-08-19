@@ -17,6 +17,17 @@ import (
 
 type originalMessageCtxKey struct{}
 
+// ErrMissingTopic reports a poisoned message that does not say where it came
+// from, so there is no DLQ topic to derive.
+var ErrMissingTopic = errors.New("missing topic metadata for DLQ publication")
+
+// defaultDLQTopic is where poisoned messages go when no topic is configured.
+const defaultDLQTopic = "shortlink.dlq"
+
+// ErrPoisonPublisherRequired reports a poison middleware built without a
+// publisher to send dead letters to.
+var ErrPoisonPublisherRequired = errors.New("watermill: poison middleware requires a publisher")
+
 var (
 	serviceNameOnce sync.Once
 	cachedService   string
@@ -36,7 +47,7 @@ func NewShortlinkPoisonMiddleware(publisher message.Publisher, dlqTopic string) 
 
 	poisonTopic := dlqTopic
 	if poisonTopic == "" {
-		poisonTopic = "shortlink.dlq"
+		poisonTopic = defaultDLQTopic
 	}
 
 	poisonMW, err := middleware.PoisonQueue(wrappedPublisher, poisonTopic)
@@ -91,6 +102,7 @@ type poisonPublisher struct {
 	serviceName string
 }
 
+//nolint:errcheck // cleanup path: there is nothing useful to do with the error
 func (p *poisonPublisher) Publish(_ string, msgs ...*message.Message) error {
 	for _, poisoned := range msgs {
 		ctx := ensureContext(poisoned.Context())
@@ -117,7 +129,8 @@ func (p *poisonPublisher) Publish(_ string, msgs ...*message.Message) error {
 			event.Reason = "handler returned error"
 		}
 
-		if err := dlq.PublishDLQ(ctx, p.publisher, targetTopic, event); err != nil {
+		err = dlq.PublishDLQ(ctx, p.publisher, targetTopic, event)
+		if err != nil {
 			return err
 		}
 	}
@@ -140,8 +153,60 @@ func (p *poisonPublisher) resolveTopic(msg *message.Message) (string, error) {
 	}
 
 	if topic == "" {
-		return "", errors.New("missing topic metadata for DLQ publication")
+		return "", ErrMissingTopic
 	}
 
 	return topic + ".DLQ", nil
+}
+
+// NewShortlinkPoisonMiddlewareWithFilter is NewShortlinkPoisonMiddleware with
+// a say in what counts as poison.
+//
+// The filter reports whether a failure should send the message to the DLQ.
+// Return false for failures that are transient by construction — a message
+// that arrived before the read replica had replayed its writes is the
+// motivating case: it is not malformed, it is early, and dead-lettering it
+// turns a consistency feature into a source of dead letters.
+//
+//	NewShortlinkPoisonMiddlewareWithFilter(pub, topic, func(err error) bool {
+//		return !IsConsistencyError(err)
+//	})
+func NewShortlinkPoisonMiddlewareWithFilter(
+	publisher message.Publisher,
+	dlqTopic string,
+	shouldGoToPoisonQueue func(err error) bool,
+) (message.HandlerMiddleware, error) {
+	if publisher == nil {
+		return nil, ErrPoisonPublisherRequired
+	}
+
+	if shouldGoToPoisonQueue == nil {
+		shouldGoToPoisonQueue = func(error) bool { return true }
+	}
+
+	wrappedPublisher := &poisonPublisher{
+		topic:       dlqTopic,
+		publisher:   publisher,
+		serviceName: detectServiceName(),
+	}
+
+	poisonTopic := dlqTopic
+	if poisonTopic == "" {
+		poisonTopic = defaultDLQTopic
+	}
+
+	poisonMW, err := middleware.PoisonQueueWithFilter(wrappedPublisher, poisonTopic, shouldGoToPoisonQueue)
+	if err != nil {
+		return nil, fmt.Errorf("watermill: poison middleware init failed: %w", err)
+	}
+
+	return func(h message.HandlerFunc) message.HandlerFunc {
+		return poisonMW(func(msg *message.Message) ([]*message.Message, error) {
+			ctx := ensureContext(msg.Context())
+			ctx = context.WithValue(ctx, originalMessageCtxKey{}, snapshotMessage(msg))
+			msg.SetContext(ctx)
+
+			return h(msg)
+		})
+	}, nil
 }

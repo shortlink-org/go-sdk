@@ -11,6 +11,9 @@ import (
 	"github.com/shortlink-org/go-sdk/config"
 )
 
+// testVersionPatch is an arbitrary numeric setting the parser must carry.
+const testVersionPatch = 42
+
 func TestNewKafkaConfigDefaults(t *testing.T) {
 	cfg := newTestConfig(t)
 	cfg.Set("SERVICE_NAME", "svc-default")
@@ -45,7 +48,7 @@ func TestNewKafkaConfigOverrides(t *testing.T) {
 	cfg.Set("WATERMILL_KAFKA_REBALANCE_STRATEGY", "roundrobin")
 	cfg.Set("WATERMILL_KAFKA_SARAMA_VERSION", "2.5.0")
 	cfg.Set("WATERMILL_KAFKA_PRODUCER_COMPRESSION", "gzip")
-	cfg.Set("WATERMILL_KAFKA_PRODUCER_RETRY_MAX", 42)
+	cfg.Set("WATERMILL_KAFKA_PRODUCER_RETRY_MAX", testVersionPatch)
 	cfg.Set("WATERMILL_KAFKA_PRODUCER_IDEMPOTENT", false)
 	cfg.Set("WATERMILL_KAFKA_OTEL_ENABLED", false)
 	cfg.Set("WATERMILL_KAFKA_SUBSCRIBER_NACK_SLEEP", 250*time.Millisecond)
@@ -63,10 +66,11 @@ func TestNewKafkaConfigOverrides(t *testing.T) {
 	assert.Equal(t, sarama.OffsetOldest, kcfg.initialOffset)
 	assert.Equal(t, sarama.RoundRobinBalanceStrategyName, kcfg.rebalanceStrategy.Name())
 
+	//nolint:errcheck // cleanup path: there is nothing useful to do with the error
 	expectedVersion, _ := sarama.ParseKafkaVersion("2.5.0")
 	assert.Equal(t, expectedVersion, kcfg.version)
 	assert.Equal(t, sarama.CompressionGZIP, kcfg.compression)
-	assert.Equal(t, 42, kcfg.producerRetryMax)
+	assert.Equal(t, testVersionPatch, kcfg.producerRetryMax)
 	assert.False(t, kcfg.idempotentProducer)
 	assert.Equal(t, 250*time.Millisecond, kcfg.nackSleep)
 	assert.Equal(t, 2*time.Second, kcfg.reconnectSleep)

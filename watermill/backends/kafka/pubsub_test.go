@@ -2,7 +2,6 @@ package kafka_test
 
 import (
 	"context"
-	"fmt"
 	"os"
 	"strings"
 	"testing"
@@ -33,6 +32,8 @@ func newPubSub(
 	consumerGroup string,
 	saramaOpts ...func(*sarama.Config),
 ) (*kafka.Publisher, *kafka.Subscriber) {
+	t.Helper()
+
 	logger := watermill.NewStdLogger(false, false)
 
 	var (
@@ -52,7 +53,7 @@ func newPubSub(
 		}
 
 		retriesLeft--
-		fmt.Printf("cannot create kafka Publisher: %s, retrying (%d retries left)", err, retriesLeft)
+		t.Logf("cannot create kafka Publisher: %s, retrying (%d retries left)", err, retriesLeft)
 		time.Sleep(time.Second * 2)
 	}
 
@@ -61,22 +62,22 @@ func newPubSub(
 	saramaConfig := kafka.DefaultSaramaSubscriberConfig()
 	saramaConfig.Consumer.Offsets.Initial = sarama.OffsetOldest
 
-	saramaConfig.Admin.Timeout = time.Second * 30
+	saramaConfig.Admin.Timeout = time.Second * testTimeoutSec
 	saramaConfig.Producer.RequiredAcks = sarama.WaitForAll
-	saramaConfig.ChannelBufferSize = 10240
-	saramaConfig.Consumer.Group.Heartbeat.Interval = time.Millisecond * 500
+	saramaConfig.ChannelBufferSize = testMaxMessageKB
+	saramaConfig.Consumer.Group.Heartbeat.Interval = time.Millisecond * testFlushMillis
 	saramaConfig.Consumer.Group.Rebalance.Timeout = time.Second * 3
 
 	for _, o := range saramaOpts {
 		o(saramaConfig)
 	}
 
-	var subscriber *kafka.Subscriber
+	var sub *kafka.Subscriber
 
 	retriesLeft = 5
 
 	for {
-		subscriber, err = kafka.NewSubscriber(
+		sub, err = kafka.NewSubscriber(
 			kafka.SubscriberConfig{
 				Brokers:               kafkaBrokers(),
 				Unmarshaler:           marshaler,
@@ -94,36 +95,58 @@ func newPubSub(
 		}
 
 		retriesLeft--
-		fmt.Printf("cannot create kafka Subscriber: %s, retrying (%d retries left)", err, retriesLeft)
+		t.Logf("cannot create kafka Subscriber: %s, retrying (%d retries left)", err, retriesLeft)
 		time.Sleep(time.Second * 2)
 	}
 
 	require.NoError(t, err)
 
-	return publisher, subscriber
+	return publisher, sub
 }
 
 func generatePartitionKey(topic string, msg *message.Message) (string, error) {
 	return msg.Metadata.Get("partition_key"), nil
 }
 
+//nolint:ireturn // the interface is the library's own contract
 func createPubSubWithConsumerGroup(t *testing.T, consumerGroup string) (message.Publisher, message.Subscriber) {
+	t.Helper()
+
 	return newPubSub(t, kafka.DefaultMarshaler{}, consumerGroup)
 }
 
+//nolint:ireturn // the interface is the library's own contract
 func createPubSub(t *testing.T) (message.Publisher, message.Subscriber) {
+	t.Helper()
+
 	return createPubSubWithConsumerGroup(t, "test")
 }
 
+//nolint:ireturn // the interface is the library's own contract
 func createPartitionedPubSub(t *testing.T) (message.Publisher, message.Subscriber) {
+	t.Helper()
+
 	return newPubSub(t, kafka.NewWithPartitioningMarshaler(generatePartitionKey), "test")
 }
 
+//nolint:ireturn // the interface is the library's own contract
 func createNoGroupPubSub(t *testing.T) (message.Publisher, message.Subscriber) {
+	t.Helper()
+
 	return newPubSub(t, kafka.DefaultMarshaler{}, "")
 }
 
+// Sizes and timeouts the pub/sub tests share.
+const (
+	testTimeoutSec   = 30
+	testMaxMessageKB = 10240
+	testFlushMillis  = 500
+	testBatchSize    = 20
+)
+
 func TestPublishSubscribe(t *testing.T) {
+	t.Helper()
+
 	features := tests.Features{
 		ConsumerGroups:      true,
 		ExactlyOnceDelivery: false,
@@ -140,6 +163,8 @@ func TestPublishSubscribe(t *testing.T) {
 }
 
 func TestPublishSubscribe_ordered(t *testing.T) {
+	t.Helper()
+
 	if testing.Short() {
 		t.Skip("skipping long tests")
 	}
@@ -160,6 +185,8 @@ func TestPublishSubscribe_ordered(t *testing.T) {
 }
 
 func TestNoGroupSubscriber(t *testing.T) {
+	t.Helper()
+
 	if testing.Short() {
 		t.Skip("skipping long tests")
 	}
@@ -181,12 +208,14 @@ func TestNoGroupSubscriber(t *testing.T) {
 }
 
 func TestCtxValues(t *testing.T) {
+	t.Helper()
+
 	pub, sub := newPubSub(t, kafka.DefaultMarshaler{}, "")
 	topicName := "topic_" + watermill.NewUUID()
 
-	var messagesToPublish []*message.Message
+	messagesToPublish := make([]*message.Message, 0, testBatchSize)
 
-	for range 20 {
+	for range testBatchSize {
 		id := watermill.NewUUID()
 		messagesToPublish = append(messagesToPublish, message.NewMessage(id, nil))
 	}
@@ -234,6 +263,8 @@ func TestCtxValues(t *testing.T) {
 }
 
 func TestPublishSubscribe_AutoCommitDisabled(t *testing.T) {
+	t.Helper()
+
 	t.Parallel()
 
 	features := tests.Features{
@@ -246,12 +277,16 @@ func TestPublishSubscribe_AutoCommitDisabled(t *testing.T) {
 	}
 
 	pubSubConstructorWithConsumerGroup := func(t *testing.T, consumerGroup string) (message.Publisher, message.Subscriber) {
+		t.Helper()
+
 		return newPubSub(t, kafka.DefaultMarshaler{}, consumerGroup, func(config *sarama.Config) {
 			// commit messages manually
 			config.Consumer.Offsets.AutoCommit.Enable = false
 		})
 	}
 	pubSubConstructor := func(t *testing.T) (message.Publisher, message.Subscriber) {
+		t.Helper()
+
 		return pubSubConstructorWithConsumerGroup(t, "test")
 	}
 
@@ -263,6 +298,7 @@ func TestPublishSubscribe_AutoCommitDisabled(t *testing.T) {
 	)
 }
 
+//nolint:nonamedreturns // the name documents what the channel or error means here
 func readAfterRetries(messagesCh <-chan *message.Message, retriesN int, timeout time.Duration) (receivedMessage *message.Message, ok bool) {
 	retries := 0
 
@@ -291,10 +327,12 @@ MessagesLoop:
 }
 
 func TestCtxValuesAfterRetry(t *testing.T) {
+	t.Helper()
+
 	pub, sub := newPubSub(t, kafka.DefaultMarshaler{}, "")
 	topicName := "topic_" + watermill.NewUUID()
 
-	var messagesToPublish []*message.Message
+	messagesToPublish := make([]*message.Message, 0, testBatchSize)
 
 	id := watermill.NewUUID()
 	messagesToPublish = append(messagesToPublish, message.NewMessage(id, nil))

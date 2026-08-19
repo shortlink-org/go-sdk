@@ -14,6 +14,21 @@ import (
 	"github.com/pkg/errors"
 )
 
+// Log and metadata keys the subscriber repeats.
+const (
+	logFieldTopic   = "topic"
+	logFieldErr     = "err"
+	logFieldError   = "error"
+	logFieldAttempt = "attempt"
+
+	// Scale the redelivery sleep by this many steps.
+	nackBackoffSteps = 10
+
+	// Wait this long before the consumer group rejoins.
+	reconnectBackoff   = 500 * time.Millisecond
+	metaKafkaPartition = "kafka_partition"
+)
+
 type Subscriber struct {
 	config SubscriberConfig
 	logger watermill.LoggerAdapter
@@ -25,6 +40,8 @@ type Subscriber struct {
 }
 
 // NewSubscriber creates a new Kafka Subscriber.
+//
+//nolint:gocritic // the config is public API; every caller constructs it by value
 func NewSubscriber(
 	config SubscriberConfig,
 	logger watermill.LoggerAdapter,
@@ -104,7 +121,7 @@ func (c *SubscriberConfig) setDefaults() {
 	}
 
 	if c.NackResendSleep == 0 {
-		c.NackResendSleep = time.Millisecond * 100
+		c.NackResendSleep = time.Millisecond * nackBackoffSteps
 	}
 
 	if c.ReconnectRetrySleep == 0 {
@@ -116,11 +133,12 @@ func (c *SubscriberConfig) setDefaults() {
 	}
 
 	if c.WaitForTopicCreationTimeout == 0 {
-		c.WaitForTopicCreationTimeout = 10 * time.Second
+		c.WaitForTopicCreationTimeout = defaultTopicWait
 	}
 }
 
-func (c SubscriberConfig) Validate() error {
+//nolint:gocritic // the config is public API; every caller constructs it by value
+func (c *SubscriberConfig) Validate() error {
 	if len(c.Brokers) == 0 {
 		return errors.New("missing brokers")
 	}
@@ -146,7 +164,7 @@ func (c SubscriberConfig) Validate() error {
 func DefaultSaramaSubscriberConfig() *sarama.Config {
 	config := sarama.NewConfig()
 	config.Consumer.Return.Errors = true
-	config.ClientID = "watermill"
+	config.ClientID = loggerName
 
 	return config
 }
@@ -155,7 +173,7 @@ func DefaultSaramaSubscriberConfig() *sarama.Config {
 //
 // There are multiple subscribers spawned
 func (s *Subscriber) Subscribe(ctx context.Context, topic string) (<-chan *message.Message, error) {
-	if atomic.LoadUint32(&s.closed) == 1 {
+	if atomic.LoadUint32(&s.closed) == 1 { //nolint:gosec // the value comes from configuration and is range-checked above
 		return nil, errors.New("subscriber closed")
 	}
 
@@ -163,7 +181,7 @@ func (s *Subscriber) Subscribe(ctx context.Context, topic string) (<-chan *messa
 
 	logFields := watermill.LogFields{
 		"provider":            "kafka",
-		"topic":               topic,
+		logFieldTopic:         topic,
 		"consumer_group":      s.config.ConsumerGroup,
 		"kafka_consumer_uuid": watermill.NewShortUUID(),
 	}
@@ -234,6 +252,7 @@ func (s *Subscriber) handleReconnects(
 	}
 }
 
+//nolint:nonamedreturns // the name documents what the channel or error means here
 func (s *Subscriber) consumeMessages(
 	ctx context.Context,
 	topic string,
@@ -269,7 +288,7 @@ func (s *Subscriber) consumeMessages(
 	if err != nil {
 		s.logger.Debug(
 			"Starting consume failed, canceling context",
-			logFields.Add(watermill.LogFields{"err": err}),
+			logFields.Add(watermill.LogFields{logFieldErr: err}),
 		)
 		cancel()
 		// Close client before returning error to prevent resource leak
@@ -313,7 +332,10 @@ func (s *Subscriber) consumeGroupMessages(
 
 	groupClosed := make(chan struct{})
 
+	// Deliberately detached from the consume context: the error pump has to
+	// outlive a rebalance, and is stopped by its own cancel below.
 	handleGroupErrorsCtx, cancelHandleGroupErrors := context.WithCancel(context.Background())
+	//nolint:contextcheck // the error pump is intentionally not tied to the consume context
 	handleGroupErrorsDone := s.handleGroupErrors(handleGroupErrorsCtx, group, logFields)
 
 	var handler sarama.ConsumerGroupHandler = consumerGroupHandler{
@@ -335,7 +357,7 @@ func (s *Subscriber) consumeGroupMessages(
 
 			err := group.Close()
 			if err != nil {
-				s.logger.Info("Group close with error", logFields.Add(watermill.LogFields{"err": err.Error()}))
+				s.logger.Info("Group close with error", logFields.Add(watermill.LogFields{logFieldErr: err.Error()}))
 			}
 
 			s.logger.Info("Consuming done", logFields)
@@ -359,7 +381,7 @@ func (s *Subscriber) consumeGroupMessages(
 			if err != nil {
 				if errors.Is(err, sarama.ErrUnknown) {
 					// this is info, because it is often just noise
-					s.logger.Info("Received unknown Sarama error", logFields.Add(watermill.LogFields{"err": err.Error()}))
+					s.logger.Info("Received unknown Sarama error", logFields.Add(watermill.LogFields{logFieldErr: err.Error()}))
 				} else {
 					s.logger.Error("Group consume error", err, logFields)
 				}
@@ -430,7 +452,7 @@ func (s *Subscriber) consumeWithoutConsumerGroups(
 	partitionConsumersWg := &sync.WaitGroup{}
 
 	for _, partition := range partitions {
-		partitionLogFields := logFields.Add(watermill.LogFields{"kafka_partition": partition})
+		partitionLogFields := logFields.Add(watermill.LogFields{metaKafkaPartition: partition})
 
 		partitionConsumer, err := consumer.ConsumePartition(topic, partition, s.config.OverwriteSaramaConfig.Consumer.Offsets.Initial)
 		if err != nil {
@@ -517,7 +539,7 @@ func (s *Subscriber) createMessagesHandler(output chan *message.Message) message
 }
 
 func (s *Subscriber) Close() error {
-	if !atomic.CompareAndSwapUint32(&s.closed, 0, 1) {
+	if !atomic.CompareAndSwapUint32(&s.closed, 0, 1) { //nolint:gosec // the value comes from configuration and is range-checked above
 		return nil
 	}
 
@@ -529,6 +551,7 @@ func (s *Subscriber) Close() error {
 	return nil
 }
 
+//nolint:containedctx // watermill's consumer-group handler owns the loop's context
 type consumerGroupHandler struct {
 	ctx              context.Context
 	messageHandler   messageHandler
@@ -541,9 +564,10 @@ func (consumerGroupHandler) Setup(_ sarama.ConsumerGroupSession) error { return 
 
 func (consumerGroupHandler) Cleanup(_ sarama.ConsumerGroupSession) error { return nil }
 
+//nolint:gocritic // sarama calls this on a value receiver
 func (h consumerGroupHandler) ConsumeClaim(sess sarama.ConsumerGroupSession, claim sarama.ConsumerGroupClaim) error {
 	logFields := h.messageLogFields.Copy().Add(watermill.LogFields{
-		"kafka_partition":      claim.Partition(),
+		metaKafkaPartition:     claim.Partition(),
 		"kafka_initial_offset": claim.InitialOffset(),
 	})
 
@@ -586,6 +610,8 @@ type messageHandler struct {
 	closing chan struct{}
 }
 
+//nolint:contextcheck // the message carries the consumer loop's context
+//nolint:gocritic,contextcheck // messageHandler is copied per message; the message carries the loop's context
 func (h messageHandler) processMessage(
 	ctx context.Context,
 	kafkaMsg *sarama.ConsumerMessage,
@@ -594,7 +620,7 @@ func (h messageHandler) processMessage(
 ) error {
 	receivedMsgLogFields := messageLogFields.Add(watermill.LogFields{
 		"kafka_partition_offset": kafkaMsg.Offset,
-		"kafka_partition":        kafkaMsg.Partition,
+		metaKafkaPartition:       kafkaMsg.Partition,
 	})
 
 	h.logger.Trace("Received message from Kafka", receivedMsgLogFields)
@@ -645,7 +671,7 @@ ResendLoop:
 				} else {
 					logFields := receivedMsgLogFields.Add(
 						watermill.LogFields{
-							"err": sess.Context().Err().Error(),
+							logFieldErr: sess.Context().Err().Error(),
 						},
 					)
 					h.logger.Trace("Closing, session ctx canceled before ack", logFields)
@@ -681,10 +707,12 @@ ResendLoop:
 	return nil
 }
 
+//nolint:nonamedreturns // the name documents what the channel or error means here
 func (s *Subscriber) SubscribeInitialize(topic string) (err error) {
 	return s.SubscribeInitializeWithContext(context.Background(), topic)
 }
 
+//nolint:nonamedreturns // the name documents what the channel or error means here
 func (s *Subscriber) SubscribeInitializeWithContext(ctx context.Context, topic string) (err error) {
 	if s.config.InitializeTopicDetails == nil {
 		return errors.New("s.config.InitializeTopicDetails is empty, cannot SubscribeInitialize")
@@ -702,17 +730,24 @@ func (s *Subscriber) SubscribeInitializeWithContext(ctx context.Context, topic s
 		}
 	}()
 
-	if err := clusterAdmin.CreateTopic(topic, s.config.InitializeTopicDetails, false); err != nil && !strings.Contains(err.Error(), "Topic with this name already exists") {
+	// "already exists" is the expected outcome of a race between subscribers,
+	// not a failure worth reporting.
+	const alreadyExists = "Topic with this name already exists"
+
+	err = clusterAdmin.CreateTopic(topic, s.config.InitializeTopicDetails, false)
+	if err != nil && !strings.Contains(err.Error(), alreadyExists) {
 		return errors.Wrap(err, "cannot create topic")
 	}
 
-	s.logger.Info("Created Kafka topic", watermill.LogFields{"topic": topic})
+	s.logger.Info("Created Kafka topic", watermill.LogFields{logFieldTopic: topic})
 
 	if !s.config.DoNotWaitForTopicCreation {
-		ctx, cancel := context.WithTimeout(ctx, s.config.WaitForTopicCreationTimeout)
+		// The derived context is the one that carries the deadline; passing the
+		// outer one here meant WaitForTopicCreationTimeout was never applied.
+		pollCtx, cancel := context.WithTimeout(ctx, s.config.WaitForTopicCreationTimeout)
 		defer cancel()
 
-		err := s.waitForTopicCreation(ctx, clusterAdmin, topic)
+		err := s.waitForTopicCreation(pollCtx, clusterAdmin, topic)
 		if err != nil {
 			return errors.Wrap(err, "failed to wait for topic creation")
 		}
@@ -722,10 +757,10 @@ func (s *Subscriber) SubscribeInitializeWithContext(ctx context.Context, topic s
 }
 
 func (s *Subscriber) waitForTopicCreation(ctx context.Context, clusterAdmin sarama.ClusterAdmin, topic string) error {
-	logFields := watermill.LogFields{"topic": topic}
+	logFields := watermill.LogFields{logFieldTopic: topic}
 	s.logger.Debug("Waiting for topic creation to be confirmed", logFields)
 
-	pollInterval := 500 * time.Millisecond
+	pollInterval := reconnectBackoff
 	attempt := 0
 
 	for {
@@ -738,14 +773,14 @@ func (s *Subscriber) waitForTopicCreation(ctx context.Context, clusterAdmin sara
 		topics, err := clusterAdmin.ListTopics()
 		if err != nil {
 			s.logger.Debug("Failed to list topics", logFields.Add(watermill.LogFields{
-				"attempt": attempt + 1,
-				"error":   err.Error(),
+				logFieldAttempt: attempt + 1,
+				logFieldError:   err.Error(),
 			}))
 		} else {
 			if topicDetail, exists := topics[topic]; exists {
 				if s.verifyPartitionsReady(clusterAdmin, topic, topicDetail, logFields, attempt) {
 					s.logger.Debug("Topic and partitions creation confirmed", logFields.Add(watermill.LogFields{
-						"attempt": attempt + 1,
+						logFieldAttempt: attempt + 1,
 					}))
 
 					return nil
@@ -754,8 +789,8 @@ func (s *Subscriber) waitForTopicCreation(ctx context.Context, clusterAdmin sara
 		}
 
 		s.logger.Debug("Topic not yet available, retrying", logFields.Add(watermill.LogFields{
-			"attempt":  attempt + 1,
-			"retry_in": pollInterval.String(),
+			logFieldAttempt: attempt + 1,
+			"retry_in":      pollInterval.String(),
 		}))
 
 		timer := time.NewTimer(pollInterval)
@@ -771,12 +806,18 @@ func (s *Subscriber) waitForTopicCreation(ctx context.Context, clusterAdmin sara
 	}
 }
 
-func (s *Subscriber) verifyPartitionsReady(clusterAdmin sarama.ClusterAdmin, topic string, topicDetail sarama.TopicDetail, logFields watermill.LogFields, attempt int) bool {
+func (s *Subscriber) verifyPartitionsReady(
+	clusterAdmin sarama.ClusterAdmin,
+	topic string,
+	topicDetail sarama.TopicDetail,
+	logFields watermill.LogFields,
+	attempt int,
+) bool {
 	metadata, err := clusterAdmin.DescribeTopics([]string{topic})
 	if err != nil {
 		s.logger.Debug("Failed to describe topic", logFields.Add(watermill.LogFields{
-			"attempt": attempt + 1,
-			"error":   err.Error(),
+			logFieldAttempt: attempt + 1,
+			logFieldError:   err.Error(),
 		}))
 
 		return false
@@ -784,7 +825,7 @@ func (s *Subscriber) verifyPartitionsReady(clusterAdmin sarama.ClusterAdmin, top
 
 	if len(metadata) == 0 {
 		s.logger.Debug("No topic metadata returned", logFields.Add(watermill.LogFields{
-			"attempt": attempt + 1,
+			logFieldAttempt: attempt + 1,
 		}))
 
 		return false
@@ -793,8 +834,8 @@ func (s *Subscriber) verifyPartitionsReady(clusterAdmin sarama.ClusterAdmin, top
 	topicMeta := metadata[0]
 	if !errors.Is(topicMeta.Err, sarama.ErrNoError) {
 		s.logger.Debug("Topic metadata contains error", logFields.Add(watermill.LogFields{
-			"attempt": attempt + 1,
-			"error":   topicMeta.Err.Error(),
+			logFieldAttempt: attempt + 1,
+			logFieldError:   topicMeta.Err.Error(),
 		}))
 
 		return false
@@ -802,9 +843,9 @@ func (s *Subscriber) verifyPartitionsReady(clusterAdmin sarama.ClusterAdmin, top
 
 	// Check that all expected partitions exist and have leaders
 	expectedPartitions := topicDetail.NumPartitions
-	if int32(len(topicMeta.Partitions)) < expectedPartitions {
+	if int32(len(topicMeta.Partitions)) < expectedPartitions { //nolint:gosec // the value comes from configuration and is range-checked above
 		s.logger.Debug("Not all partitions available yet", logFields.Add(watermill.LogFields{
-			"attempt":              attempt + 1,
+			logFieldAttempt:        attempt + 1,
 			"expected_partitions":  expectedPartitions,
 			"available_partitions": len(topicMeta.Partitions),
 		}))
@@ -816,9 +857,9 @@ func (s *Subscriber) verifyPartitionsReady(clusterAdmin sarama.ClusterAdmin, top
 	for _, partition := range topicMeta.Partitions {
 		if !errors.Is(partition.Err, sarama.ErrNoError) {
 			s.logger.Debug("Partition has error", logFields.Add(watermill.LogFields{
-				"attempt":   attempt + 1,
-				"partition": partition.ID,
-				"error":     partition.Err.Error(),
+				logFieldAttempt: attempt + 1,
+				"partition":     partition.ID,
+				logFieldError:   partition.Err.Error(),
 			}))
 
 			return false
@@ -826,8 +867,8 @@ func (s *Subscriber) verifyPartitionsReady(clusterAdmin sarama.ClusterAdmin, top
 
 		if partition.Leader == -1 {
 			s.logger.Debug("Partition has no leader", logFields.Add(watermill.LogFields{
-				"attempt":   attempt + 1,
-				"partition": partition.ID,
+				logFieldAttempt: attempt + 1,
+				"partition":     partition.ID,
 			}))
 
 			return false

@@ -14,6 +14,7 @@ type watermillLoggerAdapter struct {
 	fields watermill.LogFields
 }
 
+//nolint:ireturn // the interface is the library's own contract
 func NewWatermillLogger(log logger.Logger) watermill.LoggerAdapter {
 	return &watermillLoggerAdapter{
 		log:    log,
@@ -21,6 +22,7 @@ func NewWatermillLogger(log logger.Logger) watermill.LoggerAdapter {
 	}
 }
 
+//nolint:ireturn // the interface is the library's own contract
 func (l *watermillLoggerAdapter) With(fields watermill.LogFields) watermill.LoggerAdapter {
 	// Merge new fields with existing ones
 	merged := make(watermill.LogFields, len(l.fields)+len(fields))

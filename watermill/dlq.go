@@ -12,6 +12,8 @@ import (
 type DLQEvent = shortdlq.DLQEvent
 
 // PublishDLQ publishes the provided DLQ event using Shortlink's DLQ helpers.
+//
+//nolint:gocritic // DLQEvent is public API; callers build it by value
 func PublishDLQ(ctx context.Context, publisher message.Publisher, topic string, event DLQEvent) error {
 	return shortdlq.PublishDLQ(ctx, publisher, topic, event)
 }

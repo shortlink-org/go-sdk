@@ -13,6 +13,13 @@ import (
 )
 
 // DLQEvent describes the payload stored inside Shortlink DLQ messages.
+//
+// The JSON field names are snake_case on purpose and must stay that way: they
+// are the on-the-wire shape of every dead-letter message, read by consumers
+// outside this repository. Renaming them to camelCase would satisfy the linter
+// and silently break those readers.
+//
+//nolint:tagliatelle // snake_case is the published DLQ wire format
 type DLQEvent struct {
 	FailedAt    time.Time        `json:"failed_at"`
 	Reason      string           `json:"reason"`
@@ -21,10 +28,15 @@ type DLQEvent struct {
 	ServiceName string           `json:"service_name,omitempty"`
 }
 
+// ErrMissingOriginalMessage reports a DLQ event with nothing to carry.
+var ErrMissingOriginalMessage = errors.New("dlq event missing original message")
+
 // BuildDLQMessage serializes the DLQEvent and enriches metadata to keep context.
+//
+//nolint:gocritic // DLQEvent is public API; callers build it by value
 func BuildDLQMessage(event DLQEvent) (*message.Message, error) {
 	if event.OriginalMsg == nil {
-		return nil, errors.New("dlq event missing original message")
+		return nil, ErrMissingOriginalMessage
 	}
 
 	if event.FailedAt.IsZero() {
@@ -49,9 +61,11 @@ func BuildDLQMessage(event DLQEvent) (*message.Message, error) {
 }
 
 // MarshalJSON customizes the JSON structure to keep original payload and metadata.
+//
+//nolint:gocritic // the value receiver is required by json.Marshaler
 func (event DLQEvent) MarshalJSON() ([]byte, error) {
 	if event.OriginalMsg == nil {
-		return nil, errors.New("dlq event missing original message")
+		return nil, ErrMissingOriginalMessage
 	}
 
 	original := originalMessageJSON{
@@ -68,6 +82,7 @@ func (event DLQEvent) MarshalJSON() ([]byte, error) {
 		original.PayloadBase64 = base64.StdEncoding.EncodeToString(event.OriginalMsg.Payload)
 	}
 
+	//nolint:tagliatelle // snake_case is the published DLQ wire format
 	type alias struct {
 		FailedAt    time.Time           `json:"failed_at"`
 		Reason      string              `json:"reason"`
@@ -85,6 +100,7 @@ func (event DLQEvent) MarshalJSON() ([]byte, error) {
 	})
 }
 
+//nolint:tagliatelle // snake_case is the published DLQ wire format
 type originalMessageJSON struct {
 	UUID          string            `json:"uuid"`
 	Metadata      map[string]string `json:"metadata"`

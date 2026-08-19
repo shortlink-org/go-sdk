@@ -163,6 +163,46 @@ The `backends/kafka` directory contains a driver copied from Watermill with seve
 
 Usage is similar to upstream Watermill. See tests in `backends/kafka/pubsub_test.go` and configuration via `SubscriberConfig`/`PublisherConfig`.
 
+## Read-your-writes across the queue
+
+When the database has a read replica, a message can arrive at its consumer
+before the writes that produced it have replayed. The handler then reads a row
+that should exist and does not.
+
+The publisher stamps the producer's WAL position into `message.Metadata`, and
+the handler waits briefly for the replica to replay past it:
+
+```go
+router, _ := postgres.RouterFrom(store)
+
+client.Publisher = watermill.NewConsistencyPublisher(client.Publisher, router.Port(), log, meterProvider)
+client.Router.AddMiddleware(watermill.NewConsistencyMiddleware(router.Port(), watermill.ConsistencyOptions{}, meterProvider))
+```
+
+This module never imports `db`. `ReplicaGate` and `Watermarker` are declared
+here and satisfied structurally by `*postgres.TextPort`, so the database's
+dependency graph stays out of the queue's.
+
+The handler waits inline, up to `MaxWait` (250ms by default), before returning
+`ErrReplicaNotCaughtUp`. It does not nack immediately, because a nack feeds the
+retry middleware: a message early by tens of milliseconds can burn its three
+retries during a one-second replica hiccup and land in the DLQ as though it
+were malformed. On Kafka the nack buys nothing anyway — the same message is
+redelivered after `NACK_SLEEP` without the offset advancing.
+
+Exclude that error from the dead-letter queue explicitly:
+
+```go
+poison, err := watermill.NewShortlinkPoisonMiddlewareWithFilter(pub, dlqTopic, func(err error) bool {
+	return !watermill.IsConsistencyError(err)
+})
+```
+
+Metrics: `watermill_consistency_stamps_total{outcome}` and
+`watermill_consistency_gate_results_total{outcome}`.
+
+See [ADR 0001 — Read-replica routing](../db/drivers/postgres/ADR/0001-read-replica-routing.md).
+
 ## Related Packages
 
 - **[`cqrs`](../cqrs/README.md)** — CQRS abstraction layer with protobuf-first marshaling, canonical naming, and typed handlers

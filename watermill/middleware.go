@@ -17,6 +17,7 @@ import (
 
 // ----------- BASE MIDDLEWARE (panic, correlation, retry) ------------
 
+//nolint:gocritic // Options is public API; callers build it by value
 func configureBaseMiddlewares(router *message.Router, log logger.Logger, wmLogger watermill.LoggerAdapter, opts Options) {
 	router.AddMiddleware(wmmid.Recoverer)
 	router.AddMiddleware(wmmid.CorrelationID)
@@ -76,9 +77,9 @@ type MetricsMiddleware struct {
 
 // NewMetricsMiddleware creates metrics middleware with explicit meter provider.
 func NewMetricsMiddleware(log logger.Logger, provider metric.MeterProvider) (*MetricsMiddleware, error) {
-	m := provider.Meter("watermill")
+	meter := provider.Meter("watermill")
 
-	pub, err := m.Int64Counter(
+	pub, err := meter.Int64Counter(
 		"watermill_messages_published_total",
 		metric.WithDescription("Total number of messages published to topics"),
 		metric.WithUnit("1"),
@@ -88,7 +89,7 @@ func NewMetricsMiddleware(log logger.Logger, provider metric.MeterProvider) (*Me
 		return nil, err
 	}
 
-	cons, err := m.Int64Counter(
+	cons, err := meter.Int64Counter(
 		"watermill_messages_consumed_total",
 		metric.WithDescription("Total number of messages consumed from topics"),
 		metric.WithUnit("1"),
@@ -98,7 +99,7 @@ func NewMetricsMiddleware(log logger.Logger, provider metric.MeterProvider) (*Me
 		return nil, err
 	}
 
-	errc, err := m.Int64Counter(
+	errc, err := meter.Int64Counter(
 		"watermill_messages_failed_total",
 		metric.WithDescription("Total number of failed message operations (publish or consume)"),
 		metric.WithUnit("1"),
@@ -108,7 +109,7 @@ func NewMetricsMiddleware(log logger.Logger, provider metric.MeterProvider) (*Me
 		return nil, err
 	}
 
-	pubLat, err := m.Float64Histogram(
+	pubLat, err := meter.Float64Histogram(
 		"watermill_publish_latency_seconds",
 		metric.WithDescription("Latency of message publishing operations in seconds"),
 		metric.WithUnit("s"),
@@ -118,7 +119,7 @@ func NewMetricsMiddleware(log logger.Logger, provider metric.MeterProvider) (*Me
 		return nil, err
 	}
 
-	conLat, err := m.Float64Histogram(
+	conLat, err := meter.Float64Histogram(
 		"watermill_consume_latency_seconds",
 		metric.WithDescription("Latency of message consumption operations in seconds"),
 		metric.WithUnit("s"),
@@ -129,7 +130,7 @@ func NewMetricsMiddleware(log logger.Logger, provider metric.MeterProvider) (*Me
 	}
 
 	return &MetricsMiddleware{
-		meter:      m,
+		meter:      meter,
 		published:  pub,
 		consumed:   cons,
 		errors:     errc,
@@ -138,9 +139,9 @@ func NewMetricsMiddleware(log logger.Logger, provider metric.MeterProvider) (*Me
 	}, nil
 }
 
-// Handler middleware — measure consumption latency + exemplar support.
+// HandlerMiddleware handler middleware — measure consumption latency + exemplar support.
 func (m *MetricsMiddleware) HandlerMiddleware() message.HandlerMiddleware {
-	return func(h message.HandlerFunc) message.HandlerFunc {
+	return func(next message.HandlerFunc) message.HandlerFunc {
 		return func(msg *message.Message) ([]*message.Message, error) {
 			start := time.Now()
 
@@ -153,7 +154,7 @@ func (m *MetricsMiddleware) HandlerMiddleware() message.HandlerMiddleware {
 
 			attrs := metric.WithAttributes(m.topicAttributes(ctx, topic)...)
 
-			msgs, err := h(msg)
+			msgs, err := next(msg)
 			lat := time.Since(start).Seconds()
 
 			if err != nil {
@@ -170,6 +171,8 @@ func (m *MetricsMiddleware) HandlerMiddleware() message.HandlerMiddleware {
 }
 
 // PublisherWrapper — adds metrics + exemplars to publisher.
+//
+//nolint:ireturn // the interface is the library's own contract
 func (m *MetricsMiddleware) PublisherWrapper(pub message.Publisher, otelMW *OTelMiddleware) message.Publisher {
 	return &publisherWrapper{
 		pub:     pub,
@@ -236,7 +239,7 @@ func (pw *publisherWrapper) publishWithMetrics(topic string, msgs ...*message.Me
 	return nil
 }
 
-// Helper: extract trace/span id from ctx for exemplars.
+// TraceID extracts the trace id from ctx, for use as a metric exemplar.
 func TraceID(ctx context.Context) string {
 	spanCtx := trace.SpanContextFromContext(ctx)
 	if !spanCtx.IsValid() {

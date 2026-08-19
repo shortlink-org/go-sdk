@@ -63,9 +63,9 @@ func NewOTELMiddleware(provider trace.TracerProvider) *OTelMiddleware {
 	}
 }
 
-// For Router handlers.
+// HandlerMiddleware traces each handled message.
 func (o *OTelMiddleware) HandlerMiddleware() message.HandlerMiddleware {
-	return func(h message.HandlerFunc) message.HandlerFunc {
+	return func(next message.HandlerFunc) message.HandlerFunc {
 		return func(msg *message.Message) ([]*message.Message, error) {
 			// Extract context
 			parent := msg.Context()
@@ -84,7 +84,7 @@ func (o *OTelMiddleware) HandlerMiddleware() message.HandlerMiddleware {
 			// Put context back inside message
 			msg.SetContext(ctx)
 
-			return h(msg)
+			return next(msg)
 		}
 	}
 }

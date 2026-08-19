@@ -11,6 +11,21 @@ import (
 	"github.com/shortlink-org/go-sdk/config"
 )
 
+// Defaults and identifiers shared across the Kafka backend.
+const (
+	loggerName       = "watermill"
+	defaultKafkaAddr = "localhost:9092"
+
+	// Wait this long before asking the broker for metadata again.
+	metadataRetryBackoff = 2 * time.Second
+
+	// Presize a log-field map to the number of fields these packages set.
+	logFieldCapacity = 4
+
+	// Wait for a topic to exist for this long before giving up.
+	defaultTopicWait = 10 * time.Second
+)
+
 type backendSettings struct {
 	brokers                 []string
 	consumerGroup           string
@@ -109,7 +124,7 @@ func newKafkaConfig(cfg *config.Config) (*kafkaConfig, error) {
 
 	defaultGroup := serviceName
 	if defaultGroup == "" {
-		defaultGroup = "watermill"
+		defaultGroup = loggerName
 	}
 
 	consumerGroup := firstNonEmpty(strings.TrimSpace(cfg.GetString("WATERMILL_KAFKA_CONSUMER_GROUP")), defaultGroup)
@@ -148,7 +163,7 @@ func newKafkaConfig(cfg *config.Config) (*kafkaConfig, error) {
 	idempotent := boolWithDefault(cfg, "WATERMILL_KAFKA_PRODUCER_IDEMPOTENT", true)
 	nackSleep := durationWithDefault(cfg, "WATERMILL_KAFKA_SUBSCRIBER_NACK_SLEEP", 100*time.Millisecond)
 	reconnectSleep := durationWithDefault(cfg, "WATERMILL_KAFKA_SUBSCRIBER_RECONNECT_SLEEP", time.Second)
-	waitTimeout := durationWithDefault(cfg, "WATERMILL_KAFKA_WAIT_FOR_TOPIC_TIMEOUT", 10*time.Second)
+	waitTimeout := durationWithDefault(cfg, "WATERMILL_KAFKA_WAIT_FOR_TOPIC_TIMEOUT", defaultTopicWait)
 	skipTopicInit := boolWithDefault(cfg, "WATERMILL_KAFKA_SKIP_TOPIC_INIT", false)
 
 	return &kafkaConfig{
@@ -177,12 +192,12 @@ func parseBrokerList(cfg *config.Config) []string {
 
 	raw := cfg.GetString("WATERMILL_KAFKA_BROKERS")
 	if raw == "" {
-		return []string{"localhost:9092"}
+		return []string{defaultKafkaAddr}
 	}
 
 	parsed := filterBrokers(strings.Split(raw, ","))
 	if len(parsed) == 0 {
-		return []string{"localhost:9092"}
+		return []string{defaultKafkaAddr}
 	}
 
 	return parsed
@@ -202,17 +217,29 @@ func filterBrokers(values []string) []string {
 	return result
 }
 
+// Configuration values a setting does not accept.
+var (
+	// ErrUnsupportedInitialOffset reports a consumer offset the parser does not know.
+	ErrUnsupportedInitialOffset = errors.New("unsupported consumer initial offset")
+	// ErrUnsupportedRebalanceStrategy reports an unrecognized rebalance strategy.
+	ErrUnsupportedRebalanceStrategy = errors.New("unsupported rebalance strategy")
+	// ErrUnsupportedCompression reports an unrecognized producer compression.
+	ErrUnsupportedCompression = errors.New("unsupported producer compression")
+)
+
 func parseInitialOffset(raw string) (int64, error) {
+	//nolint:ireturn // the interface is the library's own contract
 	switch strings.ToLower(strings.TrimSpace(raw)) {
 	case "", "latest", "newest":
 		return sarama.OffsetNewest, nil
 	case "oldest", "earliest":
 		return sarama.OffsetOldest, nil
 	default:
-		return 0, fmt.Errorf("unsupported WATERMILL_KAFKA_CONSUMER_INITIAL_OFFSET: %s", raw)
+		return 0, fmt.Errorf("%w: WATERMILL_KAFKA_CONSUMER_INITIAL_OFFSET=%s", ErrUnsupportedInitialOffset, raw)
 	}
 }
 
+//nolint:ireturn // sarama.BalanceStrategy is the library's own type
 func parseRebalanceStrategy(raw string) (sarama.BalanceStrategy, error) {
 	switch strings.ToLower(strings.TrimSpace(raw)) {
 	case "", "range":
@@ -222,7 +249,7 @@ func parseRebalanceStrategy(raw string) (sarama.BalanceStrategy, error) {
 	case "sticky":
 		return sarama.NewBalanceStrategySticky(), nil
 	default:
-		return nil, fmt.Errorf("unsupported WATERMILL_KAFKA_REBALANCE_STRATEGY: %s", raw)
+		return nil, fmt.Errorf("%w: WATERMILL_KAFKA_REBALANCE_STRATEGY=%s", ErrUnsupportedRebalanceStrategy, raw)
 	}
 }
 
@@ -255,7 +282,7 @@ func parseCompressionCodec(raw string) (sarama.CompressionCodec, error) {
 	case "zstd":
 		return sarama.CompressionZSTD, nil
 	default:
-		return sarama.CompressionNone, fmt.Errorf("unsupported WATERMILL_KAFKA_PRODUCER_COMPRESSION: %s", raw)
+		return sarama.CompressionNone, fmt.Errorf("%w: WATERMILL_KAFKA_PRODUCER_COMPRESSION=%s", ErrUnsupportedCompression, raw)
 	}
 }
 

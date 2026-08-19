@@ -24,6 +24,7 @@ func TestBackendPublishSubscribeWithTestcontainer(t *testing.T) {
 	}
 
 	t.Cleanup(func() {
+		//nolint:errcheck // cleanup path: there is nothing useful to do with the error
 		_ = kafkaContainer.Terminate(context.Background())
 	})
 
@@ -42,6 +43,7 @@ func TestBackendPublishSubscribeWithTestcontainer(t *testing.T) {
 	backend, err := New(ctx, log, cfg)
 	require.NoError(t, err)
 	t.Cleanup(func() {
+		//nolint:errcheck // cleanup path: there is nothing useful to do with the error
 		_ = backend.Close()
 	})
 

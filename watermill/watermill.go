@@ -15,6 +15,10 @@ import (
 	watermilldlq "github.com/shortlink-org/go-sdk/watermill/dlq"
 )
 
+// ErrNilBackend reports a client built without a backend. There is no default:
+// which broker to talk to is not something this package should guess.
+var ErrNilBackend = errors.New("backend is nil — must be provided explicitly")
+
 // Backend interface — реализация MQ backend (Kafka, RabbitMQ, NATS…)
 type Backend interface {
 	Publisher() message.Publisher
@@ -33,6 +37,8 @@ type Client struct {
 // New — создаёт Watermill Router + middleware + logger + OTEL + metrics.
 // Backend должен быть создан "снаружи" (например, через kafka.New()).
 // MeterProvider и tracerProvider должны быть переданы явно (например, из observability/metrics и observability/tracing).
+//
+//nolint:revive // the argument list is public API; collapsing it would break every caller
 func New(
 	ctx context.Context,
 	log logger.Logger,
@@ -43,7 +49,7 @@ func New(
 	options ...Option,
 ) (*Client, error) {
 	if backend == nil {
-		return nil, errors.New("backend is nil — must be provided explicitly")
+		return nil, ErrNilBackend
 	}
 
 	wmLogger := NewWatermillLogger(log)
@@ -71,7 +77,7 @@ func New(
 
 	// OTEL tracing middleware
 	otelMW := NewOTELMiddleware(tracerProvider)
-	router.AddMiddleware(otelMW.HandlerMiddleware())
+	router.AddMiddleware(otelMW.HandlerMiddleware()) //nolint:contextcheck // the middleware carries each message's own context
 
 	// OTEL metrics / exemplars middleware
 	metricsMW, err := NewMetricsMiddleware(log, meterProvider)
@@ -83,10 +89,10 @@ func New(
 
 	if cfg.GetBool("WATERMILL_DLQ_ENABLED") {
 		dlqTopic := cfg.GetString("WATERMILL_DLQ_TOPIC")
-		router.AddMiddleware(NewShortlinkPoisonMiddleware(publisher, dlqTopic))
+		router.AddMiddleware(NewShortlinkPoisonMiddleware(publisher, dlqTopic)) //nolint:contextcheck // the middleware carries each message's own context
 	}
 
-	router.AddMiddleware(metricsMW.HandlerMiddleware())
+	router.AddMiddleware(metricsMW.HandlerMiddleware()) //nolint:contextcheck // the middleware carries each message's own context
 
 	client := &Client{
 		Router:     router,

@@ -1,8 +1,6 @@
 package kafka
 
 import (
-	"time"
-
 	"github.com/IBM/sarama"
 	"github.com/ThreeDotsLabs/watermill"
 	"github.com/ThreeDotsLabs/watermill/message"
@@ -24,7 +22,8 @@ func NewPublisher(
 ) (*Publisher, error) {
 	config.setDefaults()
 
-	if err := config.Validate(); err != nil {
+	err := config.Validate()
+	if err != nil {
 		return nil, err
 	}
 
@@ -80,7 +79,7 @@ func (c *PublisherConfig) setDefaults() {
 	}
 }
 
-func (c PublisherConfig) Validate() error {
+func (c *PublisherConfig) Validate() error {
 	if len(c.Brokers) == 0 {
 		return errors.New("missing brokers")
 	}
@@ -97,8 +96,8 @@ func DefaultSaramaSyncPublisherConfig() *sarama.Config {
 
 	config.Producer.Retry.Max = 10
 	config.Producer.Return.Successes = true
-	config.Metadata.Retry.Backoff = time.Second * 2
-	config.ClientID = "watermill"
+	config.Metadata.Retry.Backoff = metadataRetryBackoff
+	config.ClientID = loggerName
 
 	return config
 }
@@ -112,8 +111,8 @@ func (p *Publisher) Publish(topic string, msgs ...*message.Message) error {
 		return errors.New("publisher closed")
 	}
 
-	logFields := make(watermill.LogFields, 4)
-	logFields["topic"] = topic
+	logFields := make(watermill.LogFields, logFieldCapacity)
+	logFields[logFieldTopic] = topic
 
 	for _, msg := range msgs {
 		logFields["message_uuid"] = msg.UUID

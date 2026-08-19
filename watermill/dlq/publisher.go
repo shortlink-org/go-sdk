@@ -20,6 +20,7 @@ var (
 	pkgLogger logger.Logger
 )
 
+//nolint:ireturn // the interface is the library's own contract
 func getLogger() logger.Logger {
 	logOnce.Do(func() {
 		l, err := logger.New(logger.Default())
@@ -50,18 +51,30 @@ func SetLogger(log logger.Logger) {
 }
 
 // Logger exposes the logger currently used by the DLQ helpers.
+//
+//nolint:ireturn // the interface is the library's own contract
 func Logger() logger.Logger {
 	return getLogger()
 }
 
+// Preconditions PublishDLQ refuses to guess at.
+var (
+	// ErrNilPublisher reports a DLQ publish with no publisher to send to.
+	ErrNilPublisher = errors.New("dlq publisher is nil")
+	// ErrEmptyTopic reports a DLQ publish with no topic to send to.
+	ErrEmptyTopic = errors.New("dlq topic is empty")
+)
+
 // PublishDLQ builds the DLQ message and forwards it using the provided publisher.
+//
+//nolint:contextcheck,gocritic // the caller's context is passed through; DLQEvent is public API
 func PublishDLQ(ctx context.Context, publisher message.Publisher, topic string, event DLQEvent) error {
 	if publisher == nil {
-		return errors.New("dlq publisher is nil")
+		return ErrNilPublisher
 	}
 
 	if topic == "" {
-		return errors.New("dlq topic is empty")
+		return ErrEmptyTopic
 	}
 
 	msg, err := BuildDLQMessage(event)
@@ -83,7 +96,8 @@ func PublishDLQ(ctx context.Context, publisher message.Publisher, topic string, 
 		slog.String("message_id", msg.UUID),
 	)
 
-	if err := publisher.Publish(topic, msg); err != nil {
+	err = publisher.Publish(topic, msg)
+	if err != nil {
 		log.ErrorWithContext(ctx, "Failed to publish DLQ message",
 			slog.String("topic", topic),
 			slog.String("reason", event.Reason),

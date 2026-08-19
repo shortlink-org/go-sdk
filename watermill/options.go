@@ -9,6 +9,14 @@ import (
 	"github.com/shortlink-org/go-sdk/config"
 )
 
+// Defaults for the middleware chain.
+const (
+	defaultRetryMultiplier   = 2.0
+	defaultRetryJitter       = 0.15
+	defaultHandlerTimeoutSec = 20
+	defaultBreakerTimeoutSec = 30
+)
+
 // Option configures Watermill client behavior.
 type Option func(*Options)
 
@@ -47,8 +55,8 @@ func defaultOptions(cfg *config.Config) Options {
 	cfg.SetDefault("WATERMILL_RETRY_MAX_RETRIES", 3)
 	cfg.SetDefault("WATERMILL_RETRY_INITIAL_INTERVAL", "150ms")
 	cfg.SetDefault("WATERMILL_RETRY_MAX_INTERVAL", "2s")
-	cfg.SetDefault("WATERMILL_RETRY_MULTIPLIER", 2.0)
-	cfg.SetDefault("WATERMILL_RETRY_JITTER", 0.15)
+	cfg.SetDefault("WATERMILL_RETRY_MULTIPLIER", defaultRetryMultiplier)
+	cfg.SetDefault("WATERMILL_RETRY_JITTER", defaultRetryJitter)
 	cfg.SetDefault("WATERMILL_RETRY_MAX_ELAPSED", "0s")
 	cfg.SetDefault("WATERMILL_RETRY_RESET_CONTEXT", false)
 
@@ -80,7 +88,7 @@ func defaultOptions(cfg *config.Config) Options {
 		Duration: cfg.GetDuration("WATERMILL_HANDLER_TIMEOUT"),
 	}
 	if timeout.Duration <= 0 {
-		timeout.Duration = 20 * time.Second
+		timeout.Duration = defaultHandlerTimeoutSec * time.Second
 	}
 
 	failureThreshold := cfg.GetInt("WATERMILL_CB_FAILURE_THRESHOLD")
@@ -99,10 +107,10 @@ func defaultOptions(cfg *config.Config) Options {
 		Name:        cbName,
 		Timeout:     cfg.GetDuration("WATERMILL_CB_TIMEOUT"),
 		Interval:    cfg.GetDuration("WATERMILL_CB_INTERVAL"),
-		MaxRequests: uint32(cfg.GetInt("WATERMILL_CB_HALFOPEN_MAX_REQUESTS")),
+		MaxRequests: uint32(cfg.GetInt("WATERMILL_CB_HALFOPEN_MAX_REQUESTS")), //nolint:gosec // the value comes from configuration and is range-checked above
 	}
 	if cbSettings.Timeout <= 0 {
-		cbSettings.Timeout = 30 * time.Second
+		cbSettings.Timeout = defaultBreakerTimeoutSec * time.Second
 	}
 
 	if cbSettings.MaxRequests == 0 {
@@ -110,10 +118,10 @@ func defaultOptions(cfg *config.Config) Options {
 	}
 
 	cbSettings.ReadyToTrip = func(counts gobreaker.Counts) bool {
-		return counts.ConsecutiveFailures >= uint32(failureThreshold)
+		return counts.ConsecutiveFailures >= uint32(failureThreshold) //nolint:gosec // the value comes from configuration and is range-checked above
 	}
 
-	cb := CircuitBreakerOptions{
+	breaker := CircuitBreakerOptions{
 		Enabled:  cfg.GetBool("WATERMILL_CB_ENABLED"),
 		Settings: cbSettings,
 	}
@@ -121,7 +129,7 @@ func defaultOptions(cfg *config.Config) Options {
 	return Options{
 		Retry:          retry,
 		Timeout:        timeout,
-		CircuitBreaker: cb,
+		CircuitBreaker: breaker,
 	}
 }
 

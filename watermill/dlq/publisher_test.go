@@ -43,7 +43,9 @@ func TestPublishDLQInjectsTraceContext(t *testing.T) {
 	pub := &testPublisher{}
 	original := message.NewMessage("source", []byte(`{"foo":"bar"}`))
 
+	//nolint:errcheck // cleanup path: there is nothing useful to do with the error
 	traceID, _ := trace.TraceIDFromHex("463ac35c9f6413ad48485a3953bb6124")
+	//nolint:errcheck // cleanup path: there is nothing useful to do with the error
 	spanID, _ := trace.SpanIDFromHex("0020000000000001")
 	ctx := trace.ContextWithSpanContext(context.Background(), trace.NewSpanContext(trace.SpanContextConfig{
 		TraceID:    traceID,
@@ -51,7 +53,7 @@ func TestPublishDLQInjectsTraceContext(t *testing.T) {
 		TraceFlags: trace.FlagsSampled,
 	}))
 
-	event := DLQEvent{Reason: "boom", OriginalMsg: original}
+	event := DLQEvent{Reason: testReason, OriginalMsg: original}
 
 	err := PublishDLQ(ctx, pub, "dlq-topic", event)
 	require.NoError(t, err)

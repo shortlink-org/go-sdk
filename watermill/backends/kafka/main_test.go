@@ -11,10 +11,15 @@ import (
 	tc_kafka "github.com/testcontainers/testcontainers-go/modules/kafka"
 )
 
+//nolint:gocritic // the deferred cancel is intentionally skipped: os.Exit ends the process
 func TestMain(m *testing.M) {
+	//nolint:errcheck // cleanup path: there is nothing useful to do with the error
 	_ = os.Setenv("WATERMILL_TEST_KAFKA_RETRY_INTERVAL", "50ms")
+	//nolint:errcheck // cleanup path: there is nothing useful to do with the error
 	_ = os.Setenv("WATERMILL_TEST_KAFKA_RETRY_MAX_INTERVAL", "500ms")
+	//nolint:errcheck // cleanup path: there is nothing useful to do with the error
 	_ = os.Setenv("WATERMILL_TEST_KAFKA_RETRY_MAX_RETRIES", "2")
+	//nolint:errcheck // cleanup path: there is nothing useful to do with the error
 	_ = os.Setenv("WATERMILL_TEST_HANDLER_TIMEOUT", "5s")
 
 	if brokers := os.Getenv("WATERMILL_TEST_KAFKA_BROKERS"); brokers != "" {
@@ -34,14 +39,17 @@ func TestMain(m *testing.M) {
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "failed to get kafka brokers: %v\n", err)
 
+		//nolint:errcheck // cleanup path: there is nothing useful to do with the error
 		_ = container.Terminate(context.Background())
 
 		os.Exit(1)
 	}
 
-	if err := os.Setenv("WATERMILL_TEST_KAFKA_BROKERS", strings.Join(brokers, ",")); err != nil {
+	err = os.Setenv("WATERMILL_TEST_KAFKA_BROKERS", strings.Join(brokers, ","))
+	if err != nil {
 		fmt.Fprintf(os.Stderr, "failed to set env: %v\n", err)
 
+		//nolint:errcheck // cleanup path: there is nothing useful to do with the error
 		_ = container.Terminate(context.Background())
 
 		os.Exit(1)
@@ -49,6 +57,7 @@ func TestMain(m *testing.M) {
 
 	code := m.Run()
 
+	//nolint:errcheck // cleanup path: there is nothing useful to do with the error
 	_ = container.Terminate(context.Background())
 
 	os.Exit(code)

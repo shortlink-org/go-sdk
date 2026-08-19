@@ -15,9 +15,10 @@ type Marshaler interface {
 
 // Unmarshaler unmarshals Kafka's message to Watermill's message.
 type Unmarshaler interface {
-	Unmarshal(*sarama.ConsumerMessage) (*message.Message, error)
+	Unmarshal(consumed *sarama.ConsumerMessage) (*message.Message, error)
 }
 
+//nolint:iface // public API: consumers implement this, this package does not
 type MarshalerUnmarshaler interface {
 	Marshaler
 	Unmarshaler
@@ -69,17 +70,17 @@ func (DefaultMarshaler) Unmarshal(kafkaMsg *sarama.ConsumerMessage) (*message.Me
 
 type GeneratePartitionKey func(topic string, msg *message.Message) (string, error)
 
-type kafkaJsonWithPartitioning struct {
+type kafkaJSONWithPartitioning struct {
 	DefaultMarshaler
 
 	generatePartitionKey GeneratePartitionKey
 }
 
-func NewWithPartitioningMarshaler(generatePartitionKey GeneratePartitionKey) kafkaJsonWithPartitioning {
-	return kafkaJsonWithPartitioning{generatePartitionKey: generatePartitionKey}
+func NewWithPartitioningMarshaler(generatePartitionKey GeneratePartitionKey) kafkaJSONWithPartitioning {
+	return kafkaJSONWithPartitioning{generatePartitionKey: generatePartitionKey}
 }
 
-func (j kafkaJsonWithPartitioning) Marshal(topic string, msg *message.Message) (*sarama.ProducerMessage, error) {
+func (j kafkaJSONWithPartitioning) Marshal(topic string, msg *message.Message) (*sarama.ProducerMessage, error) {
 	kafkaMsg, err := j.DefaultMarshaler.Marshal(topic, msg)
 	if err != nil {
 		return nil, err

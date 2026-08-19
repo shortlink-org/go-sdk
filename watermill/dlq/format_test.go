@@ -9,12 +9,16 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+//nolint:tagliatelle // mirrors the published DLQ wire format
 type dlqPayload struct {
 	Original struct {
 		Payload  json.RawMessage   `json:"payload"`
 		Metadata map[string]string `json:"metadata"`
 	} `json:"original_message"`
 }
+
+// testReason is the failure text these tables share.
+const testReason = "boom"
 
 func TestBuildDLQMessagePreservesMetadata(t *testing.T) {
 	original := message.NewMessage("original-123", []byte(`{"foo":"bar"}`))
@@ -23,7 +27,7 @@ func TestBuildDLQMessagePreservesMetadata(t *testing.T) {
 
 	event := DLQEvent{
 		FailedAt:    time.Unix(1, 0).UTC(),
-		Reason:      "boom",
+		Reason:      testReason,
 		OriginalMsg: original,
 		Stacktrace:  "stack",
 		ServiceName: "svc",
@@ -32,7 +36,7 @@ func TestBuildDLQMessagePreservesMetadata(t *testing.T) {
 	msg, err := BuildDLQMessage(event)
 	require.NoError(t, err)
 
-	require.Equal(t, "boom", msg.Metadata.Get("poison_reason"))
+	require.Equal(t, testReason, msg.Metadata.Get("poison_reason"))
 	require.Equal(t, "stack", msg.Metadata.Get("poison_stacktrace"))
 	require.Equal(t, "svc", msg.Metadata.Get("service_name"))
 	require.Equal(t, "1", msg.Metadata.Get("dlq_version"))
@@ -45,7 +49,7 @@ func TestDLQEventJSONIncludesOriginalPayload(t *testing.T) {
 	original := message.NewMessage("original-456", []byte(`{"hello":"world"}`))
 	event := DLQEvent{
 		FailedAt:    time.Unix(2, 0).UTC(),
-		Reason:      "boom",
+		Reason:      testReason,
 		OriginalMsg: original,
 	}
 

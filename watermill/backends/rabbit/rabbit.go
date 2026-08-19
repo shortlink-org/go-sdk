@@ -10,13 +10,21 @@ import (
 	"github.com/shortlink-org/go-sdk/logger"
 )
 
+// ErrNotImplemented reports that the RabbitMQ backend is still a stub.
+var ErrNotImplemented = errors.New("RabbitMQ backend is not implemented yet")
+
 type Backend struct{}
 
 func New(ctx context.Context, log logger.Logger, cfg *config.Config) (*Backend, error) {
 	// TODO: implement real AMQP adapter
-	return nil, errors.New("RabbitMQ backend is not implemented yet")
+	//nolint:ireturn // the interface is the library's own contract
+	return nil, ErrNotImplemented
+	//nolint:ireturn // the interface is the library's own contract
 }
 
-func (b *Backend) Publisher() message.Publisher   { return nil }
+//nolint:ireturn // message.Publisher is the Backend contract
+func (b *Backend) Publisher() message.Publisher { return nil }
+
+//nolint:ireturn // message.Subscriber is the Backend contract
 func (b *Backend) Subscriber() message.Subscriber { return nil }
 func (b *Backend) Close() error                   { return nil }

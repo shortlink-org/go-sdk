@@ -33,6 +33,7 @@ func BenchmarkDefaultMarshaler_Marshal(b *testing.B) {
 	msg.Metadata.Set("foo", "bar")
 
 	for range b.N {
+		//nolint:errcheck // cleanup path: there is nothing useful to do with the error
 		_, _ = m.Marshal("foo", msg)
 	}
 }
@@ -51,6 +52,7 @@ func BenchmarkDefaultMarshaler_Unmarshal(b *testing.B) {
 	consumedMsg := producerToConsumerMessage(marshaled)
 
 	for range b.N {
+		//nolint:errcheck // cleanup path: there is nothing useful to do with the error
 		_, _ = m.Unmarshal(consumedMsg)
 	}
 }
@@ -72,7 +74,7 @@ func TestWithPartitioningMarshaler_MarshalUnmarshal(t *testing.T) {
 
 	assert.True(t, msg.Equals(unmarshaledMsg))
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	producerKey, err := producerMsg.Key.Encode()
 	require.NoError(t, err)
@@ -103,7 +105,7 @@ func producerToConsumerMessage(producerMessage *sarama.ProducerMessage) *sarama.
 		}
 	}
 
-	var headers []*sarama.RecordHeader
+	headers := make([]*sarama.RecordHeader, 0, len(producerMessage.Headers))
 	for i := range producerMessage.Headers {
 		headers = append(headers, &producerMessage.Headers[i])
 	}

@@ -43,6 +43,7 @@ func New(_ context.Context, log logger.Logger, cfg *config.Config) (*Backend, er
 
 	subscriber, err := NewSubscriber(settings.subscriberConfig(), wmLogger)
 	if err != nil {
+		//nolint:errcheck // cleanup path: there is nothing useful to do with the error
 		_ = publisher.Close()
 		return nil, fmt.Errorf("create kafka subscriber: %w", err)
 	}
@@ -54,6 +55,8 @@ func New(_ context.Context, log logger.Logger, cfg *config.Config) (*Backend, er
 }
 
 // Publisher returns the configured Kafka publisher.
+//
+//nolint:ireturn // the interface is the library's own contract
 func (b *Backend) Publisher() message.Publisher {
 	if b == nil {
 		return nil
@@ -63,6 +66,8 @@ func (b *Backend) Publisher() message.Publisher {
 }
 
 // Subscriber returns the configured Kafka subscriber.
+//
+//nolint:ireturn // the interface is the library's own contract
 func (b *Backend) Subscriber() message.Subscriber {
 	if b == nil {
 		return nil
