@@ -92,8 +92,8 @@ github.com/google/go-cmp v0.5.9/go.mod h1:17dUlkBOakJ0+DkrSSNjCkIjxS6bF9zb3elmeN
 github.com/google/go-cmp v0.7.0 h1:wk8382ETsv4JYUZwIsn6YpYiWiBsYLSJiTsyBybVuN8=
 github.com/google/go-cmp v0.7.0/go.mod h1:pXiqmnSA92OHEEa9HXL2W4E7lf9JzCmGVUdgjX3N/iU=
 github.com/google/pprof v0.0.0-20210407192527-94a9f03dee38/go.mod h1:kpwsk12EmLew5upagYY7GY0pfYCcupk39gWOCRROcvE=
-github.com/google/pprof v0.0.0-20251213031049-b05bdaca462f h1:HU1RgM6NALf/KW9HEY6zry3ADbDKcmpQ+hJedoNGQYQ=
-github.com/google/pprof v0.0.0-20251213031049-b05bdaca462f/go.mod h1:67FPmZWbr+KDT/VlpWtw6sO9XSjpJmLuHpoLmWiTGgY=
+github.com/google/pprof v0.0.0-20260802141513-ef3492d7dac3 h1:LMLX+LgTNWpfvCBdFebv6EsYotImrt/Ppc5cXIriCSo=
+github.com/google/pprof v0.0.0-20260802141513-ef3492d7dac3/go.mod h1:jl5iWTm0/hd5PjEYEOuwAJ57L/CibdZfrqZ5XA5GrCk=
 github.com/google/uuid v1.6.0 h1:NIvaJDMOsjHA8n1jAhLSgzrAzy1Hgr+hNrb57e+94F0=
 github.com/google/uuid v1.6.0/go.mod h1:TIyPZe4MgqvfeYDBFedMoGGpEw/LqOeaOT+nhxU+yHo=
 github.com/h2non/gock v1.2.0 h1:K6ol8rfrRkUOefooBC8elXoaNGYkpp7y2qcxGG6BzUE=
@@ -168,8 +168,8 @@ github.com/onsi/ginkgo/v2 v2.3.0/go.mod h1:Eew0uilEqZmIEZr8JrvYlvOM7Rr6xzTmMV8Ay
 github.com/onsi/ginkgo/v2 v2.4.0/go.mod h1:iHkDK1fKGcBoEHT5W7YBq4RFWaQulw+caOMkAt4OrFo=
 github.com/onsi/ginkgo/v2 v2.5.0/go.mod h1:Luc4sArBICYCS8THh8v3i3i5CuSZO+RaQRaJoeNwomw=
 github.com/onsi/ginkgo/v2 v2.7.0/go.mod h1:yjiuMwPokqY1XauOgju45q3sJt6VzQ/Fict1LFVcsAo=
-github.com/onsi/ginkgo/v2 v2.27.3 h1:ICsZJ8JoYafeXFFlFAG75a7CxMsJHwgKwtO+82SE9L8=
-github.com/onsi/ginkgo/v2 v2.27.3/go.mod h1:ArE1D/XhNXBXCBkKOLkbsb2c81dQHCRcF5zwn/ykDRo=
+github.com/onsi/ginkgo/v2 v2.32.1 h1:6tlvcDm/3sE8lGJbZ4+d4mO3RLy24/tQWOFzVSQNIfw=
+github.com/onsi/ginkgo/v2 v2.32.1/go.mod h1:+aXOY+vzZ5mu2iI2HpTZUPmM//oQfsNFX6gU9kNcA44=
 github.com/onsi/gomega v1.7.1/go.mod h1:XdKZgCCFLUoM/7CFJVPcG8C1xQ1AJ0vpAezJrB7JYyY=
 github.com/onsi/gomega v1.10.1/go.mod h1:iN09h71vgCQne3DLsj+A5owkum+a2tYe+TOCB1ybHNo=
 github.com/onsi/gomega v1.17.0/go.mod h1:HnhC7FXeEQY45zxNK3PPoIUhzk/80Xly9PcubAlGdZY=
@@ -206,10 +206,10 @@ github.com/redis/go-redis/v9 v9.22.0 h1:laDvpYXTJtZLloinw1fA5Kqd6HAEH2XKxOkG/PDq
 github.com/redis/go-redis/v9 v9.22.0/go.mod h1:y2g0Wj8rQvuK0ELM+oxSudcLtC09JScs98I/X9gRWY4=
 github.com/redis/rueidis v1.0.77 h1:ZR41bgJcm7oRFb3aSDPrRhC0eonDSrPzjvvZvHIlNjM=
 github.com/redis/rueidis v1.0.77/go.mod h1:L8mnCQJJaSNL6I4pIR6Rz732HTGS9vmuXm0yT9dRvjo=
-github.com/redis/rueidis/mock v1.0.74 h1:2/HxU6lREIvjEvwdo8gGj3Xo8TIZbKEDDYEPNgfggMo=
-github.com/redis/rueidis/mock v1.0.74/go.mod h1:NWl9MkyhR7XMTWcjK9voFvFevkSl+UyD3WCvlZPCtLk=
-github.com/redis/rueidis/rueidiscompat v1.0.74 h1:AdvxfjbeBbCsbol5JrN+66r+XvC0rkBAloe22Tbst/Y=
-github.com/redis/rueidis/rueidiscompat v1.0.74/go.mod h1:MLmPKLG5q5rt8LER+FAJCKmiTRp0Pk447EpolZXB3pM=
+github.com/redis/rueidis/mock v1.0.77 h1:Y3NAvm8X4r+86zuV2QCAMaGkvU73MGp//ZDZKiVXDXk=
+github.com/redis/rueidis/mock v1.0.77/go.mod h1:zLAQmGvNWZijKx99/U0FB40yf9RS11C5x99hSlb95cw=
+github.com/redis/rueidis/rueidiscompat v1.0.77 h1:S1xiLQsFv8XQ46e0LelC8ihGqbDzVRocXXZLzVAeh64=
+github.com/redis/rueidis/rueidiscompat v1.0.77/go.mod h1:aXCvRVUTvTHZY0owHuz9JjveO1hyuzyDWrpJh8/E3Ds=
 github.com/redis/rueidis/rueidisotel v1.0.77 h1:pUQzJaAXeBsiCn7+V0dJrKHQBG5ArsWotLHF6373wSg=
 github.com/redis/rueidis/rueidisotel v1.0.77/go.mod h1:Z8bXGJbGGNOQDqgCm9K8jacUGurtiJktfsPzErqKFxs=
 github.com/rogpeppe/go-internal v1.6.1/go.mod h1:xXDCJY+GAPziupqXw64V24skbSoqbTEfhy4qGm1nDQc=
