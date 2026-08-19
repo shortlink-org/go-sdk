@@ -42,6 +42,7 @@ func TestMongo(t *testing.T) {
 
 	t.Cleanup(func() {
 		cancel()
+		//nolint:errcheck // cleanup path: there is nothing useful to do with the error
 		_ = mongoContainer.Terminate(context.Background())
 	})
 

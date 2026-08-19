@@ -37,8 +37,10 @@ func TestDgraph(t *testing.T) {
 	log, err := logger.New(logConf)
 	require.NoError(t, err)
 	t.Cleanup(func() {
+		//nolint:errcheck // cleanup path: there is nothing useful to do with the error
 		_ = log.Close()
 	})
+
 	store := New(log, cfg)
 
 	nw, err := network.New(ctx)
@@ -63,15 +65,21 @@ func TestDgraph(t *testing.T) {
 		),
 	)
 	if err != nil {
+		//nolint:errcheck // cleanup path: there is nothing useful to do with the error
 		_ = zero.Terminate(context.Background())
+		//nolint:errcheck // cleanup path: there is nothing useful to do with the error
 		_ = nw.Remove(context.Background())
 	}
+
 	require.NoError(t, err)
 
 	t.Cleanup(func() {
 		cancel()
+		//nolint:errcheck // cleanup path: there is nothing useful to do with the error
 		_ = alpha.Terminate(context.Background())
+		//nolint:errcheck // cleanup path: there is nothing useful to do with the error
 		_ = zero.Terminate(context.Background())
+		//nolint:errcheck // cleanup path: there is nothing useful to do with the error
 		_ = nw.Remove(context.Background())
 	})
 

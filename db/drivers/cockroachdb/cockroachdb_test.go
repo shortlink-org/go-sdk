@@ -4,7 +4,7 @@ package cockroachdb
 
 import (
 	"context"
-	"fmt"
+	"net"
 	"os"
 	"testing"
 	"time"
@@ -27,6 +27,7 @@ func TestCockroachDB(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	cfg, err := config.New()
 	require.NoError(t, err)
+
 	store := New(cfg)
 
 	c, err := testcontainers.Run(ctx, "cockroachdb/cockroach:v23.1.3",
@@ -44,6 +45,7 @@ func TestCockroachDB(t *testing.T) {
 
 	t.Cleanup(func() {
 		cancel()
+		//nolint:errcheck // cleanup path: there is nothing useful to do with the error
 		_ = c.Terminate(context.Background())
 	})
 
@@ -52,6 +54,7 @@ func TestCockroachDB(t *testing.T) {
 	mapped, err := c.MappedPort(ctx, "26257/tcp")
 	require.NoError(t, err)
 
-	t.Setenv("STORE_COCKROACHDB_URI", fmt.Sprintf("postgresql://root:password@%s:%s/shortlink?sslmode=disable", host, mapped.Port()))
+	t.Setenv("STORE_COCKROACHDB_URI",
+		"postgresql://root:password@"+net.JoinHostPort(host, mapped.Port())+"/shortlink?sslmode=disable")
 	require.NoError(t, store.Init(ctx))
 }

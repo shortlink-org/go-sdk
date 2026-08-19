@@ -4,7 +4,7 @@ package edgedb
 
 import (
 	"context"
-	"fmt"
+	"net"
 	"os"
 	"testing"
 	"time"
@@ -27,6 +27,7 @@ func TestEdgeDB(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	cfg, err := config.New()
 	require.NoError(t, err)
+
 	store := New(cfg)
 
 	c, err := testcontainers.Run(ctx, "edgedb/edgedb:4",
@@ -43,6 +44,7 @@ func TestEdgeDB(t *testing.T) {
 
 	t.Cleanup(func() {
 		cancel()
+		//nolint:errcheck // cleanup path: there is nothing useful to do with the error
 		_ = c.Terminate(context.Background())
 	})
 
@@ -51,6 +53,6 @@ func TestEdgeDB(t *testing.T) {
 	mapped, err := c.MappedPort(ctx, "5656/tcp")
 	require.NoError(t, err)
 
-	cfg.Set("STORE_EDGEDB_URI", fmt.Sprintf("edgedb://%s:%s", host, mapped.Port()))
+	cfg.Set("STORE_EDGEDB_URI", "edgedb://"+net.JoinHostPort(host, mapped.Port()))
 	require.NoError(t, store.Init(ctx))
 }

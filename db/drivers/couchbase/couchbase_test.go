@@ -4,7 +4,7 @@ package couchbase
 
 import (
 	"context"
-	"fmt"
+	"net"
 	"os"
 	"testing"
 	"time"
@@ -27,6 +27,7 @@ func TestCouchbase(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	cfg, err := config.New()
 	require.NoError(t, err)
+
 	store := New(cfg)
 
 	c, err := testcontainers.Run(ctx, "couchbase:7.2.3",
@@ -39,6 +40,7 @@ func TestCouchbase(t *testing.T) {
 
 	t.Cleanup(func() {
 		cancel()
+		//nolint:errcheck // cleanup path: there is nothing useful to do with the error
 		_ = c.Terminate(context.Background())
 	})
 
@@ -47,6 +49,6 @@ func TestCouchbase(t *testing.T) {
 	mapped, err := c.MappedPort(ctx, "8092/tcp")
 	require.NoError(t, err)
 
-	t.Setenv("STORE_COUCHBASE_URI", fmt.Sprintf("couchbase://%s:%s", host, mapped.Port()))
+	t.Setenv("STORE_COUCHBASE_URI", "couchbase://"+net.JoinHostPort(host, mapped.Port()))
 	require.NoError(t, store.Init(ctx))
 }

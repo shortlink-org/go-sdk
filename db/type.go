@@ -29,6 +29,8 @@ type Store struct {
 // reports ErrGetConnection when the driver in use is not the expected one:
 //
 //	pool, err := db.Conn[*pgxpool.Pool](store)
+//
+//nolint:ireturn // T is the caller's own concrete pool type
 func Conn[T any](d DB) (T, error) {
 	conn, ok := d.GetConn().(T)
 	if !ok {

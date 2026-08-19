@@ -26,6 +26,7 @@ func TestScyllaDB(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	cfg, err := config.New()
 	require.NoError(t, err)
+
 	store := New(cfg)
 
 	c, err := tcscylla.Run(ctx, "scylladb/scylla:6.2")
@@ -45,7 +46,9 @@ func TestScyllaDB(t *testing.T) {
 	require.NotNil(t, sess)
 
 	var version string
-	err = sess.Query("SELECT release_version FROM system.local").WithContext(ctx).Scan(&version)
-	require.NoError(t, err)
+
+	iter := sess.Query("SELECT release_version FROM system.local").IterContext(ctx)
+	iter.Scan(&version)
+	require.NoError(t, iter.Close())
 	require.NotEmpty(t, version)
 }

@@ -43,7 +43,12 @@ func (s *Store) Init(ctx context.Context) error {
 
 	var version string
 
-	err = s.session.Query("SELECT release_version FROM system.local").WithContext(ctx).Scan(&version)
+	// IterContext replaces the deprecated WithContext; Scan reports whether a
+	// row was read, and Close carries the error.
+	iter := s.session.Query("SELECT release_version FROM system.local").IterContext(ctx)
+	iter.Scan(&version)
+
+	err = iter.Close()
 	if err != nil {
 		s.session.Close()
 		s.session = nil
@@ -54,7 +59,7 @@ func (s *Store) Init(ctx context.Context) error {
 	go func() {
 		<-ctx.Done()
 
-		_ = s.close()
+		s.close()
 	}()
 
 	return nil
@@ -65,15 +70,13 @@ func (s *Store) GetConn() any {
 	return s.session
 }
 
-func (s *Store) close() error {
+func (s *Store) close() {
 	if s.session == nil {
-		return nil
+		return
 	}
 
 	s.session.Close()
 	s.session = nil
-
-	return nil
 }
 
 func (s *Store) setConfig() {

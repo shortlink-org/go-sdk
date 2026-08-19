@@ -9,7 +9,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/otel/sdk/metric"
-	"go.opentelemetry.io/otel/trace"
+	"go.opentelemetry.io/otel/trace/noop"
 	"go.uber.org/goleak"
 
 	"github.com/shortlink-org/go-sdk/config"
@@ -25,7 +25,8 @@ func TestSQLite(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	cfg, err := config.New()
 	require.NoError(t, err)
-	store := New(trace.NewNoopTracerProvider(), metric.NewMeterProvider(), cfg)
+
+	store := New(noop.NewTracerProvider(), metric.NewMeterProvider(), cfg)
 
 	err = store.Init(ctx)
 	require.NoError(t, err)

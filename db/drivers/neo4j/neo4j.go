@@ -19,7 +19,7 @@ type Config struct {
 
 // Store implementation of db interface
 type Store struct {
-	client neo4j.DriverWithContext
+	client neo4j.Driver
 	config Config
 	cfg    *config.Config
 }
@@ -41,7 +41,7 @@ func (s *Store) Init(ctx context.Context) error {
 		}
 	}
 
-	s.client, err = neo4j.NewDriverWithContext(s.config.URI, neo4j.BasicAuth(s.config.login, s.config.password, ""))
+	s.client, err = neo4j.NewDriver(s.config.URI, neo4j.BasicAuth(s.config.login, s.config.password, ""))
 	if err != nil {
 		return &StoreError{
 			Op:      "init",

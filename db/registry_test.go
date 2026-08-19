@@ -4,7 +4,6 @@ package db
 
 import (
 	"context"
-	"errors"
 	"maps"
 	"slices"
 	"testing"
@@ -15,6 +14,7 @@ import (
 	"github.com/shortlink-org/go-sdk/logger"
 )
 
+//nolint:ireturn // the logger interface is what Deps takes
 func testDeps(t *testing.T) (logger.Logger, *config.Config) {
 	t.Helper()
 
@@ -81,7 +81,7 @@ func TestConnReportsWrongType(t *testing.T) {
 	require.NoError(t, err, "Error init a db")
 
 	_, err = Conn[*testing.T](store)
-	require.True(t, errors.Is(err, ErrGetConnection), "expected ErrGetConnection")
+	require.ErrorIs(t, err, ErrGetConnection)
 }
 
 // TestOptionsForUnregisteredDriverFail - an option whose target nothing
@@ -123,7 +123,7 @@ func withCleanRegistry(t *testing.T) {
 
 	registryMu.Lock()
 	savedRegistry := maps.Clone(registry)
-	savedErrs := registerErrs
+	savedErrs := errRegistration
 	registryMu.Unlock()
 
 	t.Cleanup(func() {
@@ -131,7 +131,7 @@ func withCleanRegistry(t *testing.T) {
 		defer registryMu.Unlock()
 
 		registry = savedRegistry
-		registerErrs = savedErrs
+		errRegistration = savedErrs
 	})
 }
 

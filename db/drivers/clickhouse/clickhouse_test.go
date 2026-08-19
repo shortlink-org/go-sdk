@@ -5,6 +5,7 @@ package clickhouse
 import (
 	"context"
 	"fmt"
+	"net"
 	"os"
 	"testing"
 	"time"
@@ -36,6 +37,7 @@ func TestClickHouse(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	cfg, err := config.New()
 	require.NoError(t, err)
+
 	store := New(cfg)
 
 	c, err := testcontainers.Run(ctx, clickhouseImage,
@@ -57,6 +59,7 @@ func TestClickHouse(t *testing.T) {
 
 	t.Cleanup(func() {
 		cancel()
+		//nolint:errcheck // cleanup path: there is nothing useful to do with the error
 		_ = c.Terminate(context.Background())
 	})
 
@@ -66,8 +69,8 @@ func TestClickHouse(t *testing.T) {
 	require.NoError(t, err)
 
 	t.Setenv("STORE_CLICKHOUSE_URI", fmt.Sprintf(
-		"clickhouse://%s:%s@%s:%s/%s?sslmode=disable",
-		clickhouseUser, clickhousePassword, host, mapped.Port(), clickhouseDB,
+		"clickhouse://%s:%s@%s/%s?sslmode=disable",
+		clickhouseUser, clickhousePassword, net.JoinHostPort(host, mapped.Port()), clickhouseDB,
 	))
 	require.NoError(t, store.Init(ctx))
 

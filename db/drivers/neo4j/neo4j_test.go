@@ -24,6 +24,7 @@ func TestNeo4j(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	cfg, err := config.New()
 	require.NoError(t, err)
+
 	store := New(cfg)
 
 	neo4jContainer, err := neo4j.Run(ctx, "neo4j:5-community")
@@ -31,6 +32,7 @@ func TestNeo4j(t *testing.T) {
 
 	t.Cleanup(func() {
 		cancel()
+		//nolint:errcheck // cleanup path: there is nothing useful to do with the error
 		_ = neo4jContainer.Terminate(context.Background())
 	})
 

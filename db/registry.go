@@ -29,6 +29,8 @@ type Deps struct {
 }
 
 // Factory builds a driver from the shared dependencies.
+//
+//nolint:gocritic // Deps is public API; every driver's init depends on this shape
 type Factory func(deps Deps) (DB, error)
 
 //nolint:gochecknoglobals // driver registry, mirrors database/sql
@@ -36,8 +38,9 @@ var (
 	registryMu sync.RWMutex
 	registry   = map[string]Factory{}
 
-	// registerErrs collects what Register could not accept, for New to report.
-	registerErrs error
+	// Failures collected by Register, for New to report. Not a sentinel: it is
+	// whatever the drivers could not agree on, joined.
+	errRegistration error
 )
 
 // Register makes a driver available under name. Drivers call it from init, so
@@ -54,13 +57,13 @@ func Register(name string, factory Factory) {
 	defer registryMu.Unlock()
 
 	if factory == nil {
-		registerErrs = errors.Join(registerErrs, &RegisterError{Driver: name, Reason: "factory is nil"})
+		errRegistration = errors.Join(errRegistration, &RegisterError{Driver: name, Reason: "factory is nil"})
 
 		return
 	}
 
 	if _, dup := registry[name]; dup {
-		registerErrs = errors.Join(registerErrs, &RegisterError{Driver: name, Reason: "registered twice"})
+		errRegistration = errors.Join(errRegistration, &RegisterError{Driver: name, Reason: "registered twice"})
 
 		return
 	}
@@ -75,7 +78,7 @@ func RegistrationError() error {
 	registryMu.RLock()
 	defer registryMu.RUnlock()
 
-	return registerErrs
+	return errRegistration
 }
 
 // Drivers returns the names of the registered drivers, sorted.
@@ -106,6 +109,8 @@ func lookup(name string) (Factory, bool) {
 // DriverOptions converts the options addressed to this driver into the
 // driver's own option type. An option of the wrong type is a wiring mistake
 // and is reported rather than ignored.
+//
+//nolint:gocritic // Deps is public API; drivers call this from their factory
 func DriverOptions[T any](deps Deps) ([]T, error) {
 	opts := make([]T, 0, len(deps.options))
 

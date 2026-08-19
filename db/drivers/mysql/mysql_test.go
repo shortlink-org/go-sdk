@@ -13,7 +13,7 @@ import (
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/wait"
 	"go.opentelemetry.io/otel/sdk/metric"
-	"go.opentelemetry.io/otel/trace"
+	"go.opentelemetry.io/otel/trace/noop"
 	"go.uber.org/goleak"
 
 	"github.com/shortlink-org/go-sdk/config"
@@ -29,7 +29,8 @@ func TestMySQL(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	cfg, err := config.New()
 	require.NoError(t, err)
-	store := New(trace.NewNoopTracerProvider(), metric.NewMeterProvider(), cfg)
+
+	store := New(noop.NewTracerProvider(), metric.NewMeterProvider(), cfg)
 
 	c, err := testcontainers.Run(ctx, "mysql:latest",
 		testcontainers.WithEnv(map[string]string{"MYSQL_ROOT_PASSWORD": "secret"}),
@@ -42,6 +43,7 @@ func TestMySQL(t *testing.T) {
 
 	t.Cleanup(func() {
 		cancel()
+		//nolint:errcheck // cleanup path: there is nothing useful to do with the error
 		_ = c.Terminate(context.Background())
 	})
 

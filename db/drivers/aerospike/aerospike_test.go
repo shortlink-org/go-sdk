@@ -4,7 +4,7 @@ package aerospike
 
 import (
 	"context"
-	"fmt"
+	"net"
 	"os"
 	"testing"
 
@@ -26,6 +26,7 @@ func TestAerospike(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	cfg, err := config.New()
 	require.NoError(t, err)
+
 	store := New(cfg)
 
 	asContainer, err := aerospike.Run(ctx, "aerospike/aerospike-server:6.4.0.6")
@@ -39,6 +40,6 @@ func TestAerospike(t *testing.T) {
 	mapped, err := asContainer.MappedPort(ctx, "3000/tcp")
 	require.NoError(t, err)
 
-	cfg.Set("STORE_AEROSPIKE_URI", fmt.Sprintf("tcp://%s:%s", host, mapped.Port()))
+	cfg.Set("STORE_AEROSPIKE_URI", "tcp://"+net.JoinHostPort(host, mapped.Port()))
 	require.NoError(t, store.Init(ctx))
 }

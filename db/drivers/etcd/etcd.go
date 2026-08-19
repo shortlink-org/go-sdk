@@ -52,7 +52,9 @@ func (s *Store) Init(ctx context.Context) error {
 	go func() {
 		<-ctx.Done()
 
-		s.close() //nolint:errcheck // background cleanup
+		// #nosec G104 -- background cleanup on context cancellation
+		//nolint:errcheck // there is nothing to do with a shutdown error here
+		s.close()
 	}()
 
 	return nil

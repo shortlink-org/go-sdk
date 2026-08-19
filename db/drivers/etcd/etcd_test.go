@@ -26,6 +26,7 @@ func TestETCD(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	cfg, err := config.New()
 	require.NoError(t, err)
+
 	store := New(cfg)
 
 	etcdC, err := tcetcd.Run(ctx, "gcr.io/etcd-development/etcd:v3.5.14")

@@ -1,5 +1,5 @@
 /*
-Data Base package
+Package db selects a database driver at runtime.
 
 A driver becomes selectable by being imported for its side effect:
 

@@ -26,6 +26,7 @@ func TestRedis(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	cfg, err := config.New()
 	require.NoError(t, err)
+
 	store := New(nil, nil, cfg)
 
 	c, err := tcredis.Run(ctx, "redis:7-alpine")

@@ -71,6 +71,7 @@ func (s *Store) Init(ctx context.Context) error {
 	go func() {
 		<-ctx.Done()
 
+		//nolint:errcheck // cleanup path: there is nothing useful to do with the error
 		_ = s.close()
 	}()
 

@@ -23,6 +23,7 @@ func TestBadger(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	cfg, err := config.New()
 	require.NoError(t, err)
+
 	store := New(cfg)
 
 	err = store.Init(ctx)

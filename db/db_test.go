@@ -12,7 +12,6 @@ import (
 	"github.com/shortlink-org/go-sdk/logger"
 )
 
-// TestLink ...
 func TestLink(t *testing.T) {
 	ctx := context.Background()
 
