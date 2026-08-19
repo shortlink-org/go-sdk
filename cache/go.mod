@@ -81,7 +81,7 @@ require (
 	github.com/prometheus/procfs v0.21.1 // indirect
 	github.com/redis/rueidis/rueidisotel v1.0.77 // indirect
 	github.com/sagikazarmark/locafero v0.11.0 // indirect
-	github.com/shortlink-org/go-sdk/config v0.0.0-20260419222854-fd069f4d5106
+	github.com/shortlink-org/go-sdk/config v0.0.0-20260819095532-196f9f34e23d
 	github.com/shortlink-org/go-sdk/http v0.0.0-20260424225420-a63676f29741 // indirect
 	github.com/shortlink-org/go-sdk/logger v0.0.0-20260423005905-959e3e589a42 // indirect
 	github.com/sirupsen/logrus v1.9.4 // indirect
