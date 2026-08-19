@@ -1,0 +1,184 @@
+---
+# Alerting and recording rules for the read-replica routing in
+# github.com/shortlink-org/go-sdk/db/drivers/postgres.
+#
+# The design these rules watch is described in
+# db/drivers/postgres/ADR/0001-read-replica-routing.md. Two of the alerts guard
+# corners that the ADR calls out explicitly as the ones that will page you:
+# a probe that fails leaves the gate open on guesswork, and a promoted standby
+# keeps answering while no longer being a replica of anything.
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: postgres-read-replica
+  labels:
+    app.kubernetes.io/name: postgres-read-replica
+    app.kubernetes.io/part-of: go-sdk
+    # The Prometheus Operator only picks a rule up when its labels match the
+    # ruleSelector of a Prometheus resource. Adjust this to yours — a rule
+    # nobody selects is a rule that silently never runs.
+    release: kube-prometheus-stack
+spec:
+  groups:
+    - name: postgres.read-replica.recording
+      interval: 30s
+      rules:
+        # The headline number: the share of reads a replica served.
+        #
+        # Its ceiling is arithmetic rather than aspirational. Every request
+        # reads; a request that also writes taints itself, so its own read
+        # returns to the primary. At a read share of r the most that can leave
+        # is r/(2-r) — 33% at a 50/50 mix, not 50%.
+        - record: job:postgres_route_offload:ratio5m
+          expr: |
+            sum by (job) (rate(postgres_route_decisions_total{target="replica"}[5m]))
+            /
+            sum by (job) (rate(postgres_route_decisions_total{class="read"}[5m]))
+
+        # Statements the primary still serves. This is the line that should
+        # fall when routing is switched on.
+        - record: job:postgres_route_decisions_primary:rate5m
+          expr: |
+            sum by (job) (rate(postgres_route_decisions_total{target="primary"}[5m]))
+
+        # Reads that wanted a replica and got the primary, split by reason.
+        # The reason set is closed, so this stays bounded.
+        - record: job_reason:postgres_route_fallbacks:rate5m
+          expr: |
+            sum by (job, reason) (rate(postgres_route_fallbacks_total[5m]))
+
+    - name: postgres.read-replica.alerts
+      rules:
+        # --- topology ------------------------------------------------------
+        - alert: PostgresReplicaPromoted
+          expr: increase(postgres_replica_promotions_total[15m]) > 0
+          for: 0m
+          labels:
+            severity: critical
+          annotations:
+            summary: "Replica {{ $labels.server_address }} left recovery and was quarantined"
+            description: >-
+              The node stopped being a standby, so the driver quarantined it for
+              the lifetime of the process. That is a topology change, not a
+              blip: retrying cannot fix it, and routing reads there would mean
+              reading a diverged timeline from a node that now accepts writes.
+              Reconfigure the replica list, then restart the affected pods.
+              Watermarks minted before the promotion belong to the previous
+              timeline and are being discarded, which is correct.
+
+        - alert: PostgresNoHealthyReplica
+          expr: sum by (job) (postgres_replica_up) == 0
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: "No eligible read replica for {{ $labels.job }}"
+            description: >-
+              Every read is falling back to the primary. Reads still work — the
+              router degrades rather than fails — but the primary is carrying
+              load it was not sized for. Check the probe failures and lag
+              alerts for the cause.
+
+        # --- the design's most uncomfortable corner ------------------------
+        - alert: PostgresReplicaProbeFailing
+          expr: sum by (job, server_address) (rate(postgres_replica_probe_failures_total[5m])) > 0
+          for: 10m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Health probe failing for replica {{ $labels.server_address }}"
+            description: >-
+              The driver cannot tell how far this replica has replayed. Once the
+              sample goes stale the replica is excluded, so reads move to the
+              primary — but in the window before that, a read may be served from
+              a node the gate has no current information about. This is a
+              deliberate trade for availability, and it is the reason this alert
+              exists: nothing else will tell you.
+
+        - alert: PostgresReplicaLagHigh
+          expr: postgres_replica_lag_bytes > 67108864
+          for: 10m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Replica {{ $labels.server_address }} is {{ $value | humanize1024 }}B behind"
+            description: >-
+              Bytes, not seconds, on purpose: a replica can close five minutes
+              of lag in seconds or fail to close thirty seconds of it. Reads
+              carrying a watermark above this position are already going to the
+              primary; reads without one are subject to the configured lag
+              budget, so they may be served stale.
+
+        # --- the feature is on but not wired -------------------------------
+        - alert: PostgresRoutingNotWired
+          expr: |
+            (
+              sum by (job) (rate(postgres_route_fallbacks_total{reason="no_tracker"}[15m]))
+              /
+              clamp_min(sum by (job) (rate(postgres_route_decisions_total{class="read"}[15m])), 0.001)
+            ) > 0.5
+            and on (job) (sum by (job) (postgres_replica_up) > 0)
+          for: 30m
+          labels:
+            severity: info
+          annotations:
+            summary: "Most reads in {{ $labels.job }} are unscoped and default to the primary"
+            description: >-
+              Replicas are healthy, but more than half of reads arrive with no
+              tracker in their context, so the safe default sends them to the
+              primary. Nothing is scoping the unit of work. Install the boundary
+              middleware — httpmw for HTTP, the consistency interceptors for
+              gRPC, or WithTracker on your command and query bus — or set
+              STORE_POSTGRES_REPLICA_NO_TRACKER_POLICY=replica if the service
+              never writes.
+
+        - alert: PostgresReplicaOffloadCollapsed
+          expr: |
+            job:postgres_route_offload:ratio5m < 0.05
+            and on (job) (sum by (job) (postgres_replica_up) > 0)
+          for: 30m
+          labels:
+            severity: info
+          annotations:
+            summary: "Read offload for {{ $labels.job }} has collapsed to {{ $value | humanizePercentage }}"
+            description: >-
+              Replicas are eligible and yet almost nothing is being routed to
+              them. Look at job_reason:postgres_route_fallbacks:rate5m to see
+              which reason dominates: behind means replication is not keeping
+              up, tainted means the workload is write-heavy and read-after-write
+              is doing its job, no_tracker means the wiring is missing.
+
+        # --- cross-boundary consistency ------------------------------------
+        - alert: PostgresWatermarkCaptureFailing
+          expr: sum by (job) (rate(postgres_watermark_capture_duration_seconds_count{outcome="error"}[10m])) > 0
+          for: 10m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Cannot capture the WAL position on the primary for {{ $labels.job }}"
+            description: >-
+              Cross-boundary read-after-write is degrading silently. A failed
+              capture is swallowed on purpose — turning a consistency
+              optimisation into a failed request would be the wrong trade — so
+              the caller simply reads from the primary. Nothing else surfaces
+              this.
+
+        - alert: PostgresConsistencyGateNotCatchingUp
+          expr: |
+            (
+              sum by (job, topic) (rate(watermill_consistency_gate_results_total{outcome="not_caught_up"}[10m]))
+              /
+              clamp_min(sum by (job, topic) (rate(watermill_consistency_gate_results_total[10m])), 0.001)
+            ) > 0.05
+          for: 15m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Messages on {{ $labels.topic }} keep arriving before their writes have replayed"
+            description: >-
+              The handler waited its full budget and gave up, so these messages
+              went to the retry middleware. A trickle is normal. A sustained
+              rate means the wait budget is too small for the current lag —
+              raise STORE_POSTGRES_GATE_MAX_WAIT, or fix the lag. Left alone,
+              retries will exhaust and the poison filter is the only thing
+              keeping merely-early messages out of the dead-letter queue.

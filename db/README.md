@@ -33,6 +33,10 @@ are registered, which distinguishes a typo from a missing blank import.
 `edgedb`, `etcd`, `leveldb`, `mongo`, `mysql`, `neo4j`, `postgres`, `ram`,
 `redis`, `scylladb`, `sqlite`.
 
+The [postgres driver](./drivers/postgres/) additionally routes reads to a
+streaming replica without giving up read-your-writes — see
+[ADR 0001](./drivers/postgres/ADR/0001-read-replica-routing.md).
+
 ### Driver-specific options
 
 Most configuration arrives through `*config.Config`, but some cannot be spelled

@@ -17,30 +17,33 @@ import (
 
 // New return new instance of Store
 func New(tracer trace.TracerProvider, metrics *metric.MeterProvider, cfg *config.Config, opts ...Option) *Store {
-	s := &Store{
+	return &Store{
 		tracer: Tracer{
 			TracerProvider: tracer,
 		},
 		metrics: metrics,
 		cfg:     cfg,
+		opts:    opts,
 	}
-
-	for _, opt := range opts {
-		opt(s)
-	}
-
-	return s
 }
 
 // Init - initialize
 func (s *Store) Init(ctx context.Context) error {
 	var err error
 
+	// Resolve options: defaults, then configuration, then the functional
+	// options, so that an option always wins over an environment variable.
+	s.routing = routingFromConfig(s.cfg)
+
+	for _, opt := range s.opts {
+		opt(s)
+	}
+
 	// Set configuration
 	s.config, err = getConfig(&s.tracer, s.cfg)
 	if err != nil {
 		return &StoreError{
-			Op:      "init",
+			Op:      opInit,
 			Err:     err,
 			Details: "failed to get postgres connection config",
 		}
@@ -55,7 +58,7 @@ func (s *Store) Init(ctx context.Context) error {
 	s.client, err = pgxpool.NewWithConfig(ctx, s.config.config)
 	if err != nil {
 		return &StoreError{
-			Op:      "init",
+			Op:      opInit,
 			Err:     err,
 			Details: "failed to open the database",
 		}
@@ -69,17 +72,57 @@ func (s *Store) Init(ctx context.Context) error {
 		return &PingConnectionError{err}
 	}
 
-	// Graceful shutdown
-	go func() {
-		<-ctx.Done()
-
+	// Build the read-replica router. Without replica DSNs this is a no-op and
+	// the store behaves exactly as it did before routing existed.
+	s.router, err = s.buildRouter(ctx)
+	if err != nil {
 		s.client.Close()
+
+		return err
+	}
+
+	// Graceful shutdown, either by canceling ctx or by calling Close.
+	s.closed = make(chan struct{})
+
+	go func() {
+		select {
+		case <-ctx.Done():
+			s.Close()
+		case <-s.closed:
+		}
 	}()
 
 	return nil
 }
 
+// Close releases the connection pools and stops the replica poller. It is
+// idempotent, it waits for the poller goroutine to exit, and it is what
+// context cancellation ends up calling.
+//
+// Waiting matters: a poller that outlives its store shows up as a leaked
+// goroutine in tests and as a slow climb in a service that rebuilds stores.
+func (s *Store) Close() {
+	s.closeOnce.Do(func() {
+		if s.closed != nil {
+			close(s.closed)
+		}
+
+		if s.router != nil {
+			// Closes the replica pools and joins the poller goroutine.
+			s.router.Close()
+		}
+
+		if s.client != nil {
+			s.client.Close()
+		}
+	})
+}
+
 // GetConn - get connect
+//
+// It returns the primary pool, and always will: db.Conn[*pgxpool.Pool] is
+// public API, and downstream consumers of this SDK are invisible from here.
+// The read-replica router is reached through RouterFrom.
 func (s *Store) GetConn() any {
 	return s.client
 }
@@ -101,18 +144,25 @@ func getConfig(tracer *Tracer, cfg *config.Config) (*Config, error) {
 		}
 	}
 
-	// Instrument the pgxpool config with OpenTelemetry.
-	params := []otelpgx.Option{
-		otelpgx.WithIncludeQueryParameters(),
-	}
-	if tracer.TracerProvider != nil {
-		params = append(params, otelpgx.WithTracerProvider(tracer))
-	}
-
-	cnfPool.ConnConfig.Tracer = otelpgx.NewTracer(params...)
+	instrument(cnfPool, tracer)
 
 	return &Config{
 		config: cnfPool,
 		mode:   cfg.GetInt("STORE_MODE_WRITE"),
 	}, nil
+}
+
+// instrument wires OpenTelemetry into a pool config. Replica pools get the
+// same treatment as the primary, so a query is traced identically wherever it
+// runs.
+func instrument(pool *pgxpool.Config, tracer *Tracer) {
+	params := []otelpgx.Option{
+		otelpgx.WithIncludeQueryParameters(),
+	}
+
+	if tracer.TracerProvider != nil {
+		params = append(params, otelpgx.WithTracerProvider(tracer))
+	}
+
+	pool.ConnConfig.Tracer = otelpgx.NewTracer(params...)
 }

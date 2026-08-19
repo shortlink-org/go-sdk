@@ -11,7 +11,7 @@ import (
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/modules/postgres"
 	"go.opentelemetry.io/otel/sdk/metric"
-	"go.opentelemetry.io/otel/trace"
+	"go.opentelemetry.io/otel/trace/noop"
 	"go.uber.org/goleak"
 
 	"github.com/shortlink-org/go-sdk/config"
@@ -27,7 +27,8 @@ func TestPostgres(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	cfg, err := config.New()
 	require.NoError(t, err)
-	store := New(trace.NewNoopTracerProvider(), metric.NewMeterProvider(), cfg)
+
+	store := New(noop.NewTracerProvider(), metric.NewMeterProvider(), cfg)
 
 	pgContainer, err := postgres.Run(ctx, "postgres:18-alpine",
 		postgres.WithDatabase("shortlink"),
@@ -45,4 +46,8 @@ func TestPostgres(t *testing.T) {
 	t.Setenv("STORE_POSTGRES_URI", connStr)
 
 	require.NoError(t, store.Init(ctx))
+
+	// Shut the store down synchronously, before goleak looks: canceling ctx
+	// only starts the shutdown.
+	t.Cleanup(store.Close)
 }

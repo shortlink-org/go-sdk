@@ -1,0 +1,51 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="830" height="524" viewBox="0 0 830 524" font-family="ui-sans-serif,-apple-system,Segoe UI,Helvetica,Arial,sans-serif">
+<text x="20" y="30" font-size="15" font-weight="600" fill="#adbac7">Read-replica routing overhead</text>
+<text x="20" y="50" font-size="11.5" fill="#8b949e">ns/op, log scale — Apple M5 Pro, single core, PostgreSQL in Docker on the same host</text>
+<line x1="232.0" y1="56" x2="232.0" y2="498" stroke="#8b949e" stroke-opacity="0.18" stroke-width="1"/>
+<text x="232.0" y="514" font-size="10" fill="#8b949e" fill-opacity="0.8" text-anchor="middle">1 ns</text>
+<line x1="318.7" y1="56" x2="318.7" y2="498" stroke="#8b949e" stroke-opacity="0.18" stroke-width="1"/>
+<text x="318.7" y="514" font-size="10" fill="#8b949e" fill-opacity="0.8" text-anchor="middle">10 ns</text>
+<line x1="405.3" y1="56" x2="405.3" y2="498" stroke="#8b949e" stroke-opacity="0.18" stroke-width="1"/>
+<text x="405.3" y="514" font-size="10" fill="#8b949e" fill-opacity="0.8" text-anchor="middle">100 ns</text>
+<line x1="492.0" y1="56" x2="492.0" y2="498" stroke="#8b949e" stroke-opacity="0.18" stroke-width="1"/>
+<text x="492.0" y="514" font-size="10" fill="#8b949e" fill-opacity="0.8" text-anchor="middle">1 µs</text>
+<line x1="578.7" y1="56" x2="578.7" y2="498" stroke="#8b949e" stroke-opacity="0.18" stroke-width="1"/>
+<text x="578.7" y="514" font-size="10" fill="#8b949e" fill-opacity="0.8" text-anchor="middle">10 µs</text>
+<line x1="665.3" y1="56" x2="665.3" y2="498" stroke="#8b949e" stroke-opacity="0.18" stroke-width="1"/>
+<text x="665.3" y="514" font-size="10" fill="#8b949e" fill-opacity="0.8" text-anchor="middle">100 µs</text>
+<line x1="752.0" y1="56" x2="752.0" y2="498" stroke="#8b949e" stroke-opacity="0.18" stroke-width="1"/>
+<text x="752.0" y="514" font-size="10" fill="#8b949e" fill-opacity="0.8" text-anchor="middle">1000 µs</text>
+<text x="20" y="68" font-size="11" font-weight="600" fill="#3fb950" fill-opacity="0.95">Routing decision</text>
+<text x="220" y="97" font-size="11.5" fill="#8b949e" text-anchor="end">write → primary</text>
+<rect x="232" y="80" width="99.1" height="26" rx="3" fill="#3fb950" fill-opacity="0.82"/>
+<text x="339.1" y="97" font-size="11" font-weight="600" fill="#8b949e">13.9 ns</text>
+<text x="220" y="133" font-size="11.5" fill="#8b949e" text-anchor="end">read after write → primary</text>
+<rect x="232" y="116" width="105.2" height="26" rx="3" fill="#3fb950" fill-opacity="0.82"/>
+<text x="345.2" y="133" font-size="11" font-weight="600" fill="#8b949e">16.4 ns</text>
+<text x="220" y="169" font-size="11.5" fill="#8b949e" text-anchor="end">read → replica</text>
+<rect x="232" y="152" width="129.3" height="26" rx="3" fill="#3fb950" fill-opacity="0.82"/>
+<text x="369.3" y="169" font-size="11" font-weight="600" fill="#8b949e">31.1 ns</text>
+<text x="220" y="205" font-size="11.5" fill="#8b949e" text-anchor="end">read with watermark → replica</text>
+<rect x="232" y="188" width="127.8" height="26" rx="3" fill="#3fb950" fill-opacity="0.82"/>
+<text x="367.8" y="205" font-size="11" font-weight="600" fill="#8b949e">29.8 ns</text>
+<text x="220" y="241" font-size="11.5" fill="#8b949e" text-anchor="end">replica selection, 8 replicas</text>
+<rect x="232" y="224" width="104.0" height="26" rx="3" fill="#3fb950" fill-opacity="0.82"/>
+<text x="344.0" y="241" font-size="11" font-weight="600" fill="#8b949e">15.8 ns</text>
+<text x="20" y="276" font-size="11" font-weight="600" fill="#58a6ff" fill-opacity="0.95">Statement classification</text>
+<text x="220" y="305" font-size="11.5" fill="#8b949e" text-anchor="end">cached (what a service pays)</text>
+<rect x="232" y="288" width="87.5" height="26" rx="3" fill="#58a6ff" fill-opacity="0.82"/>
+<text x="327.5" y="305" font-size="11" font-weight="600" fill="#8b949e">10.2 ns</text>
+<text x="220" y="341" font-size="11.5" fill="#8b949e" text-anchor="end">uncached, joined SELECT</text>
+<rect x="232" y="324" width="227.3" height="26" rx="3" fill="#58a6ff" fill-opacity="0.82"/>
+<text x="467.3" y="341" font-size="11" font-weight="600" fill="#8b949e">419.2 ns</text>
+<text x="220" y="377" font-size="11.5" fill="#8b949e" text-anchor="end">uncached, SELECT 1</text>
+<rect x="232" y="360" width="116.4" height="26" rx="3" fill="#58a6ff" fill-opacity="0.82"/>
+<text x="356.4" y="377" font-size="11" font-weight="600" fill="#8b949e">22.0 ns</text>
+<text x="20" y="412" font-size="11" font-weight="600" fill="#d29922" fill-opacity="0.95">What it precedes</text>
+<text x="220" y="441" font-size="11.5" fill="#8b949e" text-anchor="end">query through the router</text>
+<rect x="232" y="424" width="468.5" height="26" rx="3" fill="#d29922" fill-opacity="0.82"/>
+<text x="708.5" y="441" font-size="11" font-weight="600" fill="#8b949e">254.5 µs</text>
+<text x="220" y="477" font-size="11.5" fill="#8b949e" text-anchor="end">query on the raw pool</text>
+<rect x="232" y="460" width="468.6" height="26" rx="3" fill="#d29922" fill-opacity="0.82"/>
+<text x="708.6" y="477" font-size="11" font-weight="600" fill="#8b949e">255.5 µs</text>
+</svg>

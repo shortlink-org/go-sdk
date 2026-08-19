@@ -48,3 +48,9 @@ type PingConnectionError struct {
 func (e *PingConnectionError) Error() string {
 	return "failed to ping the database: " + e.Err.Error()
 }
+
+// opInit names the initialisation phase in a StoreError.
+const opInit = "init"
+
+// ErrNotPostgresStore indicates the store is backed by another driver.
+var ErrNotPostgresStore = errors.New("store is not backed by the postgres driver")

@@ -15,6 +15,10 @@ func init() {
 			return nil, err
 		}
 
+		// The driver's own logger option goes first, so a caller may still
+		// override it.
+		opts = append([]Option{WithLogger(deps.Log)}, opts...)
+
 		return New(deps.Tracer, deps.Metrics, deps.Cfg, opts...), nil
 	})
 }

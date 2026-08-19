@@ -55,9 +55,10 @@ func Migration(ctx context.Context, store db.DB, fsys fs.FS, tableName string) e
 	}()
 
 	// Verify connection
-	if err := conn.PingContext(ctx); err != nil {
+	pingErr := conn.PingContext(ctx)
+	if pingErr != nil {
 		retErr = &MigrationError{
-			Err:         err,
+			Err:         pingErr,
 			Description: "failed to ping migration connection",
 		}
 
@@ -91,9 +92,10 @@ func Migration(ctx context.Context, store db.DB, fsys fs.FS, tableName string) e
 		retErr = errors.Join(retErr, sourceErr, dbErr)
 	}()
 
-	if err := migration.Up(); err != nil && !errors.Is(err, migrate.ErrNoChange) {
+	upErr := migration.Up()
+	if upErr != nil && !errors.Is(upErr, migrate.ErrNoChange) {
 		retErr = &MigrationError{
-			Err:         err,
+			Err:         upErr,
 			Description: "failed to apply migration",
 		}
 

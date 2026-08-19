@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="770" height="356" viewBox="0 0 770 356" font-family="ui-sans-serif,-apple-system,Segoe UI,Helvetica,Arial,sans-serif">
+<text x="20" y="28" font-size="15" font-weight="600" fill="#adbac7">Transactions the primary had to serve</text>
+<text x="20" y="47" font-size="11.5" fill="#8b949e">Same offered load in both modes (~1500 requests over 6s). Lower is better.</text>
+<text x="20" y="63" font-size="11.5" fill="#8b949e">Each node capped at 1 CPU, one replica, read-after-write included.</text>
+<text x="138" y="100" font-size="12" font-weight="600" fill="#8b949e" text-anchor="end">90% reads</text>
+<rect x="150" y="76" width="344.3" height="22" rx="3" fill="#f85149" fill-opacity="0.85"/>
+<text x="502.3" y="91" font-size="11" font-weight="600" fill="#8b949e">1555</text>
+<text x="158" y="91" font-size="10.5" fill="#0d1117" fill-opacity="0.75">without routing</text>
+<rect x="150" y="104" width="86.8" height="22" rx="3" fill="#3fb950" fill-opacity="0.85"/>
+<text x="244.8" y="119" font-size="11" font-weight="600" fill="#8b949e">392</text>
+<text x="158" y="119" font-size="10.5" fill="#0d1117" fill-opacity="0.75">with routing</text>
+<text x="682" y="108" font-size="12" font-weight="600" fill="#3fb950">−75%</text>
+<text x="138" y="180" font-size="12" font-weight="600" fill="#8b949e" text-anchor="end">70% reads</text>
+<rect x="150" y="156" width="411.3" height="22" rx="3" fill="#f85149" fill-opacity="0.85"/>
+<text x="569.3" y="171" font-size="11" font-weight="600" fill="#8b949e">1858</text>
+<text x="158" y="171" font-size="10.5" fill="#0d1117" fill-opacity="0.75">without routing</text>
+<rect x="150" y="184" width="242.0" height="22" rx="3" fill="#3fb950" fill-opacity="0.85"/>
+<text x="400.0" y="199" font-size="11" font-weight="600" fill="#8b949e">1093</text>
+<text x="158" y="199" font-size="10.5" fill="#0d1117" fill-opacity="0.75">with routing</text>
+<text x="682" y="188" font-size="12" font-weight="600" fill="#3fb950">−41%</text>
+<text x="138" y="260" font-size="12" font-weight="600" fill="#8b949e" text-anchor="end">50% reads</text>
+<rect x="150" y="236" width="470.0" height="22" rx="3" fill="#f85149" fill-opacity="0.85"/>
+<text x="628.0" y="251" font-size="11" font-weight="600" fill="#8b949e">2123</text>
+<text x="158" y="251" font-size="10.5" fill="#0d1117" fill-opacity="0.75">without routing</text>
+<rect x="150" y="264" width="340.9" height="22" rx="3" fill="#3fb950" fill-opacity="0.85"/>
+<text x="498.9" y="279" font-size="11" font-weight="600" fill="#8b949e">1540</text>
+<text x="158" y="279" font-size="10.5" fill="#0d1117" fill-opacity="0.75">with routing</text>
+<text x="682" y="268" font-size="12" font-weight="600" fill="#3fb950">−27%</text>
+<text x="20" y="344" font-size="10.5" fill="#8b949e" fill-opacity="0.85">Read latency is unchanged: p50 within 10%, p99 within noise. The win is capacity, not speed.</text>
+</svg>
