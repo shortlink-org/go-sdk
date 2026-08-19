@@ -6,7 +6,7 @@ require (
 	github.com/authzed/authzed-go v1.10.0
 	github.com/shortlink-org/go-sdk/grpc v0.0.0-20260417231502-a845b14b1f44
 	github.com/shortlink-org/go-sdk/logger v0.0.0-20260423005905-959e3e589a42
-	github.com/shortlink-org/go-sdk/observability v0.0.0-20260415234714-8c7f9b03b6b3
+	github.com/shortlink-org/go-sdk/observability v0.0.0-20260819095532-196f9f34e23d
 	go.opentelemetry.io/otel/trace v1.45.0
 	google.golang.org/grpc v1.83.1
 )
@@ -48,7 +48,7 @@ require (
 	github.com/sagikazarmark/locafero v0.11.0 // indirect
 	github.com/shortlink-org/go-sdk/config v0.0.0-20260419222854-fd069f4d5106
 	github.com/shortlink-org/go-sdk/flight_trace v0.0.0-20260424225420-a63676f29741 // indirect
-	github.com/shortlink-org/go-sdk/http v0.0.0-20260410230549-a64f68ccd6e5 // indirect
+	github.com/shortlink-org/go-sdk/http v0.0.0-20260424225420-a63676f29741 // indirect
 	github.com/sourcegraph/conc v0.3.1-0.20240121214520-5f936abd7ae8 // indirect
 	github.com/spf13/afero v1.15.0 // indirect
 	github.com/spf13/cast v1.10.0 // indirect
