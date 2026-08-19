@@ -133,6 +133,8 @@ github.com/coreos/go-systemd v0.0.0-20190321100706-95778dfbb74e/go.mod h1:F5haX7
 github.com/coreos/go-systemd v0.0.0-20190719114852-fd7a80b32e1f/go.mod h1:F5haX7vjVVG0kc13fIWeqUViNPyEJxv/OmvnBo0Yme4=
 github.com/coreos/go-systemd/v22 v22.5.0 h1:RrqgGjYQKalulkV8NGVIfkXQf6YYmOyiJKk8iXXhfZs=
 github.com/coreos/go-systemd/v22 v22.5.0/go.mod h1:Y58oyj3AT4RCenI/lSvhwexgC+NSVTIJ3seZv2GcEnc=
+github.com/coreos/go-systemd/v22 v22.7.0 h1:LAEzFkke61DFROc7zNLX/WA2i5J8gYqe0rSj9KI28KA=
+github.com/coreos/go-systemd/v22 v22.7.0/go.mod h1:xNUYtjHu2EDXbsxz1i41wouACIwT7Ybq9o0BQhMwD0w=
 github.com/couchbase/gocb/v2 v2.12.4 h1:46tegk0WLcZdUQMi4hLa1B9m4WyuMRNhslhaqKkNslM=
 github.com/couchbase/gocb/v2 v2.12.4/go.mod h1:UmwUGgHjjnW7wDqRGnc2sdHjL+NdVRwbjNrvXKzDlsI=
 github.com/couchbase/gocbcore/v10 v10.9.3 h1:y0CV5MccwryY7j+K0s9BJ3fTfsJMx0SD8CH281DSFXk=
@@ -324,6 +326,8 @@ github.com/gotnospirit/messageformat v0.0.0-20221001023931-dfe49f1eb092 h1:c7gcN
 github.com/gotnospirit/messageformat v0.0.0-20221001023931-dfe49f1eb092/go.mod h1:ZZAN4fkkful3l1lpJwF8JbW41ZiG9TwJ2ZlqzQovBNU=
 github.com/grpc-ecosystem/grpc-gateway/v2 v2.28.0 h1:HWRh5R2+9EifMyIHV7ZV+MIZqgz+PMpZ14Jynv3O2Zs=
 github.com/grpc-ecosystem/grpc-gateway/v2 v2.28.0/go.mod h1:JfhWUomR1baixubs02l85lZYYOm7LV6om4ceouMv45c=
+github.com/grpc-ecosystem/grpc-gateway/v2 v2.29.0 h1:5VipnvEpbqr2gA2VbM+nYVbkIF28c5ZQfqCBQ5g2xfk=
+github.com/grpc-ecosystem/grpc-gateway/v2 v2.29.0/go.mod h1:Hyl3n6Twe1hvtd9XUXDec4pTvgMSEixRuQKPTMH2bNs=
 github.com/h2non/gock v1.2.0 h1:K6ol8rfrRkUOefooBC8elXoaNGYkpp7y2qcxGG6BzUE=
 github.com/h2non/gock v1.2.0/go.mod h1:tNhoxHYW2W42cYkYb1WqzdbYIieALC99kpYr7rH/BQk=
 github.com/h2non/parth v0.0.0-20190131123155-b4df798d6542 h1:2VTzZjLZBgl62/EtslCrtky5vbi9dd7HrQPQIx6wqiw=
@@ -632,10 +636,16 @@ github.com/zenazn/goji v0.9.0/go.mod h1:7S9M489iMyHBNxwZnk9/EHS098H4/F6TATF2mIxt
 gitlab.com/nyarla/go-crypt v0.0.0-20160106005555-d9a5dc2b789b/go.mod h1:T3BPAOm2cqquPa0MKWeNkmOM5RQsRhkrwMWonFMN7fE=
 go.etcd.io/etcd/api/v3 v3.6.10 h1:jlwjtELjA8yi2VWpOFH+0w0lGr3K6mVDyn0RDB9aaAY=
 go.etcd.io/etcd/api/v3 v3.6.10/go.mod h1:pdV4VeFmvhdNjB4LWRkC8ReLyRBAxUOze3GarMhE2sk=
+go.etcd.io/etcd/api/v3 v3.7.1 h1:KJG0/DcWGfe3Y1otDf/fsBf0TSSgpxZ5RO/L8SFt73E=
+go.etcd.io/etcd/api/v3 v3.7.1/go.mod h1:8bXIpCMeV7E3/XL0Ix123ATn3dB+0V7d9zklHbB0m78=
 go.etcd.io/etcd/client/pkg/v3 v3.6.10 h1:tBT7podcPhuVbCVkAEzx8bC5I+aqxfLwBN8/As1arrA=
 go.etcd.io/etcd/client/pkg/v3 v3.6.10/go.mod h1:WEy3PpwbbEBVRdh1NVJYsuUe/8eyI21PNJRazeD8z/Y=
+go.etcd.io/etcd/client/pkg/v3 v3.7.1 h1:rKYsj3pRkR0eK3yjT3XOgrhqfmIfj9pzNgxjh7mfFv4=
+go.etcd.io/etcd/client/pkg/v3 v3.7.1/go.mod h1:cnzZGIUzSfjEwLC6UBVsSXlEK1eepS/JUD7wE6PLRT0=
 go.etcd.io/etcd/client/v3 v3.6.10 h1:J598zJ+C/ZPvImypmq5waj84+bovePrlZERHklf34y0=
 go.etcd.io/etcd/client/v3 v3.6.10/go.mod h1:iHhUDUcEwaKs1YFq3MgmI9U4zhTVasp/vgdVbFf1RS8=
+go.etcd.io/etcd/client/v3 v3.7.1 h1:0PEMMC0KuZmVIN+RAbdqfkZ45pYTgKVtmBEbRCvZFUg=
+go.etcd.io/etcd/client/v3 v3.7.1/go.mod h1:ffNqALa8tRCYhYo1F9oR489y23K39Gz+BSR3ApAGYq0=
 go.mongodb.org/mongo-driver v1.1.0/go.mod h1:u7ryQJ+DOzQmeO7zB6MHyr8jkEQvC8vH7qLUO4lqsUM=
 go.mongodb.org/mongo-driver v1.17.7 h1:a9w+U3Vt67eYzcfq3k/OAv284/uUUkL0uP75VE5rCOU=
 go.mongodb.org/mongo-driver v1.17.7/go.mod h1:Hy04i7O2kC4RS06ZrhPRqj/u4DTYkFDAAccj+rVKqgQ=
