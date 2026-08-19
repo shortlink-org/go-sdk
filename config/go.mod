@@ -5,7 +5,7 @@ go 1.26.2
 require (
 	github.com/Unleash/unleash-go-sdk/v6 v6.5.0
 	github.com/spf13/viper v1.21.0
-	github.com/stretchr/testify v1.12.0
+	github.com/stretchr/testify v1.12.1
 )
 
 require (

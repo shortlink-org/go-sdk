@@ -21,7 +21,7 @@ require (
 	github.com/redis/rueidis v1.0.77
 	github.com/redis/rueidis/rueidisotel v1.0.77
 	github.com/shortlink-org/go-sdk/logger v0.0.0-20260423005905-959e3e589a42
-	github.com/stretchr/testify v1.12.0
+	github.com/stretchr/testify v1.12.1
 	github.com/syndtr/goleveldb v1.0.1-0.20220721030215-126854af5e6d
 	github.com/testcontainers/testcontainers-go v0.44.0
 	github.com/testcontainers/testcontainers-go/modules/aerospike v0.44.0
