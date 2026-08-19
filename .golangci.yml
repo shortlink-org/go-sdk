@@ -18,6 +18,11 @@ linters:
     - wrapcheck        # too much for sdk code
     - testpackage      # too restrictive for sdk code
     - gomoddirectives  # too noisy
+    - gomodguard       # deprecated since v2.12.0, superseded by gomodguard_v2
+
+  # Linters outside the `all` set, or that replace a deprecated one.
+  enable:
+    - gomodguard_v2
 
   exclusions:
     paths:
