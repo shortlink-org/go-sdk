@@ -112,7 +112,7 @@ func TestDgraph(t *testing.T) {
 	mapped, err := alpha.MappedPort(ctx, "9080/tcp")
 	require.NoError(t, err)
 
-	t.Setenv("STORE_DGRAPH_URI", fmt.Sprintf("%s:%s", host, mapped.Port()))
+	t.Setenv("STORE_DGRAPH_URI", fmt.Sprintf("dgraph://%s:%s?sslmode=disable", host, mapped.Port()))
 
 	// Alpha reports the port open before it will serve an Alter, so Init is
 	// retried. Keeping the last error makes a failure say why, instead of

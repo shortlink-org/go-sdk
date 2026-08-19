@@ -3,21 +3,13 @@ package dgraph
 import (
 	"context"
 	"fmt"
-	"strings"
 
 	"github.com/dgraph-io/dgo/v250"
 	"github.com/dgraph-io/dgo/v250/protos/api"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials/insecure"
-	"google.golang.org/grpc/encoding/gzip"
 
 	"github.com/shortlink-org/go-sdk/config"
 	"github.com/shortlink-org/go-sdk/logger"
 )
-
-// connSchemePrefix marks a value that is a full connection string rather than
-// a bare host:port.
-const connSchemePrefix = "dgraph://"
 
 // Config - config
 type Config struct {
@@ -47,7 +39,11 @@ func (s *Store) Init(ctx context.Context) error {
 	// Set configuration
 	s.setConfig()
 
-	client, err := s.connect()
+	// dgo parses the connection string itself, which is what carries the ACL
+	// credentials, the TLS mode and the namespace. It pings the server before
+	// returning, so a failure here means unreachable or misspelled, not merely
+	// unconfigured.
+	client, err := dgo.Open(s.config.URL)
 	if err != nil {
 		return &StoreError{
 			Driver:  driverName,
@@ -81,31 +77,6 @@ func (s *Store) Init(ctx context.Context) error {
 	}()
 
 	return nil
-}
-
-// connect builds the client from the configured URI.
-//
-// Two forms are accepted. A bare host:port is what this driver has always
-// taken and stays the default. A dgraph:// connection string is the form dgo
-// parses itself, and the only way to reach a server behind ACL credentials,
-// TLS, or a non-default namespace without adding an option per knob:
-//
-//	dgraph://user:pass@host:9080?sslmode=verify-ca&namespace=1
-//
-// Either way the client pings the server before returning, so a failure here
-// means unreachable rather than merely misconfigured.
-func (s *Store) connect() (*dgo.Dgraph, error) {
-	if strings.HasPrefix(s.config.URL, connSchemePrefix) {
-		return dgo.Open(s.config.URL)
-	}
-
-	// Plaintext, as this driver has always been. dgo sets no transport
-	// credentials of its own and fails rather than guessing, so the choice has
-	// to be made here; TLS is reached through the connection-string form.
-	return dgo.NewClient(s.config.URL,
-		dgo.WithGrpcOption(grpc.WithTransportCredentials(insecure.NewCredentials())),
-		dgo.WithGrpcOption(grpc.WithDefaultCallOptions(grpc.UseCompressor(gzip.Name))),
-	)
 }
 
 // close releases the client. Safe to call on a half-built Store.
@@ -167,7 +138,7 @@ hash: string @index(term) @lang .
 
 // setConfig - set configuration
 func (s *Store) setConfig() {
-	s.cfg.SetDefault("STORE_DGRAPH_URI", "localhost:9080") // DGRAPH URI
+	s.cfg.SetDefault("STORE_DGRAPH_URI", "dgraph://localhost:9080?sslmode=disable") // DGRAPH URI
 
 	s.config = Config{
 		URL: s.cfg.GetString("STORE_DGRAPH_URI"),

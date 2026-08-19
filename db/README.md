@@ -37,11 +37,12 @@ The [postgres driver](./drivers/postgres/) additionally routes reads to a
 streaming replica without giving up read-your-writes — see
 [ADR 0001](./drivers/postgres/ADR/0001-read-replica-routing.md).
 
-`STORE_DGRAPH_URI` takes either a bare `host:port`, which connects in
-plaintext, or a `dgraph://` connection string, which is how ACL credentials,
-TLS, and a non-default namespace are reached:
+`STORE_DGRAPH_URI` is a `dgraph://` connection string, pointing at alpha's
+gRPC port. It carries the ACL credentials, the TLS mode and the namespace, so
+there is no second way to spell any of them:
 
 ```
+dgraph://localhost:9080?sslmode=disable
 dgraph://user:pass@host:9080?sslmode=verify-ca&namespace=1
 ```
 
