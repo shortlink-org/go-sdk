@@ -28,6 +28,7 @@ func (s *Store) Init(ctx context.Context) error {
 
 	if len(s.config.Host) == 0 {
 		return &StoreError{
+			Driver:  driverName,
 			Op:      "init",
 			Err:     ErrInvalidURI,
 			Details: "redis host configuration is empty",
@@ -56,6 +57,7 @@ func (s *Store) Init(ctx context.Context) error {
 	}, options...)
 	if err != nil {
 		return &StoreError{
+			Driver:  driverName,
 			Op:      "init",
 			Err:     ErrClientConnection,
 			Details: err.Error(),

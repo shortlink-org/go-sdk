@@ -50,6 +50,7 @@ func (s *Store) Init(ctx context.Context) error {
 	s.client, err = mongo.Connect(opts)
 	if err != nil {
 		return &StoreError{
+			Driver:  driverName,
 			Op:      "init",
 			Err:     ErrClientConnection,
 			Details: err.Error(),
@@ -60,7 +61,8 @@ func (s *Store) Init(ctx context.Context) error {
 	err = s.client.Ping(ctx, readpref.Primary())
 	if err != nil {
 		return &PingConnectionError{
-			Err: err,
+			Driver: driverName,
+			Err:    err,
 		}
 	}
 
@@ -89,6 +91,7 @@ func (s *Store) close(ctx context.Context) error {
 	err := s.client.Disconnect(ctx)
 	if err != nil {
 		return &StoreError{
+			Driver:  driverName,
 			Op:      "close",
 			Err:     err,
 			Details: "failed to disconnect mongodb client",

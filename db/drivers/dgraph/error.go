@@ -2,7 +2,8 @@ package dgraph
 
 import (
 	"errors"
-	"fmt"
+
+	"github.com/shortlink-org/go-sdk/db"
 )
 
 var (
@@ -10,20 +11,10 @@ var (
 	ErrDgraphMigrate = errors.New("failed to migrate Dgraph schema")
 )
 
-type StoreError struct {
-	Op      string
-	Err     error
-	Details string
-}
-
-func (e *StoreError) Error() string {
-	if e.Details != "" {
-		return fmt.Sprintf("dgraph store error during %s: %s: %v", e.Op, e.Details, e.Err)
-	}
-
-	return fmt.Sprintf("dgraph store error during %s: %v", e.Op, e.Err)
-}
-
-func (e *StoreError) Unwrap() error {
-	return e.Err
-}
+// The lifecycle error types are shared by every driver, so that a fix reaches
+// all of them at once. Aliases rather than new types: existing callers keep
+// working with *StoreError unchanged.
+type (
+	StoreError          = db.StoreError
+	PingConnectionError = db.PingConnectionError
+)

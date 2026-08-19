@@ -42,11 +42,7 @@ func (s *Store) Init(ctx context.Context) error {
 	// Set configuration
 	s.config, err = getConfig(&s.tracer, s.cfg)
 	if err != nil {
-		return &StoreError{
-			Op:      opInit,
-			Err:     err,
-			Details: "failed to get postgres connection config",
-		}
+		return err
 	}
 
 	// Apply AfterConnect if provided
@@ -57,11 +53,7 @@ func (s *Store) Init(ctx context.Context) error {
 	// Connect to Postgres
 	s.client, err = pgxpool.NewWithConfig(ctx, s.config.config)
 	if err != nil {
-		return &StoreError{
-			Op:      opInit,
-			Err:     err,
-			Details: "failed to open the database",
-		}
+		return storeError(opConnect, classify(err), err, "failed to open the database")
 	}
 
 	// Check connecting
@@ -69,7 +61,7 @@ func (s *Store) Init(ctx context.Context) error {
 	if err != nil {
 		s.client.Close()
 
-		return &PingConnectionError{err}
+		return &PingConnectionError{Driver: driverName, Err: err}
 	}
 
 	// Build the read-replica router. Without replica DSNs this is a no-op and
@@ -131,17 +123,13 @@ func (s *Store) GetConn() any {
 func getConfig(tracer *Tracer, cfg *config.Config) (*Config, error) {
 	dbinfo := fmt.Sprintf("postgres://%s:%s@localhost:5432/%s?sslmode=disable", "postgres", "shortlink", "shortlink")
 
-	cfg.SetDefault("STORE_POSTGRES_URI", dbinfo)                  // Postgres URI
+	cfg.SetDefault(cfgURI, dbinfo)
 	cfg.SetDefault("STORE_MODE_WRITE", options.MODE_SINGLE_WRITE) // mode write to db
 
 	// Create pool config
-	cnfPool, err := pgxpool.ParseConfig(cfg.GetString("STORE_POSTGRES_URI"))
+	cnfPool, err := pgxpool.ParseConfig(cfg.GetString(cfgURI))
 	if err != nil {
-		return nil, &StoreError{
-			Op:      "ParseConfig",
-			Err:     err,
-			Details: "failed to parse postgres connection config",
-		}
+		return nil, storeError(opConfig, ErrInvalidDSN, err, "failed to parse "+cfgURI)
 	}
 
 	instrument(cnfPool, tracer)

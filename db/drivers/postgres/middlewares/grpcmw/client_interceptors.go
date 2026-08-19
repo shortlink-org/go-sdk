@@ -1,4 +1,4 @@
-package consistency
+package grpcmw
 
 import (
 	"context"

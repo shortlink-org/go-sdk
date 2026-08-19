@@ -27,6 +27,7 @@ func (s *Store) Init(ctx context.Context) error {
 	err := s.setConfig()
 	if err != nil {
 		return &StoreError{
+			Driver:  driverName,
 			Op:      "setConfig",
 			Err:     err,
 			Details: "failed to set mysql configuration",
@@ -43,6 +44,7 @@ func (s *Store) Init(ctx context.Context) error {
 	conn, connErr := otelsql.Open("mysql", s.config.URI, options...)
 	if connErr != nil {
 		return &StoreError{
+			Driver:  driverName,
 			Op:      "init",
 			Err:     ErrClientConnection,
 			Details: connErr.Error(),
@@ -57,7 +59,8 @@ func (s *Store) Init(ctx context.Context) error {
 		s.client.Close() //nolint:errcheck,gosec // best-effort cleanup on ping failure
 
 		return &PingConnectionError{
-			Err: errPing,
+			Driver: driverName,
+			Err:    errPing,
 		}
 	}
 
@@ -67,6 +70,7 @@ func (s *Store) Init(ctx context.Context) error {
 	))
 	if err != nil {
 		return &StoreError{
+			Driver:  driverName,
 			Op:      "init",
 			Err:     err,
 			Details: "failed to register DB stats metrics",
@@ -98,6 +102,7 @@ func (s *Store) close() error {
 	err := s.client.Close()
 	if err != nil {
 		return &StoreError{
+			Driver:  driverName,
 			Op:      "close",
 			Err:     err,
 			Details: "failed to close mysql connection",
@@ -115,6 +120,7 @@ func (s *Store) setConfig() error {
 	uri, err := url.Parse(s.cfg.GetString("STORE_MYSQL_URI"))
 	if err != nil {
 		return &StoreError{
+			Driver:  driverName,
 			Op:      "setConfig",
 			Err:     ErrInvalidDSN,
 			Details: "parsing MySQL URI from environment variable",

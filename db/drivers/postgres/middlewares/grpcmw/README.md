@@ -1,4 +1,4 @@
-# consistency
+# grpcmw
 
 Carries a database read-your-writes guarantee across a gRPC hop.
 
@@ -12,14 +12,14 @@ router, _ := postgres.RouterFrom(store)
 
 // client
 grpc.NewClient(target,
-	grpc.WithChainUnaryInterceptor(consistency.UnaryClientInterceptor(router.Port())),
-	grpc.WithChainStreamInterceptor(consistency.StreamClientInterceptor(router.Port())),
+	grpc.WithChainUnaryInterceptor(grpcmw.UnaryClientInterceptor(router.Port())),
+	grpc.WithChainStreamInterceptor(grpcmw.StreamClientInterceptor(router.Port())),
 )
 
 // server
 grpc.NewServer(
-	grpc.ChainUnaryInterceptor(consistency.UnaryServerInterceptor(router.Port())),
-	grpc.ChainStreamInterceptor(consistency.StreamServerInterceptor(router.Port())),
+	grpc.ChainUnaryInterceptor(grpcmw.UnaryServerInterceptor(router.Port())),
+	grpc.ChainStreamInterceptor(grpcmw.StreamServerInterceptor(router.Port())),
 )
 ```
 
@@ -55,7 +55,9 @@ exists to prevent.
   streaming RPC that writes on the caller's behalf, return the watermark in a
   response message and pass it to `Observe` yourself.
 
-This module never imports `db`. `Consistency` is declared here and satisfied
-structurally by `*postgres.TextPort`.
+It sits with the driver, next to `httpmw`, because carrying this guarantee
+across a hop is the driver's concern whichever transport speaks it. It does not
+import `replica`: `Consistency` is declared here and satisfied by
+`*postgres.TextPort`, so the interceptors never touch the router's types.
 
-See [ADR 0001 — Read-replica routing](../../../db/drivers/postgres/ADR/0001-read-replica-routing.md).
+See [ADR 0001 — Read-replica routing](../../ADR/0001-read-replica-routing.md).

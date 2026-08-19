@@ -49,6 +49,7 @@ func (s *Store) Init(ctx context.Context) error {
 	)
 	if err != nil {
 		return &StoreError{
+			Driver:  driverName,
 			Op:      "NewClient",
 			Err:     fmt.Errorf("%w: %w", ErrDgraphClient, err),
 			Details: "failed to create gRPC connection",
@@ -60,6 +61,7 @@ func (s *Store) Init(ctx context.Context) error {
 	errMigrate := s.migrate(ctx)
 	if errMigrate != nil {
 		return &StoreError{
+			Driver:  driverName,
 			Op:      "migrate",
 			Err:     fmt.Errorf("%w: %w", ErrDgraphMigrate, errMigrate),
 			Details: "failed to migrate Dgraph schema",
@@ -117,6 +119,7 @@ hash: string @index(term) @lang .
 	err := s.client.Alter(ctx, operation)
 	if err != nil {
 		return &StoreError{
+			Driver:  driverName,
 			Op:      "Alter",
 			Err:     err,
 			Details: "failed to alter Dgraph schema",

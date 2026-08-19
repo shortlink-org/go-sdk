@@ -7,9 +7,12 @@ import (
 	"github.com/shortlink-org/go-sdk/db/drivers/postgres/replica"
 )
 
-// Config keys for read-replica routing. All are optional; leaving
+// Configuration keys the driver reads. Every replica key is optional: leaving
 // STORE_POSTGRES_REPLICA_URI empty keeps the driver exactly as it was.
 const (
+	// The primary DSN, and the only key the driver needs in order to run.
+	cfgURI = "STORE_POSTGRES_URI"
+
 	cfgReplicaURI              = "STORE_POSTGRES_REPLICA_URI"
 	cfgReplicaPollInterval     = "STORE_POSTGRES_REPLICA_POLL_INTERVAL"
 	cfgReplicaPollJitter       = "STORE_POSTGRES_REPLICA_POLL_JITTER"

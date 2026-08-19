@@ -35,6 +35,7 @@ func (s *Store) Init(ctx context.Context) error {
 	err := s.setConfig()
 	if err != nil {
 		return &StoreError{
+			Driver:  driverName,
 			Op:      "setConfig",
 			Err:     err,
 			Details: "failed to set neo4j configuration",
@@ -44,6 +45,7 @@ func (s *Store) Init(ctx context.Context) error {
 	s.client, err = neo4j.NewDriver(s.config.URI, neo4j.BasicAuth(s.config.login, s.config.password, ""))
 	if err != nil {
 		return &StoreError{
+			Driver:  driverName,
 			Op:      "init",
 			Err:     ErrClientConnection,
 			Details: err.Error(),
@@ -75,6 +77,7 @@ func (s *Store) close(ctx context.Context) error {
 	err := s.client.Close(ctx)
 	if err != nil {
 		return &StoreError{
+			Driver:  driverName,
 			Op:      "close",
 			Err:     err,
 			Details: "failed to close neo4j connection",
@@ -95,6 +98,7 @@ func (s *Store) setConfig() error {
 	params, err := url.ParseRequestURI(uri)
 	if err != nil {
 		return &StoreError{
+			Driver:  driverName,
 			Op:      "setConfig",
 			Err:     err,
 			Details: "invalid neo4j URI",

@@ -41,6 +41,7 @@ func (s *Store) Init(ctx context.Context) error {
 	s.client, err = badger.Open(badger.DefaultOptions(s.config.Path))
 	if err != nil {
 		return &StoreError{
+			Driver:  driverName,
 			Op:      "init",
 			Err:     fmt.Errorf("%w: %w", ErrBadgerOpen, err),
 			Details: "opening Badger DB at path " + s.config.Path,
@@ -67,6 +68,7 @@ func (s *Store) close() error {
 	err := s.client.Close()
 	if err != nil {
 		return &StoreError{
+			Driver:  driverName,
 			Op:      "close",
 			Err:     fmt.Errorf("%w: %w", ErrBadgerClose, err),
 			Details: "closing Badger DB",

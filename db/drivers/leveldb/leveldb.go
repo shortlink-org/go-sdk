@@ -38,6 +38,7 @@ func (s *Store) Init(ctx context.Context) error {
 	s.client, err = leveldb.OpenFile(s.config.Path, nil)
 	if err != nil {
 		return &StoreError{
+			Driver:  driverName,
 			Op:      "init",
 			Err:     ErrDatabaseOpen,
 			Details: err.Error(),
@@ -64,6 +65,7 @@ func (s *Store) close() error {
 	err := s.client.Close()
 	if err != nil {
 		return &StoreError{
+			Driver:  driverName,
 			Op:      "close",
 			Err:     err,
 			Details: "failed to close leveldb database",

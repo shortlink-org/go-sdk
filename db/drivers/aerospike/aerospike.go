@@ -41,6 +41,7 @@ func (s *Store) Init(ctx context.Context) error {
 	err := s.setConfig()
 	if err != nil {
 		return &StoreError{
+			Driver:  driverName,
 			Op:      "init",
 			Err:     err,
 			Details: "failed to set configuration",
@@ -51,6 +52,7 @@ func (s *Store) Init(ctx context.Context) error {
 	client, clientErr := aero.NewClient(s.config.host, s.config.port)
 	if clientErr != nil {
 		return &StoreError{
+			Driver:  driverName,
 			Op:      "init",
 			Err:     fmt.Errorf("%w: %w", ErrClientConnection, clientErr),
 			Details: fmt.Sprintf("unable to connect to Aerospike at %s:%d", s.config.host, s.config.port),
@@ -81,6 +83,7 @@ func (s *Store) setConfig() error {
 	conf, err := url.Parse(s.cfg.GetString("STORE_AEROSPIKE_URI"))
 	if err != nil {
 		return &StoreError{
+			Driver:  driverName,
 			Op:      "setConfig",
 			Err:     fmt.Errorf("%w: %w", ErrInvalidURI, err),
 			Details: "parsing Aerospike URI from environment variable",
@@ -90,6 +93,7 @@ func (s *Store) setConfig() error {
 	port, err := strconv.Atoi(conf.Port())
 	if err != nil {
 		return &StoreError{
+			Driver:  driverName,
 			Op:      "setConfig",
 			Err:     fmt.Errorf("%w: %w", ErrInvalidPort, err),
 			Details: "parsing port from URI: " + conf.Port(),

@@ -11,7 +11,7 @@
 // have to be duplicated or abstracted away for no gain. It is still an ordinary
 // net/http middleware and composes with chi, gorilla or the standard mux.
 //
-// The gRPC counterpart sits the other way round, in grpc/middleware/consistency:
+// The gRPC counterpart sits the other way round, in middlewares/grpcmw:
 // there the transport module can satisfy a locally declared interface, which
 // keeps the database's dependency graph out of the transport's.
 package httpmw

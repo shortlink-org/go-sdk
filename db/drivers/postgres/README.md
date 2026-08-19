@@ -25,6 +25,7 @@ postgres/            the driver: Store, Init, options, RouterFrom
     sqlclass/        statement classification
     metrics/         OpenTelemetry instruments
   middlewares/httpmw/  HTTP boundary middleware
+  middlewares/grpcmw/  gRPC boundary interceptors
   ops/               Grafana dashboard, Prometheus Operator rules
   ADR/               architecture decision record
 ```
@@ -34,9 +35,11 @@ and the three leaves depend on nothing of ours. `metrics` in particular takes
 strings and numbers rather than the router's own types, which is what keeps it
 from having to know about routing at all.
 
-The gRPC counterpart lives in `grpc/middleware/consistency` rather than here:
-that module can satisfy a locally declared interface, which keeps this module's
-dependency graph out of the transport's.
+Both boundary middlewares live here, under `middlewares/`, because carrying
+this guarantee across a hop is the driver's concern whichever transport speaks
+it. Neither imports `replica`: each declares the small interface it needs and
+takes `router.Port()`, which is what keeps the transports out of the router's
+types.
 
 ## Architecture decisions
 
@@ -83,10 +86,10 @@ not cover.
 
 ### With DDD and CQRS
 
-The router lives in the infrastructure layer — it implements the same surface
-as `*pgxpool.Pool`, so one field in a repository adapter changes type and the
-domain never sees it. Under CQRS the tracker belongs on the bus rather than on
-HTTP, because the bus already knows which side of the split it is on:
+The router implements the same surface as `*pgxpool.Pool`, so it stays in the
+infrastructure layer: one field in a repository adapter changes type and the
+domain never sees it. Under CQRS the tracker belongs on the bus, which already
+knows which side of the split it is on:
 
 ```go
 // command bus — the write taints the context by itself
@@ -96,13 +99,13 @@ ctx = replica.WithTracker(ctx)
 ctx = replica.Stale(ctx)
 ```
 
-Two rules that do not follow from the code:
+Two rules do not follow from the code, and the ADR explains why both are
+load-bearing: [Fit with DDD and
+CQRS](./ADR/0001-read-replica-routing.md#fit-with-ddd-and-cqrs), which also has
+the table of what belongs on which pool.
 
-**Pin the write side to the primary.** Rehydrating an aggregate from a replica
-yields a stale event stream, and the version computed from it is the version
-the next append checks against — a lost update nothing reports. The classifier
-catches `SELECT ... FOR UPDATE` and `nextval`, but not this: rehydration looks
-exactly like an ordinary read.
+Pin the write side to the primary — aggregate rehydration looks exactly like an
+ordinary read, and the classifier cannot catch it:
 
 ```go
 func (r *AggregateRepo) Load(ctx context.Context, id uuid.UUID) (*Order, error) {
@@ -110,22 +113,14 @@ func (r *AggregateRepo) Load(ctx context.Context, id uuid.UUID) (*Order, error) 
 }
 ```
 
-**Wire the unit of work.** Without it a repository called inside a transaction
-runs on a different connection — outside that transaction, without its locks,
-and able to deadlock against it.
+Wire the unit of work, so a repository called inside a transaction runs on that
+transaction's connection:
 
 ```go
 store, err := db.New(ctx, log, tracer, metrics, cfg,
 	postgres.With(postgres.WithTxLookup(uow.FromContext)),
 )
 ```
-
-| layer | pool |
-|---|---|
-| query handlers, read models | replica |
-| projections consuming events | replica, behind the gate |
-| command handlers | primary (the taint arranges it) |
-| aggregates, event store, outbox | primary, explicitly |
 
 ### Behind a load-balanced replica endpoint
 
@@ -146,8 +141,7 @@ What still holds, because it never consults the gate:
 So the working configuration is the carriers off, the scoping on:
 
 ```go
-off := false
-r.Use(httpmw.New(httpmw.Config{Router: router, Header: &off}))
+r.Use(httpmw.New(httpmw.Config{Router: router, Header: new(false)}))
 ```
 
 That still scopes every request — without it, reads carry no tracker and the
@@ -232,54 +226,36 @@ client.Router.AddMiddleware(watermill.NewConsistencyMiddleware(router.Port(), wa
 
 // gRPC: both directions — the caller's watermark rides out in metadata, the
 // callee's comes back in the trailer
-grpc.WithChainUnaryInterceptor(consistency.UnaryClientInterceptor(router.Port()))
-grpc.ChainUnaryInterceptor(consistency.UnaryServerInterceptor(router.Port()))
+grpc.WithChainUnaryInterceptor(grpcmw.UnaryClientInterceptor(router.Port()))
+grpc.ChainUnaryInterceptor(grpcmw.UnaryServerInterceptor(router.Port()))
 ```
 
 All three are optional. Without them the routing still works — reads that never
 write still reach a replica — but a read following a write stays on the primary.
 
-They share one adapter, `router.Port()`. The `http`, `watermill` and `grpc`
-modules declare the interfaces they need locally and never import `db`, so the
-database's dependency graph stays out of the transports'.
+They share one adapter, `router.Port()`, and none of them imports `replica`.
+Each declares the small interface it needs — a method or two taking strings —
+and Go's structural typing does the rest, so a transport never reaches into the
+router's types and the `watermill` module never imports `db` at all.
 
 ## What it buys
 
 Not latency — a replica read is not faster, and crosses one more hop. What it
-buys is capacity on the primary, and that only shows up as a comparison at
-equal offered load.
+buys is capacity on the primary: at a fixed offered load and a 90% read mix the
+primary served 75.7% fewer transactions, with read latency unchanged. The
+measurements, the arithmetic ceiling on that number, and what it does *not*
+claim are in [the ADR](./ADR/0001-read-replica-routing.md#measured-outcome).
 
-![Primary offload](./ADR/primary-offload.svg)
-
-| read mix | primary txns without routing | with routing | offload |
-|---|---|---|---|
-| 90% | 1555 | 392 | 75.7% |
-| 70% | 1858 | 1093 | 49.8% |
-| 50% | 2123 | 1540 | 32.0% |
-
-~1500 requests over 6s at a fixed offered rate, one replica, each node capped
-at 1 CPU. Read latency is unchanged: p50 within 10%, p99 within noise.
-
-The ceiling is arithmetic. Every request reads; the write requests also taint
-themselves, so their reads come back to the primary. At a read share of `r` the
-primary keeps `2(1−r)` transactions out of `2−r`, and the most that can ever
-leave is `r/(2−r)` — 33% at a 50% mix, not 50%. Measured offload tracks that
-ceiling closely, and the gap is the health poller's own traffic.
-
-Two things this does **not** claim:
-
-- **Throughput.** With a single replica and a read-heavy mix, routing relocates
-  the bottleneck rather than removing it. Spreading reads across several
-  replicas is what turns offload into throughput.
-- **Anything at all if the primary is not the constraint.** At 20% CPU you are
-  buying headroom for a spike, not performance today. Check first:
+Whether there is anything to move is a question about your primary, not about
+this driver:
 
 ```sql
 SELECT calls, total_exec_time, query
 FROM pg_stat_statements ORDER BY total_exec_time DESC LIMIT 20;
 ```
 
-If `SELECT`s without `FOR UPDATE` sit at the top, there is something to move.
+If `SELECT`s without `FOR UPDATE` sit at the top, there is. At 20% CPU on the
+primary you are buying headroom for a spike, not performance today.
 
 Once it is running, the share that actually left the primary is a metric:
 
@@ -295,44 +271,8 @@ to the primary.
 There is a dashboard in [ops/grafana/](./ops/grafana/) and Prometheus Operator
 rules in [ops/prometheus/](./ops/prometheus/).
 
-## Performance
-
-The routing decision precedes every statement, so its cost is added to every
-query in the process. It is not measurable next to the query itself.
-
-![Routing overhead](./ADR/routing-overhead.svg)
-
-| | ns/op | allocs |
-|---|---|---|
-| tracker check (`Tainted`) | 1.5 | 0 |
-| routing decision, write → primary | 13.9 | 0 |
-| routing decision, read → replica | 31.1 | 0 |
-| replica selection, 8 replicas | 15.9 | 0 |
-| classification, cached | 5–11 | 0 |
-| classification, uncached joined `SELECT` | 419 | 8 |
-| **query on the raw pool** | **255 476** | 48 |
-| **the same query through the router** | **254 492** | 52 |
-
-Apple M5 Pro, single core, PostgreSQL in Docker on the same host. The two query
-rows are within noise of each other: at roughly 30 ns against 255 µs, the
-decision is about one ten-thousandth of the round trip it precedes.
-
-Classification is paid once per distinct statement — `DefaultClassifier` caches,
-and statement text is nearly always a package-level constant. The scanner
-allocates only when it has to uppercase mixed-case identifiers.
-
-The one round trip the router adds on its own is the watermark capture, 112 µs
-here, and only on a unit of work that actually wrote. Inside a transaction
-`InTx` pipelines it into the commit:
-
-| write transaction, `WithSyncWatermark` on | µs |
-|---|---|
-| `InTx`, commit and capture pipelined | 438 |
-| `Begin` / `Commit` / `Watermark` separately | 507 |
-
-One round trip out of four, so 14% — real, and modest. Off this path the
-capture happens once per HTTP response or per published message, where there is
-no commit to pipeline it into.
+The routing decision itself costs 14–31 ns with no allocation, against a 255 µs
+round trip — the full benchmark table is in the ADR. To rerun it:
 
 ```bash
 go test -tags unit -run XXX -bench . ./drivers/postgres/

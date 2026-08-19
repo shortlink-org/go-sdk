@@ -46,6 +46,7 @@ func (s *Store) Init(ctx context.Context) error {
 	err := clickhouseDB.Ping(ctx)
 	if err != nil {
 		return &StoreError{
+			Driver:  driverName,
 			Op:      "init",
 			Err:     fmt.Errorf("%w: %w", ErrPing, err),
 			Details: "pinging Clickhouse after connection",
@@ -74,6 +75,7 @@ func (s *Store) close() error {
 	err := s.client.Close()
 	if err != nil {
 		return &StoreError{
+			Driver:  driverName,
 			Op:      "close",
 			Err:     fmt.Errorf("%w: %w", ErrClose, err),
 			Details: "closing Clickhouse connection",

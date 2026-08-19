@@ -101,6 +101,26 @@ silently shadowing a driver. Registration happens in `init`, where there is no
 caller to return an error to, so nothing panics: the failure waits until there
 is someone to hand it to.
 
+### Errors
+
+Two lifecycle error types live in `db` and every driver aliases them, so a
+caller can match once and be right about all sixteen:
+
+```go
+var storeErr *db.StoreError
+if errors.As(err, &storeErr) {
+    log.Error("store failed", "driver", storeErr.Driver, "op", storeErr.Op)
+}
+```
+
+`StoreError` names the store, the phase it failed in, and wraps the cause;
+`PingConnectionError` reports a connection that came up but did not answer a
+ping. Both unwrap, so `errors.Is(err, context.Canceled)` still works through
+them — which is how a caller tells a shutdown from a server that is down.
+
+Each driver keeps its own sentinels (`postgres.ErrInvalidCredentials`,
+`redis.ErrInvalidURI`, …); only the envelope is shared.
+
 ### URI format
 
 We use the following format for the database URI:

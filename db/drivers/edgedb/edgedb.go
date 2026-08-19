@@ -45,6 +45,7 @@ func (s *Store) Init(ctx context.Context) error {
 	client, err := gel.CreateClientDSN(s.config.URI, options)
 	if err != nil {
 		return &StoreError{
+			Driver:  driverName,
 			Op:      "CreateClientDSN",
 			Err:     fmt.Errorf("%w: %w", ErrConnect, err),
 			Details: "failed to connect to EdgeDB at " + s.config.URI,
@@ -73,6 +74,7 @@ func (s *Store) close() error {
 	err := s.client.Close()
 	if err != nil {
 		return &StoreError{
+			Driver:  driverName,
 			Op:      "close",
 			Err:     fmt.Errorf("%w: %w", ErrClose, err),
 			Details: "failed to close EdgeDB connection",

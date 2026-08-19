@@ -1,5 +1,5 @@
-// Package consistency carries a database read-your-writes guarantee across a
-// gRPC hop.
+// Package grpcmw carries the driver's read-your-writes guarantee across a gRPC
+// hop.
 //
 // The problem it closes: a service that writes and then calls another service
 // hands over nothing, so the callee's reads may be served by a replica that has
@@ -13,10 +13,12 @@
 //   - Return. The callee wrote on the caller's behalf. Its watermark comes back
 //     in the trailer, and the caller's own later reads are gated on it.
 //
-// This module never imports db. Consistency is declared here and satisfied
-// structurally by *postgres.TextPort — Go interfaces make that work, and it
-// keeps the database's dependency graph out of the transport's.
-package consistency
+// It lives with the driver, next to httpmw, because a boundary middleware for
+// this guarantee is the driver's concern whichever transport it speaks. The
+// dependency is only google.golang.org/grpc/metadata for the wire format;
+// Consistency is declared here and satisfied by *postgres.TextPort, so the
+// package still does not reach into the router's types.
+package grpcmw
 
 import (
 	"context"

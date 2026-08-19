@@ -75,7 +75,7 @@ sequenceDiagram
 
     C->>W: POST /orders
     W->>P: INSERT ...
-    Note over W: context tainted;<br/>later reads stay on the primary
+    Note over W: context tainted —<br/>later reads stay on the primary
     W->>P: pg_current_wal_insert_lsn()
     P-->>W: 16/B374D848
     W-->>C: 201, X-Read-LSN: v1:…:3:16/B374D848:…
@@ -178,6 +178,18 @@ wrote on the caller's behalf hands its own watermark back in the trailer, so the
 caller's later reads do not run behind work it asked for. The trailer is read
 even when the call failed, because an RPC can return an error after part of its
 work has committed.
+
+**Both boundary middlewares live with the driver**, under `middlewares/`,
+because carrying this guarantee across a hop is the driver's concern whichever
+transport speaks it — and keeping them together is what stops the HTTP and gRPC
+halves from drifting apart. The cost is one direct dependency on
+`google.golang.org/grpc` for the metadata type.
+
+The queue side is the exception, and deliberately so: `watermill` declares its
+own two-method interfaces and is satisfied structurally by
+`*postgres.TextPort`, so that module never imports `db`. It is the case where
+the dependency would be worth avoiding — `db` pulls mongo, badger, clickhouse
+and scylla behind it, and a message broker has no business carrying that.
 
 **Failures degrade toward the primary, and topology changes are not retried.**
 An error surfacing through `pgx.Rows` is never retried elsewhere — `Rows`
@@ -288,10 +300,32 @@ not throughput — with a single replica a read-heavy mix relocates the
 bottleneck rather than removing it, which is why the claim here is capacity on
 the primary and nothing more.
 
-The routing decision itself does not register against a query: 14–31ns with no
-allocation, against a 255µs round trip.
+The routing decision itself does not register against a query:
+
+| | ns/op | allocs |
+|---|---|---|
+| tracker check (`Tainted`) | 1.5 | 0 |
+| routing decision, write → primary | 13.9 | 0 |
+| routing decision, read → replica | 31.1 | 0 |
+| replica selection, 8 replicas | 15.9 | 0 |
+| classification, cached | 5–11 | 0 |
+| classification, uncached joined `SELECT` | 419 | 8 |
+| **query on the raw pool** | **255 476** | 48 |
+| **the same query through the router** | **254 492** | 52 |
 
 ![Routing overhead](./routing-overhead.svg)
+
+Apple M5 Pro, single core, PostgreSQL in Docker on the same host. The two query
+rows are within noise of each other: at roughly 30 ns against 255 µs, the
+decision is about one ten-thousandth of the round trip it precedes.
+Classification is paid once per distinct statement — the default classifier
+caches, and statement text is nearly always a package-level constant; the
+scanner allocates only when it has to uppercase mixed-case identifiers.
+
+The one round trip the router adds on its own is the watermark capture, 112 µs
+here, and only on a unit of work that actually wrote — one round trip out of
+four for a write transaction, which `InTx` pipelines into the commit as
+described above.
 
 ## Consequences
 

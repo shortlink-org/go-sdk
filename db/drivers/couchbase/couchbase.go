@@ -43,6 +43,7 @@ func (s *Store) Init(ctx context.Context) error {
 	s.client, err = gocb.Connect(s.config.uri, s.config.options)
 	if err != nil {
 		return &StoreError{
+			Driver:  driverName,
 			Op:      "Connect",
 			Err:     fmt.Errorf("%w: %w", ErrCouchbaseConnect, err),
 			Details: "failed to connect to Couchbase cluster",

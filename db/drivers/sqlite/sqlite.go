@@ -33,6 +33,7 @@ func (s *Store) Init(ctx context.Context) error {
 
 	if s.config.Path == "" {
 		return &StoreError{
+			Driver:  driverName,
 			Op:      "init",
 			Err:     ErrInvalidPath,
 			Details: "sqlite path configuration is empty",
@@ -55,6 +56,7 @@ func (s *Store) Init(ctx context.Context) error {
 	client, err := otelsql.Open("sqlite3", s.config.Path, options...)
 	if err != nil {
 		return &StoreError{
+			Driver:  driverName,
 			Op:      "init",
 			Err:     ErrClientConnection,
 			Details: err.Error(),
@@ -88,6 +90,7 @@ func (s *Store) close() error {
 	err := s.client.Close()
 	if err != nil {
 		return &StoreError{
+			Driver:  driverName,
 			Op:      "close",
 			Err:     err,
 			Details: "failed to close connection",

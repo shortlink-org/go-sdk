@@ -246,12 +246,11 @@ func TestStampingWriterForwardsFlush(t *testing.T) {
 func TestScopeOnlyConfigurationDoesNotCapture(t *testing.T) {
 	t.Parallel()
 
-	off := false
 	rec := &recorder{}
 
 	// A nil Router would short-circuit before any capture, so use a real one:
 	// reaching Token on it would panic, which is exactly the assertion.
-	cfg := Config{Router: &replica.Router{}, Header: &off, Cookie: false}
+	cfg := Config{Router: &replica.Router{}, Header: new(false), Cookie: false}
 
 	assert.NotPanics(t, func() {
 		serve(t, cfg, rec.handler(),

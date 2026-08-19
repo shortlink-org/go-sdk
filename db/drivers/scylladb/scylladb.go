@@ -20,6 +20,7 @@ func (s *Store) Init(ctx context.Context) error {
 
 	if len(s.config.Hosts) == 0 {
 		return &StoreError{
+			Driver:  driverName,
 			Op:      "init",
 			Err:     ErrInvalidHosts,
 			Details: "STORE_SCYLLADB_HOSTS is empty",
@@ -35,6 +36,7 @@ func (s *Store) Init(ctx context.Context) error {
 	s.session, err = cluster.CreateSession()
 	if err != nil {
 		return &StoreError{
+			Driver:  driverName,
 			Op:      "init",
 			Err:     ErrClientConnection,
 			Details: err.Error(),
@@ -53,7 +55,7 @@ func (s *Store) Init(ctx context.Context) error {
 		s.session.Close()
 		s.session = nil
 
-		return &PingConnectionError{Err: err}
+		return &PingConnectionError{Driver: driverName, Err: err}
 	}
 
 	go func() {

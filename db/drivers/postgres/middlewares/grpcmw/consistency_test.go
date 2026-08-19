@@ -1,6 +1,6 @@
 //go:build unit
 
-package consistency
+package grpcmw
 
 import (
 	"context"
@@ -14,9 +14,9 @@ import (
 )
 
 // fakeConsistency records what the interceptors asked of it. The real
-// implementation lives in the db module, which this one must not import — so
-// the contract is exercised through the same structural interface a caller
-// would satisfy.
+// implementation is *postgres.TextPort; the contract is exercised through the
+// same structural interface a caller would satisfy, which keeps the test off
+// the router and its pools.
 type fakeConsistency struct {
 	token     string
 	hasToken  bool

@@ -30,6 +30,7 @@ func (s *Store) Init(ctx context.Context) error {
 	err := s.setConfig()
 	if err != nil {
 		return &StoreError{
+			Driver:  driverName,
 			Op:      "setConfig",
 			Err:     err,
 			Details: "failed to set CockroachDB configuration",
@@ -39,6 +40,7 @@ func (s *Store) Init(ctx context.Context) error {
 	s.client, err = pgx.ConnectConfig(ctx, s.config)
 	if err != nil {
 		return &StoreError{
+			Driver:  driverName,
 			Op:      "ConnectConfig",
 			Err:     fmt.Errorf("%w: %w", ErrCockroachConnect, err),
 			Details: "failed to connect to CockroachDB with provided config",
@@ -66,6 +68,7 @@ func (s *Store) close(ctx context.Context) error {
 	err := s.client.Close(ctx)
 	if err != nil {
 		return &StoreError{
+			Driver:  driverName,
 			Op:      "close",
 			Err:     err,
 			Details: "failed to close CockroachDB connection",
@@ -84,6 +87,7 @@ func (s *Store) setConfig() error {
 	s.config, err = pgx.ParseConfig(s.cfg.GetString("STORE_COCKROACHDB_URI"))
 	if err != nil {
 		return &StoreError{
+			Driver:  driverName,
 			Op:      "ParseConfig",
 			Err:     fmt.Errorf("%w: %w", ErrCockroachConfig, err),
 			Details: "failed to parse CockroachDB URI from environment",
