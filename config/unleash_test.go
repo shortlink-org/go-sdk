@@ -5,15 +5,11 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/spf13/viper"
 	"github.com/stretchr/testify/require"
 )
 
 func TestConfigClose(t *testing.T) {
 	t.Run("feature toggles disabled", func(t *testing.T) {
-		viper.Reset()
-		t.Cleanup(viper.Reset)
-
 		cfg, err := New()
 		require.NoError(t, err)
 
@@ -22,9 +18,6 @@ func TestConfigClose(t *testing.T) {
 	})
 
 	t.Run("feature toggles enabled", func(t *testing.T) {
-		viper.Reset()
-		t.Cleanup(viper.Reset)
-
 		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("Content-Type", "application/json")
 
@@ -38,9 +31,11 @@ func TestConfigClose(t *testing.T) {
 		}))
 		t.Cleanup(srv.Close)
 
-		viper.Set("SERVICE_NAME", "config-test")
-		viper.Set("FEATURE_TOGGLE_ENABLE", true)
-		viper.Set("FEATURE_TOGGLE_API", srv.URL+"/api/")
+		// New reads the feature toggle settings itself, so they have to be in the
+		// environment before it runs: a Config no longer shares the global Viper.
+		t.Setenv("SERVICE_NAME", "config-test")
+		t.Setenv("FEATURE_TOGGLE_ENABLE", "true")
+		t.Setenv("FEATURE_TOGGLE_API", srv.URL+"/api/")
 
 		cfg, err := New()
 		require.NoError(t, err)

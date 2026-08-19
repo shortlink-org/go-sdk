@@ -13,6 +13,11 @@ import (
 type Config struct {
 	mu sync.RWMutex
 
+	// v is this Config's own Viper. The package-level Viper is a process-wide
+	// singleton: sharing it would leave every Config guarding the same state
+	// behind a different mutex, and let one Config's Set reach all the others.
+	v *viper.Viper
+
 	// featureToggle reports whether FeatureToogleRun initialized the Unleash
 	// client, so Close knows whether there is anything to shut down.
 	featureToggle bool
@@ -21,12 +26,13 @@ type Config struct {
 
 // New - read .env and ENV variables.
 func New() (*Config, error) {
-	viper.SetConfigName(".env")
-	viper.SetConfigType("dotenv")
-	viper.AddConfigPath(".") // look for config in the working directory
-	viper.AutomaticEnv()
+	v := viper.New()
+	v.SetConfigName(".env")
+	v.SetConfigType("dotenv")
+	v.AddConfigPath(".") // look for config in the working directory
+	v.AutomaticEnv()
 
-	err := viper.ReadInConfig()
+	err := v.ReadInConfig()
 	if err != nil {
 		var typeErr viper.ConfigFileNotFoundError
 		if !errors.As(err, &typeErr) {
@@ -35,7 +41,7 @@ func New() (*Config, error) {
 	}
 
 	config := &Config{
-		mu: sync.RWMutex{},
+		v: v,
 	}
 
 	// Enable feature toggle
