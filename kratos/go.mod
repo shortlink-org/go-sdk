@@ -4,8 +4,8 @@ go 1.26.2
 
 require (
 	github.com/ory/client-go v1.22.66
-	github.com/shortlink-org/go-sdk/config v0.0.0-20260419222854-fd069f4d5106
-	github.com/shortlink-org/go-sdk/logger v0.0.0-20260423005905-959e3e589a42
+	github.com/shortlink-org/go-sdk/config v0.0.0-20260819222906-ab359ad03912
+	github.com/shortlink-org/go-sdk/logger v0.0.0-20260819222906-ab359ad03912
 	github.com/spf13/viper v1.21.0
 )
 
@@ -26,7 +26,7 @@ require (
 	github.com/spf13/cast v1.10.0 // indirect
 	github.com/spf13/pflag v1.0.10 // indirect
 	github.com/stretchr/objx v0.5.3 // indirect
-	github.com/stretchr/testify v1.12.0 // indirect
+	github.com/stretchr/testify v1.12.1 // indirect
 	github.com/subosito/gotenv v1.6.0 // indirect
 	github.com/twmb/murmur3 v1.1.8 // indirect
 	go.opentelemetry.io/auto/sdk v1.2.1 // indirect

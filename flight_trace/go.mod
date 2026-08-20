@@ -2,7 +2,7 @@ module github.com/shortlink-org/go-sdk/flight_trace
 
 go 1.26.2
 
-require github.com/shortlink-org/go-sdk/config v0.0.0-20260419222854-fd069f4d5106
+require github.com/shortlink-org/go-sdk/config v0.0.0-20260819222906-ab359ad03912
 
 require (
 	github.com/Masterminds/semver/v3 v3.5.0 // indirect
@@ -19,7 +19,7 @@ require (
 	github.com/spf13/pflag v1.0.10 // indirect
 	github.com/spf13/viper v1.21.0 // indirect
 	github.com/stretchr/objx v0.5.3 // indirect
-	github.com/stretchr/testify v1.12.0 // indirect
+	github.com/stretchr/testify v1.12.1 // indirect
 	github.com/subosito/gotenv v1.6.0 // indirect
 	github.com/twmb/murmur3 v1.1.8 // indirect
 	go.yaml.in/yaml/v3 v3.0.5 // indirect

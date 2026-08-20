@@ -7,9 +7,9 @@ require (
 	github.com/grafana/otel-profiling-go v0.6.0
 	github.com/heptiolabs/healthcheck v0.0.0-20211123025425-613501dd5deb
 	github.com/prometheus/client_golang v1.24.1
-	github.com/shortlink-org/go-sdk/config v0.0.0-20260419222854-fd069f4d5106
-	github.com/shortlink-org/go-sdk/http v0.0.0-20260424225420-a63676f29741
-	github.com/shortlink-org/go-sdk/logger v0.0.0-20260423005905-959e3e589a42
+	github.com/shortlink-org/go-sdk/config v0.0.0-20260819222906-ab359ad03912
+	github.com/shortlink-org/go-sdk/http v0.0.0-20260819222906-ab359ad03912
+	github.com/shortlink-org/go-sdk/logger v0.0.0-20260819222906-ab359ad03912
 	go.opentelemetry.io/contrib/propagators/b3 v1.45.0
 	go.opentelemetry.io/otel v1.45.0
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc v1.45.0
@@ -49,7 +49,7 @@ require (
 	github.com/spf13/pflag v1.0.10 // indirect
 	github.com/spf13/viper v1.21.0 // indirect
 	github.com/stretchr/objx v0.5.3 // indirect
-	github.com/stretchr/testify v1.12.0 // indirect
+	github.com/stretchr/testify v1.12.1 // indirect
 	github.com/subosito/gotenv v1.6.0 // indirect
 	github.com/twmb/murmur3 v1.1.8 // indirect
 	go.opentelemetry.io/auto/sdk v1.2.1 // indirect
