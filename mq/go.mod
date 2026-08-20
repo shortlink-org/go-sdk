@@ -9,8 +9,8 @@ require (
 	github.com/nats-io/nats.go v1.53.1
 	github.com/rabbitmq/amqp091-go v1.14.0
 	github.com/redis/rueidis v1.0.77
-	github.com/shortlink-org/go-sdk/db v0.0.0-20260424225420-a63676f29741
-	github.com/shortlink-org/go-sdk/logger v0.0.0-20260423005905-959e3e589a42
+	github.com/shortlink-org/go-sdk/db v0.0.0-20260819222906-ab359ad03912
+	github.com/shortlink-org/go-sdk/logger v0.0.0-20260819222906-ab359ad03912
 	github.com/stretchr/testify v1.12.1
 	github.com/testcontainers/testcontainers-go v0.44.0
 	github.com/testcontainers/testcontainers-go/modules/kafka v0.44.0
@@ -95,7 +95,7 @@ require (
 	github.com/rcrowley/go-metrics v0.0.0-20250401214520-65e299d6c5c9 // indirect
 	github.com/redis/rueidis/rueidisotel v1.0.77 // indirect
 	github.com/sagikazarmark/locafero v0.11.0 // indirect
-	github.com/shortlink-org/go-sdk/config v0.0.0-20260419222854-fd069f4d5106
+	github.com/shortlink-org/go-sdk/config v0.0.0-20260819222906-ab359ad03912
 	github.com/sirupsen/logrus v1.9.4 // indirect
 	github.com/sourcegraph/conc v0.3.1-0.20240121214520-5f936abd7ae8 // indirect
 	github.com/spf13/afero v1.15.0 // indirect

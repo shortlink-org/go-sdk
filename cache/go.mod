@@ -7,8 +7,8 @@ require (
 	github.com/redis/go-redis/v9 v9.22.0
 	github.com/redis/rueidis v1.0.77
 	github.com/redis/rueidis/rueidiscompat v1.0.77
-	github.com/shortlink-org/go-sdk/db v0.0.0-20260424225420-a63676f29741
-	github.com/shortlink-org/go-sdk/observability v0.0.0-20260415234714-8c7f9b03b6b3
+	github.com/shortlink-org/go-sdk/db v0.0.0-20260819222906-ab359ad03912
+	github.com/shortlink-org/go-sdk/observability v0.0.0-20260819222906-ab359ad03912
 	github.com/stretchr/testify v1.12.1
 	github.com/testcontainers/testcontainers-go v0.44.0
 	github.com/testcontainers/testcontainers-go/modules/redis v0.44.0
@@ -81,7 +81,7 @@ require (
 	github.com/prometheus/procfs v0.21.1 // indirect
 	github.com/redis/rueidis/rueidisotel v1.0.77 // indirect
 	github.com/sagikazarmark/locafero v0.11.0 // indirect
-	github.com/shortlink-org/go-sdk/config v0.0.0-20260419222854-fd069f4d5106
+	github.com/shortlink-org/go-sdk/config v0.0.0-20260819222906-ab359ad03912
 	github.com/shortlink-org/go-sdk/http v0.0.0-20260424225420-a63676f29741 // indirect
 	github.com/shortlink-org/go-sdk/logger v0.0.0-20260423005905-959e3e589a42 // indirect
 	github.com/sirupsen/logrus v1.9.4 // indirect

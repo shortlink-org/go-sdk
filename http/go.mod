@@ -9,11 +9,11 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/prometheus/client_golang v1.24.1
 	github.com/prometheus/client_model v0.6.2
-	github.com/shortlink-org/go-sdk/auth v0.0.0-20260424225420-a63676f29741
-	github.com/shortlink-org/go-sdk/config v0.0.0-20260419222854-fd069f4d5106
-	github.com/shortlink-org/go-sdk/flight_trace v0.0.0-20260424225420-a63676f29741
-	github.com/shortlink-org/go-sdk/grpc v0.0.0-20260417231502-a845b14b1f44
-	github.com/shortlink-org/go-sdk/logger v0.0.0-20260423005905-959e3e589a42
+	github.com/shortlink-org/go-sdk/auth v0.0.0-20260819222906-ab359ad03912
+	github.com/shortlink-org/go-sdk/config v0.0.0-20260819222906-ab359ad03912
+	github.com/shortlink-org/go-sdk/flight_trace v0.0.0-20260819222906-ab359ad03912
+	github.com/shortlink-org/go-sdk/grpc v0.0.0-20260819222906-ab359ad03912
+	github.com/shortlink-org/go-sdk/logger v0.0.0-20260819222906-ab359ad03912
 	github.com/stretchr/testify v1.12.1
 	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.70.0
 	go.opentelemetry.io/otel v1.45.0

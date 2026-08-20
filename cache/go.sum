@@ -225,6 +225,8 @@ github.com/shirou/gopsutil/v4 v4.26.6 h1:Mzr/npDtQC/xpeEuQKHZt8Zo9CmPvhTj8nkR8w5
 github.com/shirou/gopsutil/v4 v4.26.6/go.mod h1:LZ6ewCSkBqUpvSOf+LsTGnRinC6iaNUNMGBtDkJBaLQ=
 github.com/shortlink-org/go-sdk/config v0.0.0-20260419222854-fd069f4d5106 h1:UheCbENEwRYvgxfEGucDjHwBOPoHAj6r9nz5Z2plPCM=
 github.com/shortlink-org/go-sdk/config v0.0.0-20260419222854-fd069f4d5106/go.mod h1:SgqtI/Y3GTHOorKylL0ELCkZCSgrrtPX5zkaX1Y5uqQ=
+github.com/shortlink-org/go-sdk/config v0.0.0-20260819222906-ab359ad03912 h1:glO445xYfwsp91fHfvZ9jq/0uyrEtxvVALEnuPIVVsg=
+github.com/shortlink-org/go-sdk/config v0.0.0-20260819222906-ab359ad03912/go.mod h1:jbbBFMKcYJWDWHjgX5BEH2qmQUjackqxJBpqD2mbUco=
 github.com/shortlink-org/go-sdk/http v0.0.0-20260424225420-a63676f29741 h1:0HIZF8zUfY/YKE8rNpR56/ZmTUcG9G0S29REVo0/dYY=
 github.com/shortlink-org/go-sdk/http v0.0.0-20260424225420-a63676f29741/go.mod h1:vZm0bp3ptttDW2ac8E71owvH+uKP+STx65+tqvooVJc=
 github.com/shortlink-org/go-sdk/logger v0.0.0-20260423005905-959e3e589a42 h1:9v01WG8PkicjUW/WFMp170roHFlsVXB7emW3jx5Lxh4=
