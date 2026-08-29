@@ -24,8 +24,9 @@ func (s span) middleware(next http.Handler) http.Handler {
 	handlerFunc := func(writer http.ResponseWriter, request *http.Request) {
 		wrappedWriter := middleware.NewWrapResponseWriter(writer, request.ProtoMajor)
 
-		// Get span from context once (span is created by otelhttp.NewHandler in server.go)
-		// This middleware does NOT create new spans, only uses existing one
+		// Get span from context once. The span is created upstream — by
+		// httpserver.New when it was given a tracer provider — and this
+		// middleware only reads it, never starts one of its own.
 		span := trace.SpanFromContext(request.Context())
 
 		// Check if "trace-id" already exists in the header
