@@ -4,7 +4,7 @@ go 1.26.2
 
 require (
 	github.com/IBM/sarama v1.60.1
-	github.com/ThreeDotsLabs/watermill v1.5.2
+	github.com/ThreeDotsLabs/watermill v1.5.3
 	github.com/ThreeDotsLabs/watermill-kafka/v3 v3.1.4
 	github.com/dnwe/otelsarama v0.0.0-20240308230250-9388d9d40bc0
 	github.com/google/uuid v1.6.0
