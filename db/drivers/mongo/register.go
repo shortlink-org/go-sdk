@@ -15,7 +15,7 @@ func init() {
 			return nil, err
 		}
 
-		return New(deps.Cfg, opts...), nil
+		return New(deps.Tracer, deps.Metrics, deps.Cfg, opts...), nil
 	})
 }
 

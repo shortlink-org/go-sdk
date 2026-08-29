@@ -11,6 +11,8 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/testcontainers/testcontainers-go/modules/mongodb"
 	"go.mongodb.org/mongo-driver/v2/mongo/options"
+	sdktrace "go.opentelemetry.io/otel/sdk/trace"
+	"go.opentelemetry.io/otel/sdk/trace/tracetest"
 	"go.uber.org/goleak"
 
 	"github.com/shortlink-org/go-sdk/config"
@@ -29,7 +31,9 @@ func TestMongo(t *testing.T) {
 	// The option has to reach the client options after the defaults are applied
 	// and before Connect, so that it can override any of them.
 	applied := false
-	store := New(cfg, WithClientOptions(func(opts *options.ClientOptions) {
+	recorder := tracetest.NewSpanRecorder()
+	tracer := sdktrace.NewTracerProvider(sdktrace.WithSpanProcessor(recorder))
+	store := New(tracer, nil, cfg, WithClientOptions(func(opts *options.ClientOptions) {
 		applied = true
 
 		require.NotNil(t, opts.RetryWrites, "defaults must be applied before the option")
@@ -51,4 +55,7 @@ func TestMongo(t *testing.T) {
 	t.Setenv("STORE_MONGODB_URI", strings.TrimSuffix(uri, "/")+"/shortlink")
 	require.NoError(t, store.Init(ctx))
 	require.True(t, applied, "WithClientOptions callback was not applied")
+
+	// Init pings the primary, so the monitor has a command to report by now.
+	require.NotEmpty(t, recorder.Ended(), "commands must be traced")
 }

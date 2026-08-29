@@ -5,17 +5,26 @@ import (
 
 	_ "github.com/golang-migrate/migrate/v4/database/mongodb"
 	_ "github.com/johejo/golang-migrate-extra/source/file"
+	"go.mongodb.org/mongo-driver/v2/event"
 	"go.mongodb.org/mongo-driver/v2/mongo"
 	"go.mongodb.org/mongo-driver/v2/mongo/options"
 	"go.mongodb.org/mongo-driver/v2/mongo/readpref"
+	"go.opentelemetry.io/contrib/instrumentation/go.mongodb.org/mongo-driver/v2/mongo/otelmongo"
+	"go.opentelemetry.io/otel/sdk/metric"
+	"go.opentelemetry.io/otel/trace"
 
 	"github.com/shortlink-org/go-sdk/config"
 	storeOptions "github.com/shortlink-org/go-sdk/db/options"
 )
 
 // New creates a MongoDB store configured via cfg.
-func New(cfg *config.Config, opts ...Option) *Store {
-	s := &Store{cfg: cfg}
+func New(
+	tracer trace.TracerProvider,
+	metrics *metric.MeterProvider,
+	cfg *config.Config,
+	opts ...Option,
+) *Store {
+	s := &Store{cfg: cfg, tracer: tracer, metrics: metrics}
 
 	for _, opt := range opts {
 		opt(s)
@@ -36,9 +45,7 @@ func (s *Store) Init(ctx context.Context) error {
 		ApplyURI(s.config.URI).
 		SetCompressors([]string{"snappy", "zlib", "zstd"}).
 		SetAppName(s.cfg.GetString("SERVICE_NAME")).
-		// TODO: wait new version
-		// link: https://github.com/open-telemetry/opentelemetry-go-contrib/issues/6419
-		// SetMonitor(otelmongo.NewMonitor()).
+		SetMonitor(s.monitor()).
 		SetRetryReads(true).
 		SetRetryWrites(true)
 
@@ -79,6 +86,27 @@ func (s *Store) Init(ctx context.Context) error {
 	}()
 
 	return nil
+}
+
+// monitor builds the command monitor the client reports through, or nil when
+// there is nothing to report to. The providers are passed only when they exist:
+// otelmongo calls Tracer and Meter on whatever it is given, and a typed nil
+// provider panics there rather than degrading to a no-op.
+func (s *Store) monitor() *event.CommandMonitor {
+	if s.tracer == nil && s.metrics == nil {
+		return nil
+	}
+
+	opts := []otelmongo.Option{}
+	if s.tracer != nil {
+		opts = append(opts, otelmongo.WithTracerProvider(s.tracer))
+	}
+
+	if s.metrics != nil {
+		opts = append(opts, otelmongo.WithMeterProvider(s.metrics))
+	}
+
+	return otelmongo.NewMonitor(opts...)
 }
 
 // GetConn - get connect

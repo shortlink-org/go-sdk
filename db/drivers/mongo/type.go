@@ -3,6 +3,8 @@ package mongo
 import (
 	"go.mongodb.org/mongo-driver/v2/mongo"
 	"go.mongodb.org/mongo-driver/v2/mongo/options"
+	"go.opentelemetry.io/otel/sdk/metric"
+	"go.opentelemetry.io/otel/trace"
 
 	"github.com/shortlink-org/go-sdk/config"
 )
@@ -41,9 +43,11 @@ func WithClientOptions(fn ClientOptionsFunc) Option {
 
 // Store implementation of db interface
 type Store struct {
-	client *mongo.Client
-	config Config
-	cfg    *config.Config
+	client  *mongo.Client
+	config  Config
+	cfg     *config.Config
+	tracer  trace.TracerProvider
+	metrics *metric.MeterProvider
 
 	clientOptions []ClientOptionsFunc
 }
