@@ -119,6 +119,10 @@ func (p NoTrackerPolicy) String() string {
 	}
 }
 
+func (p NoTrackerPolicy) valid() bool {
+	return p == NoTrackerPrimary || p == NoTrackerReplica
+}
+
 // FallbackPolicy decides what an ordinary read does when no replica qualifies.
 type FallbackPolicy uint8
 
@@ -140,6 +144,10 @@ func (p FallbackPolicy) String() string {
 	return "primary"
 }
 
+func (p FallbackPolicy) valid() bool {
+	return p == FallbackToPrimary || p == FallbackReject
+}
+
 // WatermarkPolicy decides whether primary transaction commits immediately
 // resolve their WAL position.
 type WatermarkPolicy uint8
@@ -159,4 +167,8 @@ func (p WatermarkPolicy) String() string {
 	}
 
 	return "handoff"
+}
+
+func (p WatermarkPolicy) valid() bool {
+	return p == WatermarkOnHandoff || p == WatermarkOnCommit
 }

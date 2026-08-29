@@ -2,6 +2,9 @@ package replica
 
 import (
 	"context"
+	"fmt"
+	"math"
+	"strings"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -56,4 +59,48 @@ func DefaultOptions() Options {
 		Classifier:       sqlclass.DefaultClassifier(),
 		Fallback:         FallbackToPrimary,
 	}
+}
+
+// Validate checks the fully resolved routing configuration. Callers are
+// expected to merge defaults, environment values and functional options
+// first; validation then describes the value that would actually be used.
+func (o Options) Validate() error {
+	switch {
+	case o.PollInterval < 0:
+		return invalidOption("PollInterval", o.PollInterval, "zero or a positive duration")
+	case math.IsNaN(o.PollJitter) || math.IsInf(o.PollJitter, 0) || o.PollJitter < 0 || o.PollJitter > 1:
+		return invalidOption("PollJitter", o.PollJitter, "a finite fraction between 0 and 1")
+	case o.ProbeTimeout <= 0:
+		return invalidOption("ProbeTimeout", o.ProbeTimeout, "a positive duration")
+	case o.SampleStaleAfter <= 0:
+		return invalidOption("SampleStaleAfter", o.SampleStaleAfter, "a positive duration")
+	case o.MaxLagBytes < 0:
+		return invalidOption("MaxLagBytes", o.MaxLagBytes, "zero or a positive byte count")
+	case o.GateMaxWait < 0:
+		return invalidOption("GateMaxWait", o.GateMaxWait, "zero or a positive duration")
+	case !o.NoTracker.valid():
+		return invalidOption("NoTracker", o.NoTracker, "a known no-tracker policy")
+	case !o.Fallback.valid():
+		return invalidOption("Fallback", o.Fallback, "a known fallback policy")
+	case !o.Watermark.valid():
+		return invalidOption("Watermark", o.Watermark, "a known watermark policy")
+	case o.Classifier == nil:
+		return invalidOption("Classifier", nil, "a non-nil classifier")
+	}
+
+	for index, uri := range o.URIs {
+		if strings.TrimSpace(uri) == "" {
+			return invalidOption(
+				"URIs",
+				fmt.Sprintf("entry %d is empty", index),
+				"only non-empty replica connection strings",
+			)
+		}
+	}
+
+	return nil
+}
+
+func invalidOption(option string, value any, constraint string) error {
+	return &OptionError{Option: option, Value: value, Constraint: constraint}
 }

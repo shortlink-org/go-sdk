@@ -46,6 +46,14 @@ type Config struct {
 // With no replica DSNs it returns a router that owns only the primary: Enabled
 // reports false and every statement runs where it ran before.
 func Open(ctx context.Context, cfg *Config) (*Router, error) {
+	if cfg == nil {
+		return nil, &Error{Op: opOpen, Err: ErrInvalidOptions, Details: "config is nil"}
+	}
+
+	if err := cfg.Options.Validate(); err != nil {
+		return nil, &Error{Op: opOpen, Err: err, Details: "invalid routing options"}
+	}
+
 	instruments, err := metrics.New(cfg.Meter)
 	if err != nil {
 		return nil, err

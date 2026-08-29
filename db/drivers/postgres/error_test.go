@@ -13,6 +13,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/shortlink-org/go-sdk/config"
+	"github.com/shortlink-org/go-sdk/db/drivers/postgres/replica"
 )
 
 var errCause = errors.New("underlying")
@@ -130,6 +131,29 @@ func TestInitReportsAnUnparseableDSN(t *testing.T) {
 	err = store.Init(t.Context())
 	require.Error(t, err)
 	require.ErrorIs(t, err, ErrInvalidDSN)
+
+	var storeErr *StoreError
+	require.ErrorAs(t, err, &storeErr)
+	assert.Equal(t, opConfig, storeErr.Op)
+}
+
+func TestInitRejectsReplicaOptionsBeforeOpeningPrimary(t *testing.T) {
+	t.Parallel()
+
+	cfg, err := config.New()
+	require.NoError(t, err)
+
+	// If Init reaches primary configuration this DSN produces a different
+	// error. The invalid routing value must win because it can be rejected
+	// without opening or parsing any database resources.
+	cfg.Set(cfgURI, "://not-a-dsn")
+
+	store := New(nil, nil, cfg, WithReplicaProbeTimeout(0))
+
+	err = store.Init(t.Context())
+	require.Error(t, err)
+	require.ErrorIs(t, err, replica.ErrInvalidOptions)
+	require.NotErrorIs(t, err, ErrInvalidDSN)
 
 	var storeErr *StoreError
 	require.ErrorAs(t, err, &storeErr)

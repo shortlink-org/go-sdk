@@ -39,6 +39,10 @@ func (s *Store) Init(ctx context.Context) error {
 		opt(s)
 	}
 
+	if err = s.routing.Validate(); err != nil {
+		return storeError(opConfig, nil, err, "invalid replica routing options")
+	}
+
 	// Set configuration
 	s.config, err = getConfig(&s.tracer, s.cfg)
 	if err != nil {

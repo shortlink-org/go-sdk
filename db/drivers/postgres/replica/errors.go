@@ -17,6 +17,10 @@ const (
 
 // Routing errors.
 var (
+	// ErrInvalidOptions indicates that the resolved routing configuration
+	// violates an invariant. It is returned before any replica resources are
+	// opened, so retrying with the same configuration cannot help.
+	ErrInvalidOptions = errors.New("invalid postgres replica options")
 	// ErrRouterDisabled indicates no replicas were configured.
 	ErrRouterDisabled = errors.New("no postgres replicas configured")
 	// ErrNoHealthyReplica indicates no replica can currently serve the read.
@@ -31,6 +35,27 @@ var (
 	// ErrReplicaPromoted indicates a replica left recovery and was quarantined.
 	ErrReplicaPromoted = errors.New("replica left recovery and was quarantined")
 )
+
+// OptionError identifies one invalid value in the resolved routing options.
+// The final value is reported rather than its source because defaults,
+// environment configuration and functional options have already been merged
+// by the time validation runs.
+type OptionError struct {
+	Option     string
+	Value      any
+	Constraint string
+}
+
+// Error implements the error interface.
+func (e *OptionError) Error() string {
+	return fmt.Sprintf("%s: %s=%v; expected %s", ErrInvalidOptions, e.Option, e.Value, e.Constraint)
+}
+
+// Unwrap lets callers recognize every option violation with
+// errors.Is(err, ErrInvalidOptions) while errors.As retains the details.
+func (e *OptionError) Unwrap() error {
+	return ErrInvalidOptions
+}
 
 // Error reports a failure inside the router, with the phase it happened in.
 type Error struct {

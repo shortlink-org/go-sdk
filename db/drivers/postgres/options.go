@@ -54,8 +54,8 @@ func WithReplicaPollInterval(d time.Duration) Option {
 }
 
 // WithReplicaPollJitter spreads polls by the given fraction of the interval, so
-// that a fleet of pods does not probe the same replica in lockstep. Values
-// above one are clamped to one to keep timer durations positive.
+// that a fleet of pods does not probe the same replica in lockstep. The value
+// must be between zero and one; Init rejects an out-of-range configuration.
 func WithReplicaPollJitter(fraction float64) Option {
 	return func(s *Store) {
 		s.routing.PollJitter = fraction
