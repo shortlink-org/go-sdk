@@ -17,6 +17,7 @@
 package httpmw
 
 import (
+	"context"
 	"net/http"
 
 	"github.com/shortlink-org/go-sdk/db/drivers/postgres/replica"
@@ -39,6 +40,11 @@ const (
 	// sibling subdomain.
 	CookieName = "__Host-rlsn"
 
+	// unresolvedToken deliberately is not a valid WAL token. Receiving it
+	// means a write happened but its position could not be captured, so the
+	// read side pins the request to the primary instead of guessing.
+	unresolvedToken = "unresolved"
+
 	// The cookie's lifetime is short on purpose: the token is only useful until
 	// the replica has replayed past it, and a stale one costs an unnecessary
 	// primary read.
@@ -51,6 +57,37 @@ const (
 // store path for that request. The value is used as a map key and is never
 // logged, exported as a metric attribute, or sent to the client.
 type KeyFunc func(*http.Request) string
+
+// CarrierPolicy selects the client-visible transports for a watermark.
+type CarrierPolicy uint8
+
+const (
+	// CarriersDefault uses X-Read-Lsn and is the zero-value policy.
+	CarriersDefault CarrierPolicy = iota
+	// CarriersNone disables client-visible transport while retaining request
+	// scoping and an optional server-side Store.
+	CarriersNone
+	// CarriersHeader uses X-Read-Lsn only.
+	CarriersHeader
+	// CarriersCookie uses the secure __Host-rlsn cookie only.
+	CarriersCookie
+	// CarriersHeaderAndCookie uses both transports.
+	CarriersHeaderAndCookie
+)
+
+// String implements fmt.Stringer.
+func (p CarrierPolicy) String() string {
+	switch p {
+	case CarriersNone:
+		return "none"
+	case CarriersCookie:
+		return "cookie"
+	case CarriersHeaderAndCookie:
+		return "header_and_cookie"
+	default:
+		return "header"
+	}
+}
 
 // Config wires the middleware. Only Router is required.
 type Config struct {
@@ -66,13 +103,10 @@ type Config struct {
 	// an in-process store usually is not.
 	Store replica.Watermarks
 
-	// Header sets and reads the X-Read-LSN header. Default true.
-	Header *bool
-
-	// Cookie also sets and reads the __Host-rlsn cookie, so that browsers
-	// echo the token unaided. Default false: a library should not put a cookie
-	// on somebody's domain unless asked.
-	Cookie bool
+	// Carriers selects the client-visible transports. The zero value defaults
+	// to the header. Choose a cookie policy only when the application
+	// intentionally owns the browser cookie.
+	Carriers CarrierPolicy
 }
 
 // KeyFromContextValue reads an actor id that upstream middleware placed in the
@@ -103,41 +137,82 @@ func KeyFromContextValue(key any) KeyFunc {
 // any response-coalescing middleware: coalescing serves one response to
 // several callers, so a follower's watermark is discarded by construction.
 func New(cfg Config) func(http.Handler) http.Handler {
-	header := cfg.Header == nil || *cfg.Header
-
-	// Whether there is anywhere to put a watermark. With every carrier turned
-	// off the middleware still earns its place — it scopes each request so its
-	// reads may use a replica — but capturing a position nobody will read
-	// would be a round trip spent on nothing.
-	//
-	// That configuration is the right one behind a load-balanced replica
-	// endpoint, where a token cannot be trusted but the in-request taint still
-	// is.
-	carries := header || cfg.Cookie || (cfg.Store != nil && cfg.Key != nil)
+	middleware := boundaryMiddleware{
+		router:   cfg.Router,
+		carriers: newCarriers(cfg),
+	}
 
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
-			if cfg.Router == nil {
+			if middleware.router == nil {
 				next.ServeHTTP(writer, request)
 
 				return
 			}
 
 			if isMutating(request.Method) {
-				if !carries {
+				if !middleware.carriers.enabled() {
 					next.ServeHTTP(writer, request.WithContext(replica.WithTracker(request.Context())))
 
 					return
 				}
 
-				serveMutating(cfg, header, next, writer, request)
+				middleware.serveMutating(next, writer, request)
 
 				return
 			}
 
-			serveRead(cfg, header, next, writer, request)
+			middleware.serveRead(next, writer, request)
 		})
 	}
+}
+
+type boundaryMiddleware struct {
+	router   *replica.Router
+	carriers responseCarriers
+}
+
+// responseCarriers owns all representations of a boundary watermark. This
+// keeps header/cookie/store policy out of the request routing methods.
+type responseCarriers struct {
+	destinations carrierSet
+	store        replica.Watermarks
+	key          KeyFunc
+}
+
+type carrierSet uint8
+
+const (
+	headerCarrier carrierSet = 1 << iota
+	cookieCarrier
+)
+
+func newCarriers(cfg Config) responseCarriers {
+	destinations := headerCarrier
+	switch cfg.Carriers {
+	case CarriersNone:
+		destinations = 0
+	case CarriersCookie:
+		destinations = cookieCarrier
+	case CarriersHeaderAndCookie:
+		destinations = headerCarrier | cookieCarrier
+	case CarriersDefault, CarriersHeader:
+		destinations = headerCarrier
+	}
+
+	return responseCarriers{
+		destinations: destinations,
+		store:        cfg.Store,
+		key:          cfg.Key,
+	}
+}
+
+func (c responseCarriers) enabled() bool {
+	return c.destinations != 0 || (c.store != nil && c.key != nil)
+}
+
+func (c responseCarriers) carries(destination carrierSet) bool {
+	return c.destinations&destination != 0
 }
 
 func isMutating(method string) bool {
@@ -157,7 +232,7 @@ func isMutating(method string) bool {
 // follow-up read before any post-hoc capture would finish. The response writer
 // is wrapped so the capture runs at exactly that moment, and only when there is
 // something to capture: a mutating request that wrote nothing pays nothing.
-func serveMutating(cfg Config, header bool, next http.Handler, writer http.ResponseWriter, request *http.Request) {
+func (m boundaryMiddleware) serveMutating(next http.Handler, writer http.ResponseWriter, request *http.Request) {
 	ctx := replica.WithTracker(request.Context())
 
 	stamper := &stampingWriter{
@@ -168,36 +243,17 @@ func serveMutating(cfg Config, header bool, next http.Handler, writer http.Respo
 				return
 			}
 
-			token, err := cfg.Router.Token(ctx)
+			token, err := m.router.Token(ctx)
 			if err != nil {
-				// A failed capture must not fail the request: this is a
-				// consistency optimization, and trading it for availability is
-				// the wrong way round. The caller degrades to a primary read.
+				// Do not fail the response, but do carry an explicit unknown
+				// marker. Carrying nothing would make the next request look like
+				// a clean read and incorrectly allow it onto a replica.
+				m.carriers.stamp(writer, request, ctx, unresolvedWatermark())
+
 				return
 			}
 
-			if header {
-				writer.Header().Set(HeaderName, token.String())
-			}
-
-			if cfg.Cookie {
-				http.SetCookie(writer, &http.Cookie{
-					Name:     CookieName,
-					Value:    token.String(),
-					Path:     "/",
-					MaxAge:   cookieMaxAge,
-					Secure:   true,
-					HttpOnly: true,
-					SameSite: http.SameSiteLaxMode,
-				})
-			}
-
-			if cfg.Store != nil && cfg.Key != nil {
-				if key := cfg.Key(request); key != "" {
-					//nolint:errcheck // a watermark that could not be stored degrades to a primary read
-					_ = cfg.Store.Set(ctx, key, token.LSN)
-				}
-			}
+			m.carriers.stamp(writer, request, ctx, resolvedWatermark(token))
 		},
 	}
 
@@ -209,21 +265,19 @@ func serveMutating(cfg Config, header bool, next http.Handler, writer http.Respo
 }
 
 // serveRead scopes the request with whatever guarantee it arrived carrying.
-func serveRead(cfg Config, header bool, next http.Handler, writer http.ResponseWriter, request *http.Request) {
+func (m boundaryMiddleware) serveRead(next http.Handler, writer http.ResponseWriter, request *http.Request) {
 	ctx := request.Context()
 
-	if token, ok := tokenFrom(request, header); ok {
-		// WithToken, not WithWatermark: a token this process cannot interpret
-		// still says the caller has seen a write, and dropping it would serve
-		// the stale read the token exists to prevent.
-		next.ServeHTTP(writer, request.WithContext(cfg.Router.WithToken(ctx, token)))
+	carried := m.carriers.read(request)
+	if carried.present() {
+		next.ServeHTTP(writer, request.WithContext(carried.apply(ctx, m.router)))
 
 		return
 	}
 
-	if cfg.Store != nil && cfg.Key != nil {
-		if key := cfg.Key(request); key != "" {
-			position, found, err := cfg.Store.Get(ctx, key)
+	if m.carriers.store != nil && m.carriers.key != nil {
+		if key := m.carriers.key(request); key != "" {
+			position, found, err := m.carriers.store.Get(ctx, key)
 			if err == nil && found {
 				next.ServeHTTP(writer, request.WithContext(replica.WithWatermark(ctx, position)))
 
@@ -236,27 +290,122 @@ func serveRead(cfg Config, header bool, next http.Handler, writer http.ResponseW
 	next.ServeHTTP(writer, request.WithContext(replica.WithTracker(ctx)))
 }
 
-func tokenFrom(request *http.Request, header bool) (wal.Token, bool) {
-	if header {
+type watermarkState uint8
+
+const (
+	watermarkAbsent watermarkState = iota
+	watermarkResolved
+	watermarkUnresolved
+)
+
+// carriedWatermark is a three-state value. In particular, unresolved is not
+// collapsed into absent: it means a write is known to have happened and must
+// conservatively pin the next read to the primary.
+type carriedWatermark struct {
+	state watermarkState
+	token wal.Token
+}
+
+func resolvedWatermark(token wal.Token) carriedWatermark {
+	return carriedWatermark{state: watermarkResolved, token: token}
+}
+
+func unresolvedWatermark() carriedWatermark {
+	return carriedWatermark{state: watermarkUnresolved}
+}
+
+func (w carriedWatermark) present() bool { return w.state != watermarkAbsent }
+
+func (w carriedWatermark) apply(ctx context.Context, router *replica.Router) context.Context {
+	if w.state == watermarkResolved {
+		// WithToken, not WithWatermark: a token this process cannot interpret
+		// still says the caller has seen a write, and dropping it would serve
+		// the stale read the token exists to prevent.
+		return router.WithToken(ctx, w.token)
+	}
+
+	return replica.OnPrimary(ctx)
+}
+
+func parseWatermark(raw string) carriedWatermark {
+	if raw == "" {
+		return carriedWatermark{}
+	}
+
+	token, err := wal.ParseToken(raw)
+	if err != nil {
+		return unresolvedWatermark()
+	}
+
+	return resolvedWatermark(token)
+}
+
+func (c responseCarriers) read(request *http.Request) carriedWatermark {
+	headerWatermark := carriedWatermark{}
+
+	if c.carries(headerCarrier) {
 		if raw := request.Header.Get(HeaderName); raw != "" {
-			token, err := wal.ParseToken(raw)
-			if err == nil {
-				return token, true
+			headerWatermark = parseWatermark(raw)
+			if headerWatermark.state == watermarkResolved {
+				return headerWatermark
 			}
 		}
 	}
 
+	if !c.carries(cookieCarrier) {
+		return headerWatermark
+	}
+
 	cookie, err := request.Cookie(CookieName)
 	if err != nil || cookie.Value == "" {
-		return wal.Token{}, false
+		return headerWatermark
 	}
 
-	token, err := wal.ParseToken(cookie.Value)
-	if err != nil {
-		return wal.Token{}, false
+	cookieWatermark := parseWatermark(cookie.Value)
+	if cookieWatermark.state == watermarkResolved {
+		return cookieWatermark
 	}
 
-	return token, true
+	return unresolvedWatermark()
+}
+
+// stamp writes either a resolved token or an explicit unresolved marker to
+// every configured carrier.
+func (c responseCarriers) stamp(
+	writer http.ResponseWriter,
+	request *http.Request,
+	ctx context.Context,
+	watermark carriedWatermark,
+) {
+	raw := unresolvedToken
+	position := wal.Unknown
+	if watermark.state == watermarkResolved {
+		raw = watermark.token.String()
+		position = watermark.token.LSN
+	}
+
+	if c.carries(headerCarrier) {
+		writer.Header().Set(HeaderName, raw)
+	}
+
+	if c.carries(cookieCarrier) {
+		http.SetCookie(writer, &http.Cookie{
+			Name:     CookieName,
+			Value:    raw,
+			Path:     "/",
+			MaxAge:   cookieMaxAge,
+			Secure:   true,
+			HttpOnly: true,
+			SameSite: http.SameSiteLaxMode,
+		})
+	}
+
+	if c.store != nil && c.key != nil {
+		if key := c.key(request); key != "" {
+			//nolint:errcheck // failure still leaves the carrier paths pinned
+			_ = c.store.Set(ctx, key, position)
+		}
+	}
 }
 
 // stampingWriter runs stamp exactly once, immediately before the first byte of

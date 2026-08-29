@@ -32,18 +32,13 @@ func UnaryClientInterceptor(guarantee Consistency) grpc.UnaryClientInterceptor {
 			return invoker(ctx, method, req, reply, clientConn, opts...)
 		}
 
-		callCtx := ctx
-
-		token, ok, err := guarantee.Watermark(ctx)
-		if err == nil && ok {
-			callCtx = attach(ctx, token)
-		}
+		callCtx := capture(ctx, guarantee).attach(ctx)
 
 		var trailer metadata.MD
 
 		opts = append(opts, grpc.Trailer(&trailer))
 
-		err = invoker(callCtx, method, req, reply, clientConn, opts...)
+		err := invoker(callCtx, method, req, reply, clientConn, opts...)
 
 		// Read the trailer even on error: a call can fail after the write it
 		// made has committed, and forgetting that write is exactly the case
@@ -78,10 +73,7 @@ func StreamClientInterceptor(guarantee Consistency) grpc.StreamClientInterceptor
 			return streamer(ctx, desc, clientConn, method, opts...)
 		}
 
-		token, ok, err := guarantee.Watermark(ctx)
-		if err == nil && ok {
-			ctx = attach(ctx, token)
-		}
+		ctx = capture(ctx, guarantee).attach(ctx)
 
 		return streamer(ctx, desc, clientConn, method, opts...)
 	}

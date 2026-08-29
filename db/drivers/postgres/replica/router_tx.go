@@ -46,8 +46,8 @@ func replicaEligible(options pgx.TxOptions) bool {
 type routedTx struct {
 	pgx.Tx
 
-	router    *Router
-	onPrimary bool
+	router *Router
+	role   targetRole
 }
 
 var _ pgx.Tx = (*routedTx)(nil)
@@ -61,10 +61,10 @@ func (t *routedTx) Begin(ctx context.Context) (pgx.Tx, error) {
 		return nil, err
 	}
 
-	return &routedTx{Tx: nested, router: t.router, onPrimary: t.onPrimary}, nil
+	return &routedTx{Tx: nested, router: t.router, role: t.role}, nil
 }
 
-// Commit commits the transaction and, when WithSyncWatermark is on, resolves
+// Commit commits the transaction and, under WatermarkOnCommit, resolves
 // the WAL position the context must now observe.
 //
 // The position is read after the commit and on the pool, not on the
@@ -80,7 +80,7 @@ func (t *routedTx) Commit(ctx context.Context) error {
 		return err
 	}
 
-	if !t.onPrimary || !t.router.opts.SyncWatermark {
+	if t.role != primaryRole || t.router.opts.Watermark != WatermarkOnCommit {
 		return nil
 	}
 

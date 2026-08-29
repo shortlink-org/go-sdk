@@ -35,11 +35,35 @@ and the three leaves depend on nothing of ours. `metrics` in particular takes
 strings and numbers rather than the router's own types, which is what keeps it
 from having to know about routing at all.
 
+Inside the router, routing requests, replica selections, cluster lineage and
+transaction targets are value models with behaviour. Transport adapters map
+their `(value, error)` capture contract into explicit watermark states at the
+boundary. `Target` is immutable, replica selection is optional rather than a
+negative index, and token resolution is an enum rather than an LSN/bool tuple.
+
 Both boundary middlewares live here, under `middlewares/`, because carrying
 this guarantee across a hop is the driver's concern whichever transport speaks
-it. Neither imports `replica`: each declares the small interface it needs and
-takes `router.Port()`, which is what keeps the transports out of the router's
-types.
+it. The HTTP middleware uses the router directly; the gRPC middleware declares
+the small interface it needs and takes `router.Port()`. The separate Watermill
+module follows the latter shape so it does not pull the database module's heavy
+driver dependency graph into message transport code.
+
+### Rich-model API
+
+The replica API intentionally uses domain values instead of flag tuples:
+
+| previous shape | current shape |
+|---|---|
+| `target.Pool`, `target.Replica == -1` | `target.Pool()`, `target.Replica() == nil` |
+| `router.Accept(token) (lsn, bool)` | `router.ResolveToken(token) TokenResolution` |
+| `port.Watermark(ctx) (string, bool, error)` | `port.Capture(ctx) (string, error)` |
+| `WithReplicaFallback(bool)` | `WithReplicaFallback(replica.FallbackPolicy)` |
+| `WithSyncWatermark(bool)` | `WithWatermarkPolicy(replica.WatermarkPolicy)` |
+| HTTP `Header`/`Cookie` flags | `Carriers: httpmw.CarrierPolicy` |
+
+For `Capture`, `"", nil` means no write, while an error means a write happened
+but its position is unresolved. Boundary adapters convert the latter to the
+primary-only wire marker.
 
 ## Architecture decisions
 
@@ -72,8 +96,8 @@ not cover.
 |---|---|---|
 | `STORE_POSTGRES_URI` | `postgres://postgres:shortlink@localhost:5432/shortlink?sslmode=disable` | primary DSN |
 | `STORE_POSTGRES_REPLICA_URI` | `""` | replica DSNs, comma separated. Empty disables routing |
-| `STORE_POSTGRES_REPLICA_POLL_INTERVAL` | `250ms` | how often replicas are probed |
-| `STORE_POSTGRES_REPLICA_POLL_JITTER` | `0.15` | fraction of the interval, so a fleet does not probe in lockstep |
+| `STORE_POSTGRES_REPLICA_POLL_INTERVAL` | `250ms` | how often replicas are probed; zero disables polling and keeps replicas ineligible |
+| `STORE_POSTGRES_REPLICA_POLL_JITTER` | `0.15` | fraction of the interval, so a fleet does not probe in lockstep; values above `1` are clamped |
 | `STORE_POSTGRES_REPLICA_PROBE_TIMEOUT` | `500ms` | per-probe timeout |
 | `STORE_POSTGRES_REPLICA_SAMPLE_STALE_AFTER` | `2s` | age past which a sample is not trusted |
 | `STORE_POSTGRES_REPLICA_MAX_LAG_BYTES` | `8388608` | staleness budget for reads with no watermark |
@@ -141,7 +165,7 @@ What still holds, because it never consults the gate:
 So the working configuration is the carriers off, the scoping on:
 
 ```go
-r.Use(httpmw.New(httpmw.Config{Router: router, Header: new(false)}))
+r.Use(httpmw.New(httpmw.Config{Router: router, Carriers: httpmw.CarriersNone}))
 ```
 
 That still scopes every request — without it, reads carry no tracker and the
@@ -188,10 +212,15 @@ expect: a read-write transaction goes to the primary and taints the context, a
 `pgx.ReadOnly` one may go to a replica.
 
 `InTx` owns the whole lifecycle instead — rollback on error, rollback on panic,
-exactly one release — and earns its place when `WithSyncWatermark` is on:
+exactly one release — and earns its place under `WatermarkOnCommit`:
 
 ```go
-err := router.InTx(ctx, pgx.TxOptions{}, func(ctx context.Context, tx pgx.Tx) error {
+store, err := db.New(ctx, log, tracer, metrics, cfg,
+	postgres.With(postgres.WithWatermarkPolicy(replica.WatermarkOnCommit)),
+)
+router, err := postgres.RouterFrom(store)
+
+err = router.InTx(ctx, pgx.TxOptions{}, func(ctx context.Context, tx pgx.Tx) error {
 	_, err := tx.Exec(ctx, `INSERT INTO orders (...) VALUES (...)`)
 
 	return err

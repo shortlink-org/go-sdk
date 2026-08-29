@@ -83,12 +83,7 @@ func scope(ctx context.Context, guarantee Consistency) context.Context {
 // and only when the handler wrote — Watermark reports that without a round
 // trip, so a read-only RPC pays nothing.
 func setWatermarkTrailer(ctx context.Context, guarantee Consistency, set func(metadata.MD)) {
-	token, ok, err := guarantee.Watermark(ctx)
-	if err != nil || !ok {
-		return
-	}
-
-	set(metadata.Pairs(MetadataKey, token))
+	capture(ctx, guarantee).setTrailer(set)
 }
 
 // wrappedServerStream overrides the context a streaming handler sees.

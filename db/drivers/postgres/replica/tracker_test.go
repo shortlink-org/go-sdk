@@ -180,4 +180,11 @@ func TestStrategyString(t *testing.T) {
 
 	assert.Equal(t, "primary", NoTrackerPrimary.String())
 	assert.Equal(t, "replica", NoTrackerReplica.String())
+	assert.Equal(t, "primary", FallbackToPrimary.String())
+	assert.Equal(t, "reject", FallbackReject.String())
+	assert.Equal(t, "handoff", WatermarkOnHandoff.String())
+	assert.Equal(t, "commit", WatermarkOnCommit.String())
+	assert.Equal(t, "absent", TokenAbsent.String())
+	assert.Equal(t, "accepted", TokenAccepted.String())
+	assert.Equal(t, "unusable", TokenUnusable.String())
 }

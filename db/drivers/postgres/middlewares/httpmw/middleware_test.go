@@ -76,7 +76,31 @@ func TestReadWithoutATokenIsScopedForReplicaUse(t *testing.T) {
 	assert.Equal(t, wal.LSN(0), rec.watermark)
 }
 
-func TestReadWithAMalformedTokenIsIgnored(t *testing.T) {
+func TestCarrierSelectionHasAnExplicitDisabledState(t *testing.T) {
+	t.Parallel()
+
+	defaults := newCarriers(Config{})
+	assert.True(t, defaults.carries(headerCarrier))
+	assert.False(t, defaults.carries(cookieCarrier))
+
+	disabled := newCarriers(Config{Carriers: CarriersNone})
+	assert.False(t, disabled.enabled())
+	request := httptest.NewRequestWithContext(t.Context(), http.MethodGet, testPath, http.NoBody)
+	request.Header.Set(HeaderName, testToken(headerPosition).String())
+	request.AddCookie(newCookie(testToken(cookiePosition).String()))
+	assert.False(t, disabled.read(request).present())
+
+	cookieOnly := newCarriers(Config{Carriers: CarriersCookie})
+	assert.False(t, cookieOnly.carries(headerCarrier))
+	assert.True(t, cookieOnly.carries(cookieCarrier))
+
+	assert.Equal(t, "header", CarriersDefault.String())
+	assert.Equal(t, "none", CarriersNone.String())
+	assert.Equal(t, "cookie", CarriersCookie.String())
+	assert.Equal(t, "header_and_cookie", CarriersHeaderAndCookie.String())
+}
+
+func TestReadWithAMalformedTokenIsPinnedToPrimary(t *testing.T) {
 	t.Parallel()
 
 	rec := &recorder{}
@@ -87,15 +111,36 @@ func TestReadWithAMalformedTokenIsIgnored(t *testing.T) {
 
 	serve(t, cfg, rec.handler(), request)
 
-	assert.True(t, rec.hasTracker)
+	assert.False(t, rec.hasTracker)
+	assert.Equal(t, replica.StrategyPrimary, rec.strategy)
 	assert.Equal(t, wal.LSN(0), rec.watermark)
+}
+
+func TestFailedWatermarkCaptureCarriesAnUnresolvedMarker(t *testing.T) {
+	t.Parallel()
+
+	handler := http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+		replica.TrackerFromContext(request.Context()).Taint()
+		writer.WriteHeader(http.StatusNoContent)
+	})
+
+	// A zero Router cannot capture from a primary pool, which exercises the
+	// post-commit failure path without a database.
+	response := serve(t, Config{Router: &replica.Router{}}, handler,
+		httptest.NewRequestWithContext(t.Context(), http.MethodPost, testPath, http.NoBody))
+
+	assert.Equal(t, unresolvedToken, response.Header().Get(HeaderName))
+
+	rec := &recorder{}
+	request := httptest.NewRequestWithContext(t.Context(), http.MethodGet, testPath, http.NoBody)
+	request.Header.Set(HeaderName, response.Header().Get(HeaderName))
+
+	serve(t, Config{Router: &replica.Router{}}, rec.handler(), request)
+	assert.Equal(t, replica.StrategyPrimary, rec.strategy)
 }
 
 func TestReadPrefersTheHeaderOverTheCookie(t *testing.T) {
 	t.Parallel()
-
-	rec := &recorder{}
-	router := &replica.Router{}
 
 	fromHeader := testToken(headerPosition)
 	fromCookie := testToken(cookiePosition)
@@ -104,23 +149,35 @@ func TestReadPrefersTheHeaderOverTheCookie(t *testing.T) {
 	request.Header.Set(HeaderName, fromHeader.String())
 	request.AddCookie(newCookie(fromCookie.String()))
 
-	serve(t, Config{Router: router}, rec.handler(), request)
-
-	assert.Equal(t, fromHeader.LSN, rec.watermark)
+	carried := (responseCarriers{destinations: headerCarrier | cookieCarrier}).read(request)
+	require.Equal(t, watermarkResolved, carried.state)
+	assert.Equal(t, fromHeader.LSN, carried.token.LSN)
 }
 
 func TestReadFallsBackToTheCookie(t *testing.T) {
 	t.Parallel()
 
-	rec := &recorder{}
 	token := testToken(cookiePosition)
 
 	request := httptest.NewRequestWithContext(t.Context(), http.MethodGet, testPath, http.NoBody)
 	request.AddCookie(newCookie(token.String()))
 
-	serve(t, Config{Router: &replica.Router{}}, rec.handler(), request)
+	carried := (responseCarriers{destinations: headerCarrier | cookieCarrier}).read(request)
+	require.Equal(t, watermarkResolved, carried.state)
+	assert.Equal(t, token.LSN, carried.token.LSN)
+}
 
-	assert.Equal(t, token.LSN, rec.watermark)
+func TestReadUsesAValidCookieWhenTheHeaderIsMalformed(t *testing.T) {
+	t.Parallel()
+
+	token := testToken(cookiePosition)
+	request := httptest.NewRequestWithContext(t.Context(), http.MethodGet, testPath, http.NoBody)
+	request.Header.Set(HeaderName, unresolvedToken)
+	request.AddCookie(newCookie(token.String()))
+
+	carried := (responseCarriers{destinations: headerCarrier | cookieCarrier}).read(request)
+	require.Equal(t, watermarkResolved, carried.state)
+	assert.Equal(t, token.LSN, carried.token.LSN)
 }
 
 func TestReadUsesTheStoreWhenNoTokenArrives(t *testing.T) {
@@ -250,7 +307,7 @@ func TestScopeOnlyConfigurationDoesNotCapture(t *testing.T) {
 
 	// A nil Router would short-circuit before any capture, so use a real one:
 	// reaching Token on it would panic, which is exactly the assertion.
-	cfg := Config{Router: &replica.Router{}, Header: new(false), Cookie: false}
+	cfg := Config{Router: &replica.Router{}, Carriers: CarriersNone}
 
 	assert.NotPanics(t, func() {
 		serve(t, cfg, rec.handler(),

@@ -2,6 +2,7 @@ package neo4j
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/url"
 
@@ -42,7 +43,7 @@ func (s *Store) Init(ctx context.Context) error {
 		}
 	}
 
-	s.client, err = neo4j.NewDriver(s.config.URI, neo4j.BasicAuth(s.config.login, s.config.password, ""))
+	client, err := neo4j.NewDriver(s.config.URI, neo4j.BasicAuth(s.config.login, s.config.password, ""))
 	if err != nil {
 		return &StoreError{
 			Driver:  driverName,
@@ -52,11 +53,27 @@ func (s *Store) Init(ctx context.Context) error {
 		}
 	}
 
+	// NewDriver validates the URI but connects lazily. Verify connectivity here
+	// so Init cannot report success for an unreachable server or bad credentials.
+	err = client.VerifyConnectivity(ctx)
+	if err != nil {
+		// The client is ours until Init succeeds. Without this cleanup, each
+		// failed initialization leaves the driver's connection pool behind.
+		err = errors.Join(err, client.Close(context.WithoutCancel(ctx)))
+
+		return &PingConnectionError{
+			Driver: driverName,
+			Err:    err,
+		}
+	}
+
+	s.client = client
+
 	// Graceful shutdown
 	go func() {
 		<-ctx.Done()
 
-		err := s.close(ctx)
+		err := s.close(context.WithoutCancel(ctx))
 		if err != nil {
 			// We can't return the error here since we're in a goroutine,
 			// but in a real application you might want to log this
@@ -105,14 +122,12 @@ func (s *Store) setConfig() error {
 		}
 	}
 
-	password, ok := params.User.Password()
-	if ok {
-		s.config.password = password
-	}
+	password, _ := params.User.Password()
 
 	s.config = Config{
-		URI:   fmt.Sprintf("%s://%s", params.Scheme, params.Host),
-		login: params.User.Username(),
+		URI:      fmt.Sprintf("%s://%s", params.Scheme, params.Host),
+		login:    params.User.Username(),
+		password: password,
 	}
 
 	return nil

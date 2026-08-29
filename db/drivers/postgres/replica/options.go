@@ -38,10 +38,9 @@ type Options struct {
 
 	NoTracker  NoTrackerPolicy
 	Classifier sqlclass.Classifier
-	Fallback   bool
-
-	SyncWatermark bool
-	TxLookup      func(ctx context.Context) pgx.Tx
+	Fallback   FallbackPolicy
+	Watermark  WatermarkPolicy
+	TxLookup   func(ctx context.Context) pgx.Tx
 }
 
 // DefaultOptions returns the conservative defaults.
@@ -55,6 +54,6 @@ func DefaultOptions() Options {
 		GateMaxWait:      defaultGateMaxWait,
 		NoTracker:        NoTrackerPrimary,
 		Classifier:       sqlclass.DefaultClassifier(),
-		Fallback:         true,
+		Fallback:         FallbackToPrimary,
 	}
 }

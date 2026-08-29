@@ -49,7 +49,7 @@ func (r *Router) Exec(ctx context.Context, sql string, args ...any) (pgconn.Comm
 		return pgconn.CommandTag{}, err
 	}
 
-	tag, err := target.Pool.Exec(ctx, sql, args...)
+	tag, err := target.pool.Exec(ctx, sql, args...)
 	if err != nil && r.shouldRetryOnPrimary(ctx, target, err) {
 		return r.primary.Exec(ctx, sql, args...)
 	}
@@ -75,7 +75,7 @@ func (r *Router) Query(ctx context.Context, sql string, args ...any) (pgx.Rows, 
 		return errRows{err: err}, err
 	}
 
-	rows, err := target.Pool.Query(ctx, sql, args...)
+	rows, err := target.pool.Query(ctx, sql, args...)
 	if err != nil && r.shouldRetryOnPrimary(ctx, target, err) {
 		return r.primary.Query(ctx, sql, args...)
 	}
@@ -103,7 +103,7 @@ func (r *Router) QueryRow(ctx context.Context, sql string, args ...any) pgx.Row 
 		return errRow{err: err}
 	}
 
-	return target.Pool.QueryRow(ctx, sql, args...)
+	return target.pool.QueryRow(ctx, sql, args...)
 }
 
 // SendBatch pipelines several statements down one connection.
@@ -132,7 +132,7 @@ func (r *Router) SendBatch(ctx context.Context, batch *pgx.Batch) pgx.BatchResul
 
 	r.metrics.RecordDecision(ctx, decisionOf(target))
 
-	return target.Pool.SendBatch(ctx, batch)
+	return target.pool.SendBatch(ctx, batch)
 }
 
 // classifyBatch reduces a batch to the most restrictive class it contains. An
@@ -162,7 +162,7 @@ func (r *Router) CopyFrom(ctx context.Context, table pgx.Identifier, columns []s
 	}
 
 	TrackerFromContext(ctx).Taint()
-	r.metrics.RecordDecision(ctx, decisionOf(Target{Pool: r.primary, Replica: -1, Class: sqlclass.Write, Reason: metrics.ReasonWrite}))
+	r.metrics.RecordDecision(ctx, decisionOf(newPrimaryTarget(r.primary, sqlclass.Write, StrategyUnset, metrics.ReasonWrite)))
 
 	return r.primary.CopyFrom(ctx, table, columns, source)
 }
@@ -187,14 +187,14 @@ func (r *Router) Begin(ctx context.Context) (pgx.Tx, error) {
 func (r *Router) BeginTx(ctx context.Context, options pgx.TxOptions) (pgx.Tx, error) {
 	if !replicaEligible(options) {
 		TrackerFromContext(ctx).Taint()
-		r.metrics.RecordDecision(ctx, decisionOf(Target{Pool: r.primary, Replica: -1, Class: sqlclass.Write, Reason: metrics.ReasonWrite}))
+		r.metrics.RecordDecision(ctx, decisionOf(newPrimaryTarget(r.primary, sqlclass.Write, StrategyUnset, metrics.ReasonWrite)))
 
 		tx, err := r.primary.BeginTx(ctx, options)
 		if err != nil {
 			return nil, err
 		}
 
-		return &routedTx{Tx: tx, router: r, onPrimary: true}, nil
+		return &routedTx{Tx: tx, router: r, role: primaryRole}, nil
 	}
 
 	target, err := r.route(ctx, sqlclass.Read)
@@ -211,12 +211,12 @@ func (r *Router) BeginTx(ctx context.Context, options pgx.TxOptions) (pgx.Tx, er
 		TrackerFromContext(ctx).Taint()
 	}
 
-	tx, err := target.Pool.BeginTx(ctx, options)
+	tx, err := target.pool.BeginTx(ctx, options)
 	if err != nil {
 		return nil, err
 	}
 
-	return &routedTx{Tx: tx, router: r, onPrimary: target.OnPrimary()}, nil
+	return &routedTx{Tx: tx, router: r, role: transactionFrom(target).role}, nil
 }
 
 // Ping checks the primary.
@@ -266,7 +266,7 @@ func (r *Router) AcquireReplica(ctx context.Context) (*pgxpool.Conn, error) {
 		return nil, err
 	}
 
-	return target.Pool.Acquire(ctx)
+	return target.pool.Acquire(ctx)
 }
 
 // Close closes every pool and stops the poller.
@@ -321,12 +321,12 @@ func (r *Router) Config() *pgxpool.Config {
 // transaction, which is on the primary by construction.
 func (r *Router) inTransaction(ctx context.Context) {
 	TrackerFromContext(ctx).Taint()
-	r.metrics.RecordDecision(ctx, decisionOf(Target{
-		Pool:    r.primary,
-		Replica: -1,
-		Class:   sqlclass.Write,
-		Reason:  metrics.ReasonInTransaction,
-	}))
+	r.metrics.RecordDecision(ctx, decisionOf(newPrimaryTarget(
+		r.primary,
+		sqlclass.Write,
+		StrategyUnset,
+		metrics.ReasonInTransaction,
+	)))
 }
 
 // shouldRetryOnPrimary reports whether a failed replica statement may be run
@@ -341,11 +341,11 @@ func (r *Router) inTransaction(ctx context.Context) {
 // appended them somewhere; re-running the query would duplicate them with no
 // way for anyone to notice.
 func (r *Router) shouldRetryOnPrimary(ctx context.Context, target Target, err error) bool {
-	if target.OnPrimary() || !r.opts.Fallback || !pgconn.SafeToRetry(err) {
+	if target.OnPrimary() || r.opts.Fallback != FallbackToPrimary || !pgconn.SafeToRetry(err) {
 		return false
 	}
 
-	r.gate.markFailure(target.Replica, err)
+	r.gate.markFailure(target.replicaIndex, err)
 	r.metrics.Fallback(ctx, metrics.ReasonSafeToRetry)
 
 	return true

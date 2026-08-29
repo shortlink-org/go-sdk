@@ -18,6 +18,11 @@ import (
 // already used by InjectTrace.
 const MetaWALWatermark = "wal_watermark"
 
+// unresolvedWatermark is intentionally not a valid database token. It says a
+// write happened but its exact position could not be captured; the database
+// adapter therefore pins the consumer to the primary when Apply sees it.
+const unresolvedWatermark = "unresolved"
+
 // defaultGateMaxWait bounds how long a handler waits inline for the read
 // replica to catch up before giving up and letting the retry middleware take
 // over.
@@ -38,8 +43,9 @@ var ErrReplicaNotCaughtUp = errors.New("watermill: read replica has not caught u
 // on the db module — Go interfaces are structural, and *postgres.Router
 // satisfies this one as it stands.
 type Watermarker interface {
-	// Watermark returns the token, and whether there was anything to record.
-	Watermark(ctx context.Context) (string, bool, error)
+	// Capture returns the token. Empty means nothing was written; an error means
+	// a write happened but its position could not be resolved.
+	Capture(ctx context.Context) (string, error)
 }
 
 // ReplicaGate reports whether a read replica has replayed a given token, and
@@ -96,6 +102,69 @@ type consistencyPublisher struct {
 	stamps      metric.Int64Counter
 }
 
+type publicationWatermarkState uint8
+
+const (
+	publicationWatermarkAbsent publicationWatermarkState = iota
+	publicationWatermarkResolved
+	publicationWatermarkUnresolved
+)
+
+// publicationWatermark is the publisher-side consistency state. It converts
+// the structural Watermarker triple once, then owns both wire encoding and
+// metrics outcome so those concerns cannot interpret the flags differently.
+type publicationWatermark struct {
+	state publicationWatermarkState
+	token string
+	err   error
+}
+
+func capturePublicationWatermark(ctx context.Context, watermarker Watermarker) publicationWatermark {
+	token, err := watermarker.Capture(ctx)
+	if err != nil {
+		return publicationWatermark{state: publicationWatermarkUnresolved, err: err}
+	}
+
+	if token == "" {
+		return publicationWatermark{state: publicationWatermarkAbsent}
+	}
+
+	return publicationWatermark{state: publicationWatermarkResolved, token: token}
+}
+
+func (w publicationWatermark) wireValue() string {
+	if w.state == publicationWatermarkResolved {
+		return w.token
+	}
+
+	if w.state == publicationWatermarkUnresolved {
+		return unresolvedWatermark
+	}
+
+	return ""
+}
+
+func (w publicationWatermark) outcome() string {
+	switch {
+	case w.err != nil:
+		return "error"
+	case w.state == publicationWatermarkAbsent:
+		return "nothing_written"
+	case w.state == publicationWatermarkUnresolved:
+		return "unresolved"
+	default:
+		return "stamped"
+	}
+}
+
+func (w publicationWatermark) stamp(messages []*message.Message) {
+	if raw := w.wireValue(); raw != "" {
+		for _, msg := range messages {
+			msg.Metadata.Set(MetaWALWatermark, raw)
+		}
+	}
+}
+
 // Publish implements message.Publisher.
 func (p *consistencyPublisher) Publish(topic string, messages ...*message.Message) error {
 	if p.watermarker != nil && len(messages) > 0 {
@@ -107,31 +176,18 @@ func (p *consistencyPublisher) Publish(topic string, messages ...*message.Messag
 
 func (p *consistencyPublisher) stamp(messages []*message.Message) {
 	ctx := ensureContext(messages[0].Context())
+	watermark := capturePublicationWatermark(ctx, p.watermarker)
 
-	token, written, err := p.watermarker.Watermark(ctx)
-	if err != nil {
-		p.count(ctx, "error")
+	watermark.stamp(messages)
+	p.count(ctx, watermark.outcome())
 
+	if watermark.err != nil {
 		if p.log != nil {
 			p.log.Debug("watermill: could not read the database watermark",
-				slog.String("error", err.Error()),
+				slog.String("error", watermark.err.Error()),
 			)
 		}
-
-		return
 	}
-
-	if !written {
-		p.count(ctx, "nothing_written")
-
-		return
-	}
-
-	for _, msg := range messages {
-		msg.Metadata.Set(MetaWALWatermark, token)
-	}
-
-	p.count(ctx, "stamped")
 }
 
 func (p *consistencyPublisher) count(ctx context.Context, outcome string) {

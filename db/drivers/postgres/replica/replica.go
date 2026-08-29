@@ -33,7 +33,8 @@ type ReplicaHealth struct {
 	// LagBytes is how far the replay position trails the primary's insert
 	// position. Bytes, not seconds: a replica can close five minutes of lag in
 	// seconds, or fail to close thirty seconds of it, so elapsed time is a poor
-	// predictor of readiness.
+	// predictor of readiness. A negative value means the primary position was
+	// unavailable and the lag could not be calculated.
 	LagBytes int64
 	LastPoll time.Time
 	Err      error
@@ -45,21 +46,111 @@ type replicaNode struct {
 	host  string
 	index int
 
-	mu          sync.RWMutex
-	replayLSN   wal.LSN
-	receiveLSN  wal.LSN
-	lagBytes    int64
-	inRecovery  bool
-	lastPoll    time.Time
-	lastErr     error
-	failures    int
-	quarantined bool
+	mu    sync.RWMutex
+	state replicaState
+}
+
+type replicaLifecycle uint8
+
+const (
+	replicaUnobserved replicaLifecycle = iota
+	replicaStandby
+	replicaQuarantined
+)
+
+// replicaState is the complete cached observation of one node. Its mutation
+// methods are the only transitions the poller can make, and its predicates own
+// eligibility and watermark qualification. The enclosing node mutex protects
+// the value.
+type replicaState struct {
+	lifecycle  replicaLifecycle
+	replayLSN  wal.LSN
+	receiveLSN wal.LSN
+	lagBytes   int64
+	lastPoll   time.Time
+	lastErr    error
+	failures   int
+}
+
+func (s replicaState) inRecovery() bool { return s.lifecycle == replicaStandby }
+
+func (s replicaState) quarantined() bool { return s.lifecycle == replicaQuarantined }
+
+func (s replicaState) eligible(staleAfter time.Duration) bool {
+	return s.lifecycle == replicaStandby &&
+		!s.lastPoll.IsZero() &&
+		s.failures < failureThreshold &&
+		time.Since(s.lastPoll) <= staleAfter
+}
+
+func (s replicaState) qualification(
+	required wal.LSN,
+	maxLagBytes int64,
+	staleAfter time.Duration,
+) replicaQualification {
+	if !s.eligible(staleAfter) {
+		return replicaUnavailable
+	}
+
+	if required > 0 {
+		if s.replayLSN < required {
+			return replicaBehind
+		}
+
+		return replicaCaughtUp
+	}
+
+	if maxLagBytes > 0 && (s.lagBytes == unknownLagBytes || s.lagBytes > maxLagBytes) {
+		return replicaBehind
+	}
+
+	return replicaWithinLag
+}
+
+func (s *replicaState) recordFailure(err error) {
+	s.failures++
+	s.lastErr = err
+}
+
+func (s *replicaState) recordPromotion(observed time.Time) (alreadyKnown bool) {
+	alreadyKnown = s.lifecycle == replicaQuarantined
+	s.lifecycle = replicaQuarantined
+	s.lastPoll = observed
+	s.lastErr = ErrReplicaPromoted
+
+	return alreadyKnown
+}
+
+func (s *replicaState) recordStandby(
+	replay wal.LSN,
+	receive wal.LSN,
+	lag int64,
+	observed time.Time,
+) {
+	// Promotion is a topology change, so quarantine is irreversible for this
+	// process even if a later probe reaches a differently configured endpoint.
+	if s.lifecycle == replicaQuarantined {
+		return
+	}
+
+	s.lifecycle = replicaStandby
+	s.replayLSN = replay
+	s.receiveLSN = receive
+	s.lagBytes = lag
+	s.lastPoll = observed
+	s.lastErr = nil
+	s.failures = 0
 }
 
 // failureThreshold is how many consecutive failed probes take a replica out of
 // rotation. One failed probe is a hiccup; the poller runs often enough that a
 // real outage is confirmed within a second.
 const failureThreshold = 2
+
+// unknownLagBytes distinguishes "the replica is current" from "the primary
+// probe failed, so lag cannot be calculated". Treating both as zero would let
+// an unwatermarked read bypass MaxLagBytes during a primary monitoring outage.
+const unknownLagBytes int64 = -1
 
 // gate is the read side of replication lag: a background poller that samples
 // every replica, and the predicates the router asks before choosing a pool.
@@ -131,17 +222,18 @@ func (g *gate) health() []ReplicaHealth {
 
 	for _, node := range g.replicas {
 		node.mu.RLock()
+		state := node.state
 		out = append(out, ReplicaHealth{
 			Index:       node.index,
 			Host:        node.host,
-			Healthy:     g.eligible(node),
-			Quarantined: node.quarantined,
-			InRecovery:  node.inRecovery,
-			ReplayLSN:   node.replayLSN,
-			ReceiveLSN:  node.receiveLSN,
-			LagBytes:    node.lagBytes,
-			LastPoll:    node.lastPoll,
-			Err:         node.lastErr,
+			Healthy:     state.eligible(g.staleAfter),
+			Quarantined: state.quarantined(),
+			InRecovery:  state.inRecovery(),
+			ReplayLSN:   state.replayLSN,
+			ReceiveLSN:  state.receiveLSN,
+			LagBytes:    state.lagBytes,
+			LastPoll:    state.lastPoll,
+			Err:         state.lastErr,
 		})
 		node.mu.RUnlock()
 	}
@@ -152,24 +244,7 @@ func (g *gate) health() []ReplicaHealth {
 // eligible reports whether a node may serve reads at all. The caller must hold
 // at least a read lock on node.
 func (g *gate) eligible(node *replicaNode) bool {
-	switch {
-	case node.quarantined:
-		return false
-	case node.lastPoll.IsZero():
-		// Never successfully probed. Routing there would be a guess.
-		return false
-	case node.failures >= failureThreshold:
-		return false
-	case !node.inRecovery:
-		return false
-	case time.Since(node.lastPoll) > g.staleAfter:
-		// A stale sample is indistinguishable from a hung replica, and a hung
-		// replica that still accepts connections is the worst kind: it answers
-		// reads with data frozen at whenever replay stopped.
-		return false
-	default:
-		return true
-	}
+	return node.state.eligible(g.staleAfter)
 }
 
 // pick chooses a replica able to serve a read requiring the given position, or
@@ -178,12 +253,12 @@ func (g *gate) eligible(node *replicaNode) bool {
 // A zero requirement means the caller has no watermark to satisfy. In that case
 // the byte-lag threshold applies instead — with a concrete watermark it does
 // not, because comparing WAL positions is strictly stronger than comparing lag.
-func (g *gate) pick(required wal.LSN) (int, string) {
+func (g *gate) pick(required wal.LSN) replicaSelection {
 	if g == nil || len(g.replicas) == 0 {
-		return -1, metrics.ReasonNoHealthyReplica
+		return replicaSelection{qualification: replicaUnavailable}
 	}
 
-	reason := metrics.ReasonNoHealthyReplica
+	best := replicaUnavailable
 	// Bounded by the modulus, so the conversion cannot overflow.
 	start := int(g.cursor.Add(1) % uint64(len(g.replicas))) //nolint:gosec // bounded by len(g.replicas)
 
@@ -191,54 +266,32 @@ func (g *gate) pick(required wal.LSN) (int, string) {
 		node := g.replicas[(start+offset)%len(g.replicas)]
 
 		node.mu.RLock()
-		ok, why := g.qualifies(node, required)
+		qualification := g.qualifies(node, required)
 		node.mu.RUnlock()
 
-		if ok {
-			if required > 0 {
-				return node.index, metrics.ReasonCaughtUp
-			}
-
-			return node.index, metrics.ReasonWithinLag
+		if qualification.eligible() {
+			return replicaSelection{node: node, qualification: qualification}
 		}
 
 		// Report the most specific reason seen: "behind" tells a very
 		// different operational story from "no healthy replica".
-		if why == metrics.ReasonBehind {
-			reason = metrics.ReasonBehind
+		if qualification == replicaBehind {
+			best = qualification
 		}
 	}
 
-	return -1, reason
+	return replicaSelection{qualification: best}
 }
 
 // qualifies reports whether one node can serve a read requiring the given
 // position. The caller must hold a read lock on node.
-func (g *gate) qualifies(node *replicaNode, required wal.LSN) (bool, string) {
-	if !g.eligible(node) {
-		return false, metrics.ReasonNoHealthyReplica
-	}
-
-	if required > 0 {
-		if node.replayLSN < required {
-			return false, metrics.ReasonBehind
-		}
-
-		return true, metrics.ReasonCaughtUp
-	}
-
-	if g.maxLagBytes > 0 && node.lagBytes > g.maxLagBytes {
-		return false, metrics.ReasonBehind
-	}
-
-	return true, metrics.ReasonWithinLag
+func (g *gate) qualifies(node *replicaNode, required wal.LSN) replicaQualification {
+	return node.state.qualification(required, g.maxLagBytes, g.staleAfter)
 }
 
 // ready reports whether some replica has replayed past the given position.
 func (g *gate) ready(required wal.LSN) bool {
-	index, _ := g.pick(required)
-
-	return index >= 0
+	return g.pick(required).available()
 }
 
 // await waits, up to max, for a replica to become able to serve a read
@@ -291,19 +344,15 @@ func (g *gate) await(ctx context.Context, required wal.LSN, maxWait time.Duratio
 // It is what clamps a client-supplied watermark: without the clamp, a crafted
 // header pins every one of that client's reads to the primary for as long as
 // they keep sending it.
-func (g *gate) primaryPosition() (wal.LSN, bool) {
+func (g *gate) primaryPosition() primarySample {
 	if g == nil {
-		return 0, false
+		return primarySample{}
 	}
 
 	g.pmu.RLock()
 	defer g.pmu.RUnlock()
 
-	if g.primaryLSN == 0 || time.Since(g.primaryAt) > g.staleAfter {
-		return 0, false
-	}
-
-	return g.primaryLSN, true
+	return primarySample{position: g.primaryLSN, observed: g.primaryAt}
 }
 
 // observePrimary raises the cached primary position from a live read.
@@ -311,7 +360,7 @@ func (g *gate) primaryPosition() (wal.LSN, bool) {
 // Router.Watermark issues that read, and its answer is strictly fresher than
 // the poller's sample. Without this, a token minted moments ago names a
 // position ahead of what the gate believes the primary has written, and the
-// clamp in Accept would treat our own watermark as forged.
+// clamp in ResolveToken would treat our own watermark as forged.
 func (g *gate) observePrimary(position wal.LSN) {
 	if g == nil {
 		return
@@ -329,15 +378,15 @@ func (g *gate) observePrimary(position wal.LSN) {
 
 // lineage returns the cluster and timeline the current samples belong to.
 // A token from a different lineage is not comparable and must be discarded.
-func (g *gate) lineage() (uint64, uint32, bool) {
+func (g *gate) lineage() clusterLineage {
 	if g == nil {
-		return 0, 0, false
+		return clusterLineage{}
 	}
 
 	g.pmu.RLock()
 	defer g.pmu.RUnlock()
 
-	return g.systemID, g.timeline, g.timeline != 0
+	return clusterLineage{systemID: g.systemID, timeline: g.timeline}
 }
 
 func (g *gate) sampled() <-chan struct{} {
@@ -372,8 +421,7 @@ func (g *gate) markFailure(index int, err error) {
 	node := g.replicas[index]
 
 	node.mu.Lock()
-	node.failures++
-	node.lastErr = err
+	node.state.recordFailure(err)
 	node.mu.Unlock()
 }
 

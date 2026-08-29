@@ -54,7 +54,8 @@ func WithReplicaPollInterval(d time.Duration) Option {
 }
 
 // WithReplicaPollJitter spreads polls by the given fraction of the interval, so
-// that a fleet of pods does not probe the same replica in lockstep.
+// that a fleet of pods does not probe the same replica in lockstep. Values
+// above one are clamped to one to keep timer durations positive.
 func WithReplicaPollJitter(fraction float64) Option {
 	return func(s *Store) {
 		s.routing.PollJitter = fraction
@@ -112,27 +113,27 @@ func WithClassifier(c sqlclass.Classifier) Option {
 	}
 }
 
-// WithReplicaFallback controls whether a read that wanted a replica falls back
-// to the primary. Default true.
+// WithReplicaFallback sets what a read does when no replica qualifies. The
+// default is replica.FallbackToPrimary.
 //
-// Set it false in tests, where a routing bug should be loud, or in a service
+// Use replica.FallbackReject in tests, where a routing bug should be loud, or in a service
 // that would rather shed read load than melt the primary. It never affects
 // StrategyReplica, which never falls back either way.
-func WithReplicaFallback(enabled bool) Option {
+func WithReplicaFallback(policy replica.FallbackPolicy) Option {
 	return func(s *Store) {
-		s.routing.Fallback = enabled
+		s.routing.Fallback = policy
 	}
 }
 
-// WithSyncWatermark makes a committed transaction resolve its WAL position
-// inline, at the cost of one extra round trip to the primary per commit.
+// WithWatermarkPolicy sets when a committed transaction resolves its WAL
+// position. WatermarkOnCommit costs one extra primary round trip per commit.
 //
-// Off by default. In-request read-after-write needs only the taint, and a
+// On-handoff capture is the default. In-request read-after-write needs only the taint, and a
 // cross-boundary handoff is better served by calling Router.Watermark once,
 // where the caller can see what it costs.
-func WithSyncWatermark(enabled bool) Option {
+func WithWatermarkPolicy(policy replica.WatermarkPolicy) Option {
 	return func(s *Store) {
-		s.routing.SyncWatermark = enabled
+		s.routing.Watermark = policy
 	}
 }
 

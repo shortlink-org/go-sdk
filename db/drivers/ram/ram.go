@@ -24,15 +24,9 @@ func New(cfg *config.Config) *Store {
 }
 
 // Init - initialize
-func (s *Store) Init(ctx context.Context) error {
+func (s *Store) Init(_ context.Context) error {
 	// Set configuration
 	s.setConfig()
-
-	// Graceful shutdown
-	go func() {
-		<-ctx.Done()
-		// Nothing to do
-	}()
 
 	return nil
 }

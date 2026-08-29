@@ -31,14 +31,19 @@ import (
 // gRPC normalizes metadata keys and therefore how it arrives.
 const MetadataKey = "wal-watermark"
 
+// unresolvedToken is intentionally unparsable by the database adapter. It
+// carries one bit of information across a failed capture: a write happened,
+// so the receiver must stay on the primary even though no LSN is available.
+const unresolvedToken = "unresolved"
+
 // Consistency is what the database driver provides.
 //
 //	router, _ := postgres.RouterFrom(store)
 //	port := router.Port()
 type Consistency interface {
-	// Watermark returns a token describing the writes made on ctx, and whether
-	// there were any. A context that did not write costs nothing.
-	Watermark(ctx context.Context) (string, bool, error)
+	// Capture returns a token describing writes made on ctx. Empty means no
+	// write; an error means a write happened but its position is unresolved.
+	Capture(ctx context.Context) (string, error)
 
 	// Apply returns a context carrying the guarantee a received token
 	// describes.
@@ -82,18 +87,70 @@ func tokenFrom(md metadata.MD) string {
 	return strings.TrimSpace(values[0])
 }
 
-// attach returns ctx with the watermark set on its outgoing metadata.
-//
-// Set rather than append: a token accumulated across several hops would leave
-// the receiver picking one at random.
-func attach(ctx context.Context, token string) context.Context {
+type capturedWatermarkState uint8
+
+const (
+	capturedWatermarkAbsent capturedWatermarkState = iota
+	capturedWatermarkResolved
+	capturedWatermarkUnresolved
+)
+
+type capturedWatermark struct {
+	state capturedWatermarkState
+	token string
+}
+
+// capture converts the structural port's compatibility triple into one domain
+// value. From here on, "nothing written", "resolved" and "unresolved" cannot
+// be represented by contradictory booleans.
+func capture(ctx context.Context, guarantee Consistency) capturedWatermark {
+	token, err := guarantee.Capture(ctx)
+	if err != nil {
+		return capturedWatermark{state: capturedWatermarkUnresolved}
+	}
+
+	if token == "" {
+		return capturedWatermark{state: capturedWatermarkAbsent}
+	}
+
+	return capturedWatermark{state: capturedWatermarkResolved, token: token}
+}
+
+func (w capturedWatermark) present() bool { return w.state != capturedWatermarkAbsent }
+
+func (w capturedWatermark) wireValue() string {
+	if w.state == capturedWatermarkResolved {
+		return w.token
+	}
+
+	if w.state == capturedWatermarkUnresolved {
+		return unresolvedToken
+	}
+
+	return ""
+}
+
+// attach returns ctx with the watermark set on its outgoing metadata. Set
+// rather than append: several hops must not leave the receiver choosing a
+// token at random.
+func (w capturedWatermark) attach(ctx context.Context) context.Context {
+	if !w.present() {
+		return ctx
+	}
+
 	outgoing, ok := metadata.FromOutgoingContext(ctx)
 	if !ok {
 		outgoing = metadata.MD{}
 	}
 
 	updated := outgoing.Copy()
-	updated.Set(MetadataKey, token)
+	updated.Set(MetadataKey, w.wireValue())
 
 	return metadata.NewOutgoingContext(ctx, updated)
+}
+
+func (w capturedWatermark) setTrailer(set func(metadata.MD)) {
+	if w.present() {
+		set(metadata.Pairs(MetadataKey, w.wireValue()))
+	}
 }

@@ -19,7 +19,6 @@ import (
 // the router and its pools.
 type fakeConsistency struct {
 	token     string
-	hasToken  bool
 	err       error
 	applied   []string
 	observed  []string
@@ -28,8 +27,8 @@ type fakeConsistency struct {
 
 type marker struct{ name string }
 
-func (f *fakeConsistency) Watermark(context.Context) (string, bool, error) {
-	return f.token, f.hasToken, f.err
+func (f *fakeConsistency) Capture(context.Context) (string, error) {
+	return f.token, f.err
 }
 
 func (f *fakeConsistency) Apply(ctx context.Context, token string) context.Context {
@@ -57,7 +56,7 @@ func unaryInfo(method string) *grpc.UnaryServerInfo {
 func TestClientAttachesTheWatermark(t *testing.T) {
 	t.Parallel()
 
-	fake := &fakeConsistency{token: testToken, hasToken: true}
+	fake := &fakeConsistency{token: testToken}
 
 	var sent metadata.MD
 
@@ -75,7 +74,7 @@ func TestClientAttachesTheWatermark(t *testing.T) {
 func TestClientSendsNothingWhenTheContextDidNotWrite(t *testing.T) {
 	t.Parallel()
 
-	fake := &fakeConsistency{hasToken: false}
+	fake := &fakeConsistency{}
 
 	var sent metadata.MD
 
@@ -97,16 +96,40 @@ func TestClientSwallowsAWatermarkError(t *testing.T) {
 
 	fake := &fakeConsistency{err: errors.New("primary unreachable")}
 	called := false
+	var sent metadata.MD
 
 	err := UnaryClientInterceptor(fake)(context.Background(), "/svc/Method", nil, nil, nil,
-		func(context.Context, string, any, any, *grpc.ClientConn, ...grpc.CallOption) error {
+		func(ctx context.Context, _ string, _, _ any, _ *grpc.ClientConn, _ ...grpc.CallOption) error {
 			called = true
+			sent, _ = metadata.FromOutgoingContext(ctx)
 
 			return nil
 		})
 
 	require.NoError(t, err)
 	assert.True(t, called)
+	assert.Equal(t, []string{unresolvedToken}, sent.Get(MetadataKey),
+		"a failed capture must not make a written context look clean")
+}
+
+func TestCapturedTokenPreservesNothingWritten(t *testing.T) {
+	t.Parallel()
+
+	watermark := capture(context.Background(), &fakeConsistency{})
+	assert.False(t, watermark.present())
+}
+
+func TestServerReturnsAnUnresolvedMarkerWhenCaptureFails(t *testing.T) {
+	t.Parallel()
+
+	fake := &fakeConsistency{err: errors.New("primary unreachable")}
+	var trailer metadata.MD
+
+	setWatermarkTrailer(context.Background(), fake, func(md metadata.MD) {
+		trailer = md
+	})
+
+	assert.Equal(t, []string{unresolvedToken}, trailer.Get(MetadataKey))
 }
 
 func TestClientObservesTheReturnedWatermark(t *testing.T) {
@@ -253,7 +276,7 @@ func TestNilConsistencyIsATransparentPassThrough(t *testing.T) {
 func TestStreamClientAttachesTheWatermark(t *testing.T) {
 	t.Parallel()
 
-	fake := &fakeConsistency{token: testToken, hasToken: true}
+	fake := &fakeConsistency{token: testToken}
 
 	var sent metadata.MD
 
@@ -275,7 +298,10 @@ func TestAttachReplacesAnExistingToken(t *testing.T) {
 
 	ctx := metadata.NewOutgoingContext(context.Background(), metadata.Pairs(MetadataKey, "stale"))
 
-	updated, ok := metadata.FromOutgoingContext(attach(ctx, testToken))
+	updated, ok := metadata.FromOutgoingContext((capturedWatermark{
+		state: capturedWatermarkResolved,
+		token: testToken,
+	}).attach(ctx))
 	require.True(t, ok)
 	assert.Equal(t, []string{testToken}, updated.Get(MetadataKey))
 }

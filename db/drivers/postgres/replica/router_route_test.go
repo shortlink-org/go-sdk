@@ -62,11 +62,13 @@ func newTestRouter(tb testing.TB, replicas int, tune ...func(*Options)) *Router 
 
 	for index := range replicas {
 		nodes = append(nodes, &replicaNode{
-			host:       fmt.Sprintf("replica-%d:5432", index),
-			index:      index,
-			inRecovery: true,
-			replayLSN:  replicaReplayLSN,
-			lastPoll:   time.Now(),
+			host:  fmt.Sprintf("replica-%d:5432", index),
+			index: index,
+			state: replicaState{
+				lifecycle: replicaStandby,
+				replayLSN: replicaReplayLSN,
+				lastPoll:  time.Now(),
+			},
 		})
 	}
 
@@ -263,7 +265,7 @@ func TestRouterRoute(t *testing.T) {
 		{
 			name:     "fallback disabled turns a lagging replica into an error",
 			replicas: 1,
-			tune:     func(o *Options) { o.Fallback = false },
+			tune:     func(o *Options) { o.Fallback = FallbackReject },
 			ctx: func(ctx context.Context) context.Context {
 				return WithWatermark(ctx, replicaReplayLSN+1)
 			},
@@ -300,8 +302,14 @@ func TestRouterRoute(t *testing.T) {
 			}
 
 			require.NoError(t, err)
-			assert.Equal(t, tt.wantPrimary, target.OnPrimary(), "reason: %s", target.Reason)
-			assert.Equal(t, tt.wantReason, target.Reason)
+			assert.Equal(t, tt.wantPrimary, target.OnPrimary(), "reason: %s", target.Reason())
+			assert.Equal(t, tt.wantReason, target.Reason())
+			if tt.wantPrimary {
+				assert.Nil(t, target.Replica())
+			} else {
+				require.NotNil(t, target.Replica())
+				assert.GreaterOrEqual(t, target.Replica().Index, 0)
+			}
 		})
 	}
 }
@@ -324,7 +332,7 @@ func TestRouterRouteTaintsOnWrite(t *testing.T) {
 	after, err := router.Route(ctx, sqlSelectOne)
 	require.NoError(t, err)
 	assert.True(t, after.OnPrimary(), "a read after a write must not go to a replica")
-	assert.Equal(t, metrics.ReasonTainted, after.Reason)
+	assert.Equal(t, metrics.ReasonTainted, after.Reason())
 }
 
 func TestGateEligibility(t *testing.T) {
@@ -336,11 +344,11 @@ func TestGateEligibility(t *testing.T) {
 		want bool
 	}{
 		{name: "healthy", set: func(*replicaNode) {}, want: true},
-		{name: "quarantined", set: func(n *replicaNode) { n.quarantined = true }},
-		{name: "never polled", set: func(n *replicaNode) { n.lastPoll = time.Time{} }},
-		{name: "consecutive failures", set: func(n *replicaNode) { n.failures = failureThreshold }},
-		{name: "left recovery", set: func(n *replicaNode) { n.inRecovery = false }},
-		{name: "stale sample", set: func(n *replicaNode) { n.lastPoll = time.Now().Add(-time.Hour) }},
+		{name: "quarantined", set: func(n *replicaNode) { n.state.lifecycle = replicaQuarantined }},
+		{name: "never polled", set: func(n *replicaNode) { n.state.lastPoll = time.Time{} }},
+		{name: "consecutive failures", set: func(n *replicaNode) { n.state.failures = failureThreshold }},
+		{name: "left recovery", set: func(n *replicaNode) { n.state.lifecycle = replicaUnobserved }},
+		{name: "stale sample", set: func(n *replicaNode) { n.state.lastPoll = time.Now().Add(-time.Hour) }},
 	}
 
 	for _, tt := range tests {
@@ -355,6 +363,18 @@ func TestGateEligibility(t *testing.T) {
 	}
 }
 
+func TestReplicaQuarantineIsIrreversible(t *testing.T) {
+	t.Parallel()
+
+	state := replicaState{lifecycle: replicaStandby, lastPoll: time.Now()}
+	state.recordPromotion(time.Now())
+	state.recordStandby(replicaReplayLSN, replicaReplayLSN, 0, time.Now())
+
+	assert.True(t, state.quarantined())
+	assert.False(t, state.inRecovery())
+	assert.ErrorIs(t, state.lastErr, ErrReplicaPromoted)
+}
+
 // TestGateLagThresholdOnlyAppliesWithoutAWatermark: comparing WAL positions is
 // strictly stronger than comparing lag, so a satisfied watermark must not be
 // overruled by a byte budget.
@@ -362,15 +382,30 @@ func TestGateLagThresholdOnlyAppliesWithoutAWatermark(t *testing.T) {
 	t.Parallel()
 
 	router := newTestRouter(t, 1, func(o *Options) { o.MaxLagBytes = tinyLagBudget })
-	router.gate.replicas[0].lagBytes = reportedLag
+	router.gate.replicas[0].state.lagBytes = reportedLag
 
-	index, reason := router.gate.pick(0)
-	assert.Negative(t, index, "a read with no watermark is subject to the lag budget")
-	assert.Equal(t, metrics.ReasonBehind, reason)
+	selection := router.gate.pick(0)
+	assert.False(t, selection.available(), "a read with no watermark is subject to the lag budget")
+	assert.Equal(t, metrics.ReasonBehind, selection.reason())
 
-	index, reason = router.gate.pick(replicaReplayLSN)
-	assert.GreaterOrEqual(t, index, 0, "a satisfied watermark outranks the lag budget")
-	assert.Equal(t, metrics.ReasonCaughtUp, reason)
+	selection = router.gate.pick(replicaReplayLSN)
+	assert.True(t, selection.available(), "a satisfied watermark outranks the lag budget")
+	assert.Equal(t, metrics.ReasonCaughtUp, selection.reason())
+}
+
+func TestGateUnknownLagDoesNotBypassTheLagBudget(t *testing.T) {
+	t.Parallel()
+
+	router := newTestRouter(t, 1)
+	router.gate.replicas[0].state.lagBytes = unknownLagBytes
+
+	selection := router.gate.pick(0)
+	assert.False(t, selection.available(), "unknown lag must not look like zero lag")
+	assert.Equal(t, metrics.ReasonBehind, selection.reason())
+
+	selection = router.gate.pick(replicaReplayLSN)
+	assert.True(t, selection.available(), "a concrete satisfied watermark is stronger than a lag sample")
+	assert.Equal(t, metrics.ReasonCaughtUp, selection.reason())
 }
 
 // TestGatePickSpreadsAcrossReplicas: without this, every read lands on the
@@ -382,8 +417,9 @@ func TestGatePickSpreadsAcrossReplicas(t *testing.T) {
 	seen := map[int]bool{}
 
 	for range spreadRounds {
-		index, _ := router.gate.pick(0)
-		seen[index] = true
+		selection := router.gate.pick(0)
+		require.True(t, selection.available())
+		seen[selection.node.index] = true
 	}
 
 	assert.Len(t, seen, 3)
@@ -393,13 +429,14 @@ func TestGatePickSkipsUnhealthyReplicas(t *testing.T) {
 	t.Parallel()
 
 	router := newTestRouter(t, 3)
-	router.gate.replicas[0].quarantined = true
-	router.gate.replicas[1].inRecovery = false
+	router.gate.replicas[0].state.lifecycle = replicaQuarantined
+	router.gate.replicas[1].state.lifecycle = replicaUnobserved
 
 	for range spreadRounds / 3 {
-		index, reason := router.gate.pick(0)
-		require.Equal(t, 2, index)
-		require.Equal(t, metrics.ReasonWithinLag, reason)
+		selection := router.gate.pick(0)
+		require.True(t, selection.available())
+		require.Equal(t, 2, selection.node.index)
+		require.Equal(t, metrics.ReasonWithinLag, selection.reason())
 	}
 }
 
@@ -455,7 +492,7 @@ func TestReplicaEligible(t *testing.T) {
 	}
 }
 
-func TestRouterAcceptRejectsForeignAndForgedTokens(t *testing.T) {
+func TestRouterResolveTokenDistinguishesForeignAndForgedTokens(t *testing.T) {
 	t.Parallel()
 
 	router := newTestRouter(t, 1)
@@ -463,25 +500,38 @@ func TestRouterAcceptRejectsForeignAndForgedTokens(t *testing.T) {
 	router.gate.timeline = liveTimeline
 
 	valid := wal.Token{SystemID: testSystemID, Timeline: liveTimeline, LSN: replicaReplayLSN - 1}
-	position, ok := router.Accept(valid)
-	require.True(t, ok)
-	assert.Equal(t, valid.LSN, position)
+	resolution := router.ResolveToken(valid)
+	require.Equal(t, TokenAccepted, resolution.State())
+	assert.Equal(t, valid.LSN, resolution.Position())
 
-	_, ok = router.Accept(wal.Token{SystemID: testSystemID, Timeline: nextTimeline, LSN: 1})
-	assert.False(t, ok, "a token from another timeline is not comparable")
+	resolution = router.ResolveToken(wal.Token{SystemID: testSystemID, Timeline: nextTimeline, LSN: 1})
+	assert.Equal(t, TokenUnusable, resolution.State(), "a token from another timeline is not comparable")
 
-	_, ok = router.Accept(wal.Token{SystemID: 99, Timeline: liveTimeline, LSN: 1})
-	assert.False(t, ok, "a token from another cluster is not comparable")
+	resolution = router.ResolveToken(wal.Token{SystemID: 99, Timeline: liveTimeline, LSN: 1})
+	assert.Equal(t, TokenUnusable, resolution.State(), "a token from another cluster is not comparable")
 
 	// A position beyond what the primary is known to have written is clamped,
 	// not refused: refusing would drop the guarantee entirely, which is the
 	// stale read the token exists to prevent.
-	position, ok = router.Accept(wal.Token{SystemID: testSystemID, Timeline: liveTimeline, LSN: wal.Unknown})
-	require.True(t, ok)
-	assert.Equal(t, router.gate.primaryLSN, position, "a forged position is clamped to the primary")
+	resolution = router.ResolveToken(wal.Token{SystemID: testSystemID, Timeline: liveTimeline, LSN: wal.Unknown})
+	require.Equal(t, TokenAccepted, resolution.State())
+	assert.Equal(t, router.gate.primaryLSN, resolution.Position(), "a forged position is clamped to the primary")
 
-	_, ok = router.Accept(wal.Token{})
-	assert.False(t, ok)
+	assert.Equal(t, TokenAbsent, router.ResolveToken(wal.Token{}).State())
+}
+
+func TestRouterResolveTokenPinsUntilLineageIsKnown(t *testing.T) {
+	t.Parallel()
+
+	router := newTestRouter(t, 1)
+	router.gate.timeline = 0
+
+	token := wal.Token{SystemID: testSystemID, Timeline: liveTimeline, LSN: replicaReplayLSN}
+	resolution := router.ResolveToken(token)
+	assert.Equal(t, TokenUnusable, resolution.State(), "a bare LSN is not comparable before the first primary probe")
+
+	ctx := router.WithToken(context.Background(), token)
+	assert.Equal(t, StrategyPrimary, StrategyFromContext(ctx))
 }
 
 // TestRouterWithTokenPinsOnAnUninterpretableToken: a token we cannot compare
@@ -534,8 +584,7 @@ func TestRouterAwaitWakesOnANewSample(t *testing.T) {
 
 		node := router.gate.replicas[0]
 		node.mu.Lock()
-		node.replayLSN = required
-		node.lastPoll = time.Now()
+		node.state.recordStandby(required, 0, 0, time.Now())
 		node.mu.Unlock()
 
 		router.gate.broadcast()

@@ -50,6 +50,13 @@ func (s *Store) Init(ctx context.Context) error {
 		s.config.config.AfterConnect = s.afterConnect
 	}
 
+	// Keep an unsuffixed copy for replica construction, then label the primary
+	// before the pool opens its first connection. Mutating the config after
+	// Ping leaves that first connection unlabeled and makes replicas inherit
+	// "-primary-replica-N" instead of the intended "-replica-N".
+	replicaConfig := s.config.config.Copy()
+	applicationName(s.config.config, applicationNamePrimary)
+
 	// Connect to Postgres
 	s.client, err = pgxpool.NewWithConfig(ctx, s.config.config)
 	if err != nil {
@@ -66,7 +73,7 @@ func (s *Store) Init(ctx context.Context) error {
 
 	// Build the read-replica router. Without replica DSNs this is a no-op and
 	// the store behaves exactly as it did before routing existed.
-	s.router, err = s.buildRouter(ctx)
+	s.router, err = s.buildRouter(ctx, replicaConfig)
 	if err != nil {
 		s.client.Close()
 

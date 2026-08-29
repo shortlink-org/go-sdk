@@ -20,7 +20,7 @@ import (
 // to find out.
 type (
 	watermarkerContract interface {
-		Watermark(ctx context.Context) (string, bool, error)
+		Capture(ctx context.Context) (string, error)
 	}
 
 	replicaGateContract interface {
@@ -31,7 +31,7 @@ type (
 
 	// The grpc module's consistency interceptors declare this one.
 	grpcConsistencyContract interface {
-		Watermark(ctx context.Context) (string, bool, error)
+		Capture(ctx context.Context) (string, error)
 		Apply(ctx context.Context, token string) context.Context
 		Observe(ctx context.Context, token string)
 		Scope(ctx context.Context) context.Context
@@ -56,20 +56,30 @@ const (
 	storeKey      = "alice"
 )
 
-func TestTextPortWatermarkSkipsCleanContexts(t *testing.T) {
+func TestTextPortCaptureSkipsCleanContexts(t *testing.T) {
 	t.Parallel()
 
 	port := newTestRouter(t, 1).Port()
 
 	// A context that never wrote has nothing to hand over, and must not pay a
 	// round trip to find that out.
-	_, ok, err := port.Watermark(WithTracker(context.Background()))
+	token, err := port.Capture(WithTracker(context.Background()))
 	require.NoError(t, err)
-	assert.False(t, ok)
+	assert.Empty(t, token)
 
-	_, ok, err = port.Watermark(context.Background())
+	token, err = port.Capture(context.Background())
 	require.NoError(t, err)
-	assert.False(t, ok)
+	assert.Empty(t, token)
+}
+
+func TestTextPortCaptureReportsFailureAfterAWrite(t *testing.T) {
+	t.Parallel()
+
+	ctx := WithTracker(context.Background())
+	TrackerFromContext(ctx).Taint()
+
+	_, err := (&Router{}).Port().Capture(ctx)
+	require.Error(t, err)
 }
 
 func TestTextPortApply(t *testing.T) {

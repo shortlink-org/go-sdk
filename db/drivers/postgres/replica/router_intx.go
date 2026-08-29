@@ -16,7 +16,7 @@ import (
 // and owns the whole lifecycle: rollback on error, rollback on panic, and
 // exactly one release of the connection.
 //
-// It exists for one reason BeginTx cannot serve. With WithSyncWatermark on, the
+// It exists for one reason BeginTx cannot serve. With WatermarkOnCommit, the
 // WAL position has to be read after the commit — read inside the transaction it
 // excludes the commit record and the gate opens one record too early. Through
 // pgx.Tx that is necessarily a second round trip, because Commit sends COMMIT
@@ -32,12 +32,12 @@ import (
 //
 //nolint:gocritic // pgx.TxOptions is passed by value throughout pgx's own API
 func (r *Router) InTx(ctx context.Context, options pgx.TxOptions, work func(context.Context, pgx.Tx) error) error {
-	pool, onPrimary, err := r.txPool(ctx, options)
+	target, err := r.txPool(ctx, options)
 	if err != nil {
 		return err
 	}
 
-	conn, err := pool.Acquire(ctx)
+	conn, err := target.pool.Acquire(ctx)
 	if err != nil {
 		return &Error{Op: opInTx, Err: err, Details: "failed to acquire a connection"}
 	}
@@ -68,7 +68,7 @@ func (r *Router) InTx(ctx context.Context, options pgx.TxOptions, work func(cont
 		return err
 	}
 
-	if !onPrimary || !r.opts.SyncWatermark {
+	if !target.onPrimary() || r.opts.Watermark != WatermarkOnCommit {
 		err = transaction.Commit(ctx)
 		if err != nil {
 			return err
@@ -95,17 +95,17 @@ func (r *Router) InTx(ctx context.Context, options pgx.TxOptions, work func(cont
 // as BeginTx.
 //
 //nolint:gocritic // pgx.TxOptions is passed by value throughout pgx's own API
-func (r *Router) txPool(ctx context.Context, options pgx.TxOptions) (*pgxpool.Pool, bool, error) {
+func (r *Router) txPool(ctx context.Context, options pgx.TxOptions) (transactionTarget, error) {
 	if !replicaEligible(options) {
 		TrackerFromContext(ctx).Taint()
-		r.metrics.RecordDecision(ctx, decisionOf(Target{Pool: r.primary, Replica: -1, Class: sqlclass.Write, Reason: metrics.ReasonWrite}))
+		r.metrics.RecordDecision(ctx, decisionOf(newPrimaryTarget(r.primary, sqlclass.Write, StrategyUnset, metrics.ReasonWrite)))
 
-		return r.primary, true, nil
+		return primaryTransaction(r.primary), nil
 	}
 
 	target, err := r.route(ctx, sqlclass.Read)
 	if err != nil {
-		return nil, false, err
+		return transactionTarget{}, err
 	}
 
 	r.metrics.RecordDecision(ctx, decisionOf(target))
@@ -114,7 +114,7 @@ func (r *Router) txPool(ctx context.Context, options pgx.TxOptions) (*pgxpool.Po
 		TrackerFromContext(ctx).Taint()
 	}
 
-	return target.Pool, target.OnPrimary(), nil
+	return transactionFrom(target), nil
 }
 
 // commitWithWatermark commits and reads the resulting WAL position in a single

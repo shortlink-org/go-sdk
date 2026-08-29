@@ -6,6 +6,7 @@ import (
 	"math/rand/v2"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/shortlink-org/go-sdk/db/drivers/postgres/replica/wal"
@@ -66,6 +67,12 @@ const (
 // close, and close waits for it: the driver's tests run under goleak, and a
 // poller outliving its store fails them.
 func (g *gate) start(ctx context.Context) {
+	// A zero interval is the documented way to disable polling. Resetting a
+	// timer to zero would instead create a tight query loop against every node.
+	if g == nil || g.interval <= 0 {
+		return
+	}
+
 	g.started = true
 
 	go g.run(ctx)
@@ -125,17 +132,27 @@ func (g *gate) nextInterval() time.Duration {
 		return g.interval
 	}
 
-	spread := float64(g.interval) * g.jitter
+	// A fraction above one would produce negative timer durations for part of
+	// the random range, which time.Timer treats as "fire immediately". Clamp it
+	// so a bad deployment value cannot turn into a polling storm.
+	spread := float64(g.interval) * min(g.jitter, 1)
+	next := time.Duration(float64(g.interval) + (rand.Float64()*2-1)*spread) //nolint:gosec // jitter, not a secret
 
-	return time.Duration(float64(g.interval) + (rand.Float64()*2-1)*spread) //nolint:gosec // jitter, not a secret
+	return max(next, time.Nanosecond)
 }
 
 func (g *gate) probeAll(ctx context.Context) {
 	g.probePrimary(ctx)
 
+	var probes sync.WaitGroup
+
 	for _, node := range g.replicas {
-		g.probeReplica(ctx, node)
+		probes.Go(func() {
+			g.probeReplica(ctx, node)
+		})
 	}
+
+	probes.Wait()
 }
 
 func (g *gate) probePrimary(ctx context.Context) {
@@ -220,8 +237,7 @@ func (g *gate) probeReplica(ctx context.Context, node *replicaNode) {
 
 	if err != nil {
 		node.mu.Lock()
-		node.failures++
-		node.lastErr = err
+		node.state.recordFailure(err)
 		node.mu.Unlock()
 
 		g.metrics.ProbeFailed(ctx, node.host, err)
@@ -235,11 +251,7 @@ func (g *gate) probeReplica(ctx context.Context, node *replicaNode) {
 	// it for the lifetime of this process and say so loudly.
 	if !inRecovery {
 		node.mu.Lock()
-		alreadyKnown := node.quarantined
-		node.quarantined = true
-		node.inRecovery = false
-		node.lastPoll = time.Now()
-		node.lastErr = ErrReplicaPromoted
+		alreadyKnown := node.state.recordPromotion(time.Now())
 		node.mu.Unlock()
 
 		if !alreadyKnown {
@@ -255,23 +267,11 @@ func (g *gate) probeReplica(ctx context.Context, node *replicaNode) {
 	replay := parseNullableLSN(replayText)
 	receive := parseNullableLSN(receiveText)
 
-	primaryLSN, primaryKnown := g.primaryPosition()
-
-	lag := int64(0)
-	if primaryKnown && primaryLSN > replay {
-		// The difference is what the primary has written and the standby has
-		// not, so it cannot exceed the WAL the cluster has ever produced.
-		lag = int64(primaryLSN - replay) //nolint:gosec // a lag wider than 2^63 bytes is not a real cluster
-	}
+	primary := g.primaryPosition()
+	lag := primary.lagBehind(replay, g.staleAfter)
 
 	node.mu.Lock()
-	node.inRecovery = true
-	node.replayLSN = replay
-	node.receiveLSN = receive
-	node.lagBytes = lag
-	node.lastPoll = time.Now()
-	node.lastErr = nil
-	node.failures = 0
+	node.state.recordStandby(replay, receive, lag, time.Now())
 	node.mu.Unlock()
 }
 

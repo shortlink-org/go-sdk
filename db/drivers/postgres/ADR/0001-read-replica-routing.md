@@ -62,6 +62,17 @@ flowchart LR
     SNAP -.->|"no I/O on the hot path"| DEC
 ```
 
+The implementation keeps each decision as a domain value rather than a tuple
+of loosely related flags. `routingRequest` owns statement policy,
+`replicaQualification` and `replicaSelection` own gate outcomes,
+`clusterLineage` owns token comparability, and `transactionTarget` keeps a pool
+and its role inseparable. HTTP, gRPC and Watermill likewise convert their
+`Capture() (string, error)` interface once into an explicit
+`absent / resolved / unresolved` watermark state. The public `Target` is
+immutable and `ResolveToken` returns a state object, so the same invariants are
+not lost again at the package boundary. These are small Go value types whose
+methods protect the rules that matter after a failover or capture failure.
+
 Across a boundary the guarantee travels as a token, because a `context.Context`
 does not:
 
@@ -142,6 +153,12 @@ for content that never replicated. Carrying the lineage lets a foreign token be
 discarded, which is the only correct response.
 
 - [PostgreSQL: log-shipping standby servers, promotion and timelines](https://www.postgresql.org/docs/current/warm-standby.html)
+
+If a write is known but its position cannot be captured, the boundary adapters
+carry an intentionally unresolved marker instead of carrying nothing. The
+receiver treats an unreadable marker as "primary only". Carrying nothing would
+make the next hop indistinguishable from a clean read and turn a monitoring or
+network failure into a stale-read window.
 
 **HTTP carries the token on the wire, not in server memory.** A mutating
 response sets `X-Read-LSN`, optionally also a `__Host-`-prefixed cookie so

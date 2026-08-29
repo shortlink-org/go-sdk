@@ -16,7 +16,7 @@ import (
 // badger, clickhouse, scylla — out of a module that only needs to pass a
 // string from a publisher to a subscriber.
 //
-// The string is a token, so it survives a failover: see Router.Accept.
+// The string is a token, so it survives a failover: see Router.ResolveToken.
 type TextPort struct {
 	router *Router
 }
@@ -29,23 +29,24 @@ func (r *Router) Port() *TextPort {
 	return &TextPort{router: r}
 }
 
-// Watermark returns a token describing the writes made on ctx, and whether
-// there were any.
+// Capture returns a token describing the writes made on ctx. An empty token
+// means nothing was written; an error means a write was observed but its
+// position could not be captured.
 //
-// A context that has not written returns false and costs nothing: the round
+// A context that has not written returns "" and costs nothing: the round
 // trip to the primary happens only when there is a guarantee to hand over.
-func (p *TextPort) Watermark(ctx context.Context) (string, bool, error) {
+func (p *TextPort) Capture(ctx context.Context) (string, error) {
 	tracker := TrackerFromContext(ctx)
 	if !tracker.Tainted() && tracker.Watermark() == 0 {
-		return "", false, nil
+		return "", nil
 	}
 
 	token, err := p.router.Token(ctx)
 	if err != nil {
-		return "", false, err
+		return "", err
 	}
 
-	return token.String(), true, nil
+	return token.String(), nil
 }
 
 // Await reports whether a replica can serve reads that must observe the token,
@@ -60,8 +61,8 @@ func (p *TextPort) Await(ctx context.Context, token string, maxWait time.Duratio
 		return true, nil //nolint:nilerr // an unreadable token is handled by Apply, not by waiting
 	}
 
-	position, ok := p.router.Accept(parsed)
-	if !ok {
+	resolution := p.router.ResolveToken(parsed)
+	if resolution.State() != TokenAccepted {
 		return true, nil
 	}
 
@@ -69,7 +70,7 @@ func (p *TextPort) Await(ctx context.Context, token string, maxWait time.Duratio
 		return true, nil
 	}
 
-	return p.router.gate.await(ctx, position, maxWait)
+	return p.router.gate.await(ctx, resolution.Position(), maxWait)
 }
 
 // Apply returns a context carrying the guarantee the token describes, so that
@@ -117,12 +118,12 @@ func (p *TextPort) Observe(ctx context.Context, token string) {
 		return
 	}
 
-	position, ok := p.router.Accept(parsed)
-	if !ok {
+	resolution := p.router.ResolveToken(parsed)
+	if resolution.State() != TokenAccepted {
 		tracker.Taint()
 
 		return
 	}
 
-	tracker.Observe(position)
+	tracker.Observe(resolution.Position())
 }

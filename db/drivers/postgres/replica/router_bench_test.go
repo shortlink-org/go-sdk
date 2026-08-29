@@ -115,7 +115,7 @@ func BenchmarkGatePick(b *testing.B) {
 			b.ReportAllocs()
 
 			for b.Loop() {
-				_, _ = router.gate.pick(replicaReplayLSN)
+				_ = router.gate.pick(replicaReplayLSN)
 			}
 		})
 	}

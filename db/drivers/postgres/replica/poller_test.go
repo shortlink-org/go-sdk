@@ -3,10 +3,38 @@
 package replica
 
 import (
+	"context"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 )
+
+func TestNonPositivePollIntervalDisablesThePoller(t *testing.T) {
+	t.Parallel()
+
+	for _, interval := range []time.Duration{0, -time.Second} {
+		router := newTestRouter(t, 1, func(options *Options) {
+			options.PollInterval = interval
+		})
+
+		router.gate.start(context.Background())
+		assert.False(t, router.gate.started, "interval: %s", interval)
+	}
+}
+
+func TestExcessiveJitterNeverProducesANonPositiveInterval(t *testing.T) {
+	t.Parallel()
+
+	router := newTestRouter(t, 1, func(options *Options) {
+		options.PollInterval = time.Second
+		options.PollJitter = 10
+	})
+
+	for range 100 {
+		assert.Positive(t, router.gate.nextInterval())
+	}
+}
 
 func TestIsZeroDelay(t *testing.T) {
 	t.Parallel()

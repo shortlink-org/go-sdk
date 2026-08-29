@@ -22,18 +22,86 @@ import (
 // The cast to text is not optional — pgx has no codec for pg_lsn.
 const watermarkSQL = `SELECT pg_current_wal_insert_lsn()::text`
 
-// Target is where a statement would run, and why.
+// Target is an immutable routing decision: where a statement would run and
+// why. Its fields are private so a primary target cannot carry a replica index
+// (or vice versa).
 type Target struct {
-	Pool *pgxpool.Pool
-	// Replica is the replica index, or -1 for the primary.
-	Replica  int
-	Class    sqlclass.Class
-	Strategy Strategy
-	Reason   string
+	pool         *pgxpool.Pool
+	destination  targetRole
+	replicaIndex int
+	class        sqlclass.Class
+	strategy     Strategy
+	reason       string
 }
 
 // OnPrimary reports whether the statement would run on the primary.
-func (t Target) OnPrimary() bool { return t.Replica < 0 }
+func (t Target) OnPrimary() bool { return t.destination == primaryRole }
+
+// Pool returns the selected connection pool.
+func (t Target) Pool() *pgxpool.Pool { return t.pool }
+
+// Class returns the classifier's result for the statement.
+func (t Target) Class() sqlclass.Class { return t.class }
+
+// Strategy returns the strategy that participated in the decision.
+func (t Target) Strategy() Strategy { return t.strategy }
+
+// Reason returns the stable routing reason used by metrics and diagnostics.
+func (t Target) Reason() string { return t.reason }
+
+// Replica describes a selected replica. A nil result means the primary was
+// selected; there is no negative-index sentinel.
+func (t Target) Replica() *ReplicaTarget {
+	if t.OnPrimary() {
+		return nil
+	}
+
+	return &ReplicaTarget{Index: t.replicaIndex}
+}
+
+// ReplicaTarget identifies the selected standby in configuration order.
+type ReplicaTarget struct {
+	Index int
+}
+
+// TokenState is the result of resolving a cross-process WAL token against the
+// current PostgreSQL lineage.
+type TokenState uint8
+
+const (
+	// TokenAbsent means no guarantee was supplied.
+	TokenAbsent TokenState = iota
+	// TokenAccepted means Position is comparable to the current lineage.
+	TokenAccepted
+	// TokenUnusable means a write was observed but its token cannot be safely
+	// compared here; reads must stay on the primary.
+	TokenUnusable
+)
+
+// String implements fmt.Stringer.
+func (s TokenState) String() string {
+	switch s {
+	case TokenAccepted:
+		return "accepted"
+	case TokenUnusable:
+		return "unusable"
+	default:
+		return "absent"
+	}
+}
+
+// TokenResolution keeps token state and comparable position in one value.
+type TokenResolution struct {
+	state    TokenState
+	position wal.LSN
+}
+
+// State returns how the token was resolved.
+func (r TokenResolution) State() TokenState { return r.state }
+
+// Position returns the comparable WAL position for TokenAccepted and zero for
+// every other state.
+func (r TokenResolution) Position() wal.LSN { return r.position }
 
 // Router splits statements between the primary and its replicas.
 //
@@ -145,23 +213,16 @@ func (r *Router) Token(ctx context.Context) (wal.Token, error) {
 		return wal.Token{}, err
 	}
 
-	systemID, timeline, _ := r.gate.lineage()
-
-	return wal.Token{
-		SystemID: systemID,
-		Timeline: timeline,
-		LSN:      position,
-		IssuedAt: time.Now(),
-	}, nil
+	return r.gate.lineage().token(position, time.Now()), nil
 }
 
-// Accept turns a token received from elsewhere into a position this process
-// may act on, and reports whether it could be interpreted at all.
+// ResolveToken turns a token received from elsewhere into an explicit
+// resolution this process may act on.
 //
-// A false result does not mean "no watermark". It means the token could not be
-// compared to anything here, and treating that as an absent watermark would
-// serve exactly the stale read the token exists to prevent — so the caller must
-// pin the read to the primary instead. WithToken does that for you.
+// TokenUnusable does not mean "no watermark". It means the token could not be
+// compared to anything here, and treating that as TokenAbsent would serve the
+// stale read the token exists to prevent. WithToken applies the conservative
+// primary pin for callers that do not need to inspect the resolution.
 //
 // A position beyond what the primary is known to have written is clamped rather
 // than refused. It arises two ways: a forged header, and a token minted on
@@ -169,30 +230,25 @@ func (r *Router) Token(ctx context.Context) (wal.Token, error) {
 // waits for the replica to reach the primary's last known position, which is
 // bounded by ordinary replication lag, so a crafted value buys an attacker
 // nothing and an honest token is not thrown away.
-func (r *Router) Accept(token wal.Token) (wal.LSN, bool) {
+func (r *Router) ResolveToken(token wal.Token) TokenResolution {
 	if token.IsZero() {
-		return 0, false
+		return TokenResolution{state: TokenAbsent}
 	}
 
-	systemID, timeline, known := r.gate.lineage()
-	if known {
-		// A zero system identifier means the role could not read
-		// pg_control_system(); fall back to comparing timelines alone, which
-		// still catches every failover.
-		if token.Timeline != timeline {
-			return 0, false
-		}
-
-		if systemID != 0 && token.SystemID != 0 && token.SystemID != systemID {
-			return 0, false
-		}
+	lineage := r.gate.lineage()
+	if !lineage.accepts(token) {
+		// Before the first primary probe there is no safe basis for comparing a
+		// token. Accepting its bare LSN now and using it after the probe would
+		// reopen the exact startup/failover window lineage is meant to close.
+		return TokenResolution{state: TokenUnusable}
 	}
 
-	if primary, ok := r.gate.primaryPosition(); ok && token.LSN > primary {
-		return primary, true
+	primary := r.gate.primaryPosition()
+	if primary.fresh(r.gate.staleAfter) {
+		return TokenResolution{state: TokenAccepted, position: primary.clamp(token.LSN)}
 	}
 
-	return token.LSN, true
+	return TokenResolution{state: TokenAccepted, position: token.LSN}
 }
 
 // WithToken installs the guarantee a token carries onto ctx.
@@ -203,16 +259,15 @@ func (r *Router) Accept(token wal.Token) (wal.LSN, bool) {
 // "this reader has already seen a write" just as loudly as one we can compare,
 // and the only thing we no longer know is which replica has caught up.
 func (r *Router) WithToken(ctx context.Context, token wal.Token) context.Context {
-	if token.IsZero() {
+	resolution := r.ResolveToken(token)
+	switch resolution.State() {
+	case TokenAccepted:
+		return WithWatermark(ctx, resolution.Position())
+	case TokenUnusable:
+		return OnPrimary(ctx)
+	default:
 		return ctx
 	}
-
-	position, ok := r.Accept(token)
-	if !ok {
-		return OnPrimary(ctx)
-	}
-
-	return WithWatermark(ctx, position)
 }
 
 // Ready reports whether some replica has already replayed the given position.
@@ -250,47 +305,35 @@ func (r *Router) Route(ctx context.Context, sql string) (Target, error) {
 // route is the whole decision, and it makes no I/O: everything it consults is
 // either in the context or in the poller's cached sample.
 func (r *Router) route(ctx context.Context, class sqlclass.Class) (Target, error) {
-	strategy := StrategyFromContext(ctx)
-	tracker := TrackerFromContext(ctx)
-
-	target := Target{
-		Pool:     r.primary,
-		Replica:  -1,
-		Class:    class,
-		Strategy: strategy,
-	}
+	request := newRoutingRequest(ctx, class, r.opts)
+	target := request.primary(r.primary, "")
 
 	// A write is a write. The strategy may not override that: promoting it to
 	// the primary silently would make StrategyReplica a lie, so say so.
-	if class != sqlclass.Read {
-		if strategy == StrategyReplica {
-			return target, &RoutingError{
-				Strategy:  strategy,
-				Class:     class,
-				Watermark: tracker.Watermark(),
-				Err:       ErrWriteOnReplica,
-			}
+	if !request.isRead() {
+		if request.requiresReplica() {
+			return target, request.error(ErrWriteOnReplica, request.tracker.Watermark())
 		}
 
-		tracker.Taint()
+		request.tracker.Taint()
 
-		target.Reason = writeReason(class)
+		target.reason = writeReason(request.class)
 
 		return target, nil
 	}
 
-	if strategy == StrategyPrimary {
-		target.Reason = metrics.ReasonExplicit
+	if request.forcesPrimary() {
+		target.reason = metrics.ReasonExplicit
 
 		return target, nil
 	}
 
 	if !r.Enabled() {
-		if strategy == StrategyReplica {
-			return target, &RoutingError{Strategy: strategy, Class: class, Err: ErrRouterDisabled}
+		if request.requiresReplica() {
+			return target, request.error(ErrRouterDisabled, 0)
 		}
 
-		target.Reason = metrics.ReasonRouterDisabled
+		target.reason = metrics.ReasonRouterDisabled
 
 		return target, nil
 	}
@@ -298,17 +341,12 @@ func (r *Router) route(ctx context.Context, class sqlclass.Class) (Target, error
 	// A tainted context has written without a known position. Nothing a
 	// replica can report proves it has caught up, so there is nothing to
 	// compare and the primary is the only correct answer.
-	if tracker.Tainted() && strategy != StrategyStaleRead {
-		if strategy == StrategyReplica {
-			return target, &RoutingError{
-				Strategy:  strategy,
-				Class:     class,
-				Watermark: tracker.Watermark(),
-				Err:       ErrNoHealthyReplica,
-			}
+	if request.mustStayOnPrimary() {
+		if request.requiresReplica() {
+			return target, request.error(ErrNoHealthyReplica, request.tracker.Watermark())
 		}
 
-		target.Reason = metrics.ReasonTainted
+		target.reason = metrics.ReasonTainted
 
 		return target, nil
 	}
@@ -316,38 +354,25 @@ func (r *Router) route(ctx context.Context, class sqlclass.Class) (Target, error
 	// No tracker and no explicit strategy: nobody has scoped this read. The
 	// default sends it to the primary, because an unscoped read is one nobody
 	// has reasoned about and a stale row surfaces as a bug somewhere else.
-	if tracker == nil && strategy == StrategyUnset && r.opts.NoTracker == NoTrackerPrimary {
-		target.Reason = metrics.ReasonNoTracker
+	if request.isUnscoped() {
+		target.reason = metrics.ReasonNoTracker
 
 		return target, nil
 	}
 
-	required := tracker.Watermark()
-	if strategy == StrategyStaleRead {
-		required = 0
-	}
-
-	index, reason := r.gate.pick(required)
-	if index < 0 {
-		if strategy == StrategyReplica || !r.opts.Fallback {
-			return target, &RoutingError{
-				Strategy:  strategy,
-				Class:     class,
-				Watermark: required,
-				Err:       ErrNoHealthyReplica,
-			}
+	required := request.requiredPosition()
+	selection := r.gate.pick(required)
+	if !selection.available() {
+		if !request.permitsFallback() {
+			return target, request.error(ErrNoHealthyReplica, required)
 		}
 
-		target.Reason = reason
+		target.reason = selection.reason()
 
 		return target, nil
 	}
 
-	target.Pool = r.gate.replicas[index].pool
-	target.Replica = index
-	target.Reason = reason
-
-	return target, nil
+	return request.replica(selection), nil
 }
 
 // pick resolves a target and counts it. Every routed method starts here.
@@ -392,13 +417,13 @@ func decisionOf(target Target) metrics.Decision {
 
 	return metrics.Decision{
 		Target:   name,
-		Reason:   target.Reason,
-		Class:    target.Class.String(),
-		Strategy: target.Strategy.String(),
+		Reason:   target.reason,
+		Class:    target.class.String(),
+		Strategy: target.strategy.String(),
 
 		// A read that asked for a replica and got the primary is the signal
 		// that tells you whether the feature is paying for itself.
-		Fallback: target.OnPrimary() && target.Class == sqlclass.Read,
+		Fallback: target.OnPrimary() && target.class == sqlclass.Read,
 	}
 }
 

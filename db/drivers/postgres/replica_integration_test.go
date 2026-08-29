@@ -312,7 +312,7 @@ func TestReplicaRouting(t *testing.T) {
 		target, err := router.Route(readCtx, `SELECT 1`)
 		require.NoError(t, err)
 		assert.True(t, target.OnPrimary())
-		assert.Equal(t, metrics.ReasonBehind, target.Reason)
+		assert.Equal(t, metrics.ReasonBehind, target.Reason())
 	})
 
 	t.Run("an explicit stale read reaches the standby", func(t *testing.T) {
@@ -361,13 +361,13 @@ func TestReplicaRouting(t *testing.T) {
 
 		assert.Equal(t, uint32(1), token.Timeline, "a fresh cluster is on timeline 1")
 
-		position, ok := router.Accept(token)
-		require.True(t, ok)
-		assert.Equal(t, token.LSN, position)
+		resolution := router.ResolveToken(token)
+		require.Equal(t, replica.TokenAccepted, resolution.State())
+		assert.Equal(t, token.LSN, resolution.Position())
 
 		foreign := wal.Token{SystemID: token.SystemID, Timeline: token.Timeline + 1, LSN: token.LSN}
-		_, ok = router.Accept(foreign)
-		assert.False(t, ok, "a token from another timeline must be discarded")
+		resolution = router.ResolveToken(foreign)
+		assert.Equal(t, replica.TokenUnusable, resolution.State(), "a token from another timeline must be discarded")
 
 		// Discarded, but not ignored: the reader still gets pinned.
 		assert.Equal(t, replica.StrategyPrimary, replica.StrategyFromContext(router.WithToken(ctx, foreign)))
@@ -514,7 +514,7 @@ func TestReplicaInTx(t *testing.T) {
 	t.Cleanup(cancel)
 
 	c := startCluster(ctx, t)
-	_, router := newRoutedStore(ctx, t, c, WithSyncWatermark(true))
+	_, router := newRoutedStore(ctx, t, c, WithWatermarkPolicy(replica.WatermarkOnCommit))
 
 	seedSchema(ctx, t, router)
 
@@ -602,7 +602,7 @@ func BenchmarkInTxCommit(b *testing.B) {
 	b.Cleanup(cancel)
 
 	c := startCluster(ctx, b)
-	_, router := newRoutedStore(ctx, b, c, WithSyncWatermark(true))
+	_, router := newRoutedStore(ctx, b, c, WithWatermarkPolicy(replica.WatermarkOnCommit))
 
 	seedSchema(ctx, b, router)
 

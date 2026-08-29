@@ -118,3 +118,45 @@ func (p NoTrackerPolicy) String() string {
 		return metrics.TargetPrimary
 	}
 }
+
+// FallbackPolicy decides what an ordinary read does when no replica qualifies.
+type FallbackPolicy uint8
+
+const (
+	// FallbackToPrimary preserves availability by serving the read from the
+	// primary. It is the default.
+	FallbackToPrimary FallbackPolicy = iota
+	// FallbackReject returns ErrNoHealthyReplica instead of adding load to the
+	// primary.
+	FallbackReject
+)
+
+// String implements fmt.Stringer.
+func (p FallbackPolicy) String() string {
+	if p == FallbackReject {
+		return "reject"
+	}
+
+	return "primary"
+}
+
+// WatermarkPolicy decides whether primary transaction commits immediately
+// resolve their WAL position.
+type WatermarkPolicy uint8
+
+const (
+	// WatermarkOnHandoff captures only when a boundary explicitly asks for a
+	// token. It is the default.
+	WatermarkOnHandoff WatermarkPolicy = iota
+	// WatermarkOnCommit captures after each primary transaction commit.
+	WatermarkOnCommit
+)
+
+// String implements fmt.Stringer.
+func (p WatermarkPolicy) String() string {
+	if p == WatermarkOnCommit {
+		return "commit"
+	}
+
+	return "handoff"
+}

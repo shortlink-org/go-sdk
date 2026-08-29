@@ -15,12 +15,10 @@ const applicationNamePrimary = "-primary"
 // buildRouter assembles the read-replica router. With no replica DSNs it
 // returns a router that owns only the primary, and every statement runs where
 // it ran before.
-func (s *Store) buildRouter(ctx context.Context) (*replica.Router, error) {
-	applicationName(s.config.config, applicationNamePrimary)
-
+func (s *Store) buildRouter(ctx context.Context, replicaConfig *pgxpool.Config) (*replica.Router, error) {
 	return replica.Open(ctx, &replica.Config{
 		Primary:       s.client,
-		PrimaryConfig: s.config.config,
+		PrimaryConfig: replicaConfig,
 		Options:       s.routing,
 		Log:           s.log,
 		Meter:         s.metrics,
