@@ -8,7 +8,7 @@ require (
 	github.com/golang-jwt/jwt/v5 v5.3.1
 	github.com/google/uuid v1.6.0
 	github.com/prometheus/client_golang v1.24.1
-	github.com/prometheus/client_model v0.6.2
+	github.com/prometheus/client_model v0.6.3
 	github.com/shortlink-org/go-sdk/auth v0.0.0-20260424225420-a63676f29741
 	github.com/shortlink-org/go-sdk/config v0.0.0-20260419222854-fd069f4d5106
 	github.com/shortlink-org/go-sdk/flight_trace v0.0.0-20260424225420-a63676f29741
@@ -25,7 +25,7 @@ require (
 
 require (
 	github.com/Masterminds/semver/v3 v3.5.0 // indirect
-	github.com/Unleash/unleash-go-sdk/v6 v6.5.0 // indirect
+	github.com/Unleash/unleash-go-sdk/v6 v6.5.1 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
 	github.com/felixge/httpsnoop v1.1.0 // indirect
