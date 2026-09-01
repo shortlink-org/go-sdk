@@ -25,14 +25,16 @@ go get github.com/shortlink-org/go-sdk/watermill
 ```go
 ctx := context.Background()
 cfg := config.New()                      // github.com/shortlink-org/go-sdk/config
-log := logger.New(ctx)                   // github.com/shortlink-org/go-sdk/logger
+log := slog.Default()                    // any *slog.Logger from the standard library
 meter := monitoring.Metrics             // see observability/metrics
 tracer := tracing.TracerProvider        // see observability/tracing
 
 backend, _ := kafka.NewSubscriber(...)
 client, err := watermill.New(ctx, log, cfg, backend, meter, tracer)
 if err != nil {
-    log.Fatal(err)
+    log.Error("watermill: init failed", slog.Any("error", err))
+
+    return
 }
 
 handler := client.Router.AddHandler(

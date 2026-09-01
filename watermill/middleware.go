@@ -11,14 +11,12 @@ import (
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/metric"
 	"go.opentelemetry.io/otel/trace"
-
-	"github.com/shortlink-org/go-sdk/logger"
 )
 
 // ----------- BASE MIDDLEWARE (panic, correlation, retry) ------------
 
 //nolint:gocritic // Options is public API; callers build it by value
-func configureBaseMiddlewares(router *message.Router, log logger.Logger, wmLogger watermill.LoggerAdapter, opts Options) {
+func configureBaseMiddlewares(router *message.Router, log *slog.Logger, wmLogger watermill.LoggerAdapter, opts Options) {
 	router.AddMiddleware(wmmid.Recoverer)
 	router.AddMiddleware(wmmid.CorrelationID)
 
@@ -76,7 +74,9 @@ type MetricsMiddleware struct {
 }
 
 // NewMetricsMiddleware creates metrics middleware with explicit meter provider.
-func NewMetricsMiddleware(log logger.Logger, provider metric.MeterProvider) (*MetricsMiddleware, error) {
+func NewMetricsMiddleware(log *slog.Logger, provider metric.MeterProvider) (*MetricsMiddleware, error) {
+	log = orDiscard(log)
+
 	meter := provider.Meter("watermill")
 
 	pub, err := meter.Int64Counter(

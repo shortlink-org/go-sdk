@@ -5,6 +5,7 @@ package bus_test
 import (
 	"context"
 	"io"
+	"log/slog"
 	"testing"
 	"time"
 
@@ -21,7 +22,6 @@ import (
 
 	"github.com/shortlink-org/go-sdk/cqrs/bus"
 	"github.com/shortlink-org/go-sdk/cqrs/message"
-	"github.com/shortlink-org/go-sdk/logger"
 	"github.com/shortlink-org/go-sdk/uow"
 )
 
@@ -103,14 +103,10 @@ func TestIntegration_CommandBus_Outbox_NoLeaks(t *testing.T) {
 	namer := message.NewShortlinkNamer(serviceName)
 	marshaler := message.NewJSONMarshaler(namer)
 
-	cfg := logger.Default()
-	cfg.Writer = io.Discard
-	cfg.Level = logger.WARN_LEVEL
-	log, err := logger.New(cfg)
-	require.NoError(t, err)
+	log := slog.New(slog.NewJSONHandler(io.Discard, &slog.HandlerOptions{Level: slog.LevelWarn}))
 
 	cmdBus, err := bus.NewCommandBusWithOptions(sqlPub, marshaler, namer,
-		bus.WithOutbox(bus.OutboxConfig{
+		bus.WithOutbox(&bus.OutboxConfig{
 			DB:            sqlDB,
 			Subscriber:    sqlSub,
 			RealPublisher: realPub,
@@ -247,14 +243,10 @@ func TestIntegration_ForwarderClose_NoGoroutineLeak(t *testing.T) {
 	namer := message.NewShortlinkNamer(serviceName)
 	marshaler := message.NewJSONMarshaler(namer)
 
-	cfg := logger.Default()
-	cfg.Writer = io.Discard
-	cfg.Level = logger.WARN_LEVEL
-	log, err := logger.New(cfg)
-	require.NoError(t, err)
+	log := slog.New(slog.NewJSONHandler(io.Discard, &slog.HandlerOptions{Level: slog.LevelWarn}))
 
 	cmdBus, err := bus.NewCommandBusWithOptions(sqlPub, marshaler, namer,
-		bus.WithOutbox(bus.OutboxConfig{
+		bus.WithOutbox(&bus.OutboxConfig{
 			DB:            sqlDB,
 			Subscriber:    sqlSub,
 			RealPublisher: realPub,
