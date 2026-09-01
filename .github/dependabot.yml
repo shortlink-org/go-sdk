@@ -32,7 +32,6 @@ updates:
       - "/saga"
       - "/specification"
       - "/temporal"
-      - "/transactional_outbox"
       - "/types"
       - "/uow"
       - "/watermill"

@@ -81,8 +81,6 @@ jobs:
             tags: unit
           - module: temporal
             tags: unit
-          - module: transactional_outbox
-            tags: unit
           - module: types
             tags: unit
           - module: uow
