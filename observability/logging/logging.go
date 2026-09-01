@@ -5,8 +5,6 @@ import (
 	"sync"
 
 	otellog "go.opentelemetry.io/otel/log"
-
-	"github.com/shortlink-org/go-sdk/logger"
 )
 
 // ScopeRecords represents the records for a single instrumentation scope.
@@ -30,7 +28,7 @@ type Logger struct {
 }
 
 // New - creates a new Logger.
-func New(ctx context.Context, log logger.Logger) *Logger {
+func New(_ context.Context) *Logger {
 	return &Logger{
 		scopeRecord: &ScopeRecords{
 			Name:      "shortlink",

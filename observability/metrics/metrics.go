@@ -18,7 +18,6 @@ import (
 
 	"github.com/shortlink-org/go-sdk/config"
 	http_server "github.com/shortlink-org/go-sdk/http/server"
-	"github.com/shortlink-org/go-sdk/logger"
 	"github.com/shortlink-org/go-sdk/observability/common"
 )
 
@@ -30,7 +29,7 @@ type Monitoring struct {
 }
 
 // New - Monitoring endpoints
-func New(ctx context.Context, log logger.Logger, tracer trace.TracerProvider, cfg *config.Config) (*Monitoring, func(), error) {
+func New(ctx context.Context, log *slog.Logger, tracer trace.TracerProvider, cfg *config.Config) (*Monitoring, func(), error) {
 	var err error
 
 	monitoring := &Monitoring{cfg: cfg}
@@ -68,7 +67,7 @@ func New(ctx context.Context, log logger.Logger, tracer trace.TracerProvider, cf
 	return monitoring, func() {
 		errShutdown := monitoring.Metrics.Shutdown(ctx)
 		if errShutdown != nil {
-			log.ErrorWithContext(ctx, errShutdown.Error())
+			log.ErrorContext(ctx, errShutdown.Error())
 		}
 	}, nil
 }

@@ -12,12 +12,11 @@ import (
 
 	"github.com/shortlink-org/go-sdk/config"
 	http_server "github.com/shortlink-org/go-sdk/http/server"
-	"github.com/shortlink-org/go-sdk/logger"
 )
 
 type PprofEndpoint *http.ServeMux
 
-func New(ctx context.Context, log logger.Logger, tracer trace.TracerProvider, cfg *config.Config) (PprofEndpoint, error) {
+func New(ctx context.Context, log *slog.Logger, tracer trace.TracerProvider, cfg *config.Config) (PprofEndpoint, error) {
 	cfg.SetDefault("PROFILING_PORT", 7071)
 	cfg.SetDefault("PROFILING_TIMEOUT", "30s")
 
