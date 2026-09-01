@@ -10,7 +10,7 @@ linters:
   # Enable every linter, then prune the noisy ones
   default: all
   disable:
-    - exhaustruct     # too noisy for current structs
+    - exhaustruct      # deprecated since v2.13.0, superseded by exhaustruct_v5
     - godox            # incorrect results in our project
     - depguard         # too restrictive for our use case
     - gochecknoglobals # too noisy
@@ -23,6 +23,7 @@ linters:
   # Linters outside the `all` set, or that replace a deprecated one.
   enable:
     - gomodguard_v2
+    - exhaustruct_v5
 
   exclusions:
     paths:
