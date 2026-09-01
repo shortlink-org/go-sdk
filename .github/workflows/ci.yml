@@ -69,6 +69,8 @@ jobs:
             tags: unit
           - module: observability
             tags: unit
+          - module: outbox
+            tags: unit,database
           - module: protoc
             tags: unit
           - module: raft
