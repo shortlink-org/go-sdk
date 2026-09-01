@@ -17,8 +17,18 @@ import (
 
 // ----------- BASE MIDDLEWARE (panic, correlation, retry) ------------
 
+// configureBaseMiddlewares installs the stack every client shares:
+//
+//	Recoverer -> CorrelationID -> [Timeout] -> [CircuitBreaker] -> [Poison] -> [Retry]
+//
+// Watermill runs the middleware added first as the outermost one, so the order
+// of these calls is the order above, read outside in. Poison sits outside
+// Retry deliberately: it publishes the dead letter and then reports success,
+// so underneath Retry it would report success on the very first failure and
+// nothing would ever be retried.
+//
 //nolint:gocritic // Options is public API; callers build it by value
-func configureBaseMiddlewares(router *message.Router, log logger.Logger, wmLogger watermill.LoggerAdapter, opts Options) {
+func configureBaseMiddlewares(router *message.Router, log logger.Logger, wmLogger watermill.LoggerAdapter, opts Options) error {
 	router.AddMiddleware(wmmid.Recoverer)
 	router.AddMiddleware(wmmid.CorrelationID)
 
@@ -36,6 +46,26 @@ func configureBaseMiddlewares(router *message.Router, log logger.Logger, wmLogge
 			slog.String("name", opts.CircuitBreaker.Settings.Name),
 			slog.String("timeout", opts.CircuitBreaker.Settings.Timeout.String()),
 			slog.Uint64("max_requests", uint64(opts.CircuitBreaker.Settings.MaxRequests)),
+		)
+	}
+
+	// Poison before retry: it must catch the error only once the retries are
+	// spent.
+	if opts.Poison.Enabled {
+		poisonMiddleware, err := newPoisonMiddleware(
+			opts.Poison.Publisher,
+			opts.Poison.Topic,
+			opts.Poison.ServiceName,
+			opts.Poison.Filter,
+		)
+		if err != nil {
+			return err
+		}
+
+		router.AddMiddleware(poisonMiddleware)
+
+		log.Info("Configured poison queue middleware",
+			slog.String("topic", poisonTopicDescription(opts.Poison.Topic)),
 		)
 	}
 
@@ -60,6 +90,8 @@ func configureBaseMiddlewares(router *message.Router, log logger.Logger, wmLogge
 			slog.Float64("jitter", opts.Retry.Jitter),
 		)
 	}
+
+	return nil
 }
 
 // -------------------- METRICS MIDDLEWARE ---------------------------

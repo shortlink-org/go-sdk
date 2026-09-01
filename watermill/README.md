@@ -9,7 +9,7 @@ A lightweight wrapper around [ThreeDotsLabs/watermill](https://watermill.io) tha
 - **Ready-to-use `Client`**: internally sets up `message.Router`, configures logger, global middleware (panic/retry/correlation), metrics, and OTEL tracing.
 - **Metrics + exemplars**: publish/consume counters and histograms with automatic `topic`, `trace_id`, `span_id` attributes.
 - **Tracing**: middleware extracts context from Watermill metadata, creates `watermill.consume` span and propagates context. On publish, creates `watermill.publish` span and writes TraceID/SpanID to message metadata.
-- **DLQ**: optional Watermill poison middleware wired to Shortlink DLQ formatter (JSON payload with original message snapshot + stacktrace) that can publish either to a fixed topic or `<received_topic>.DLQ`.
+- **DLQ**: optional Watermill poison middleware wired to Shortlink DLQ formatter (JSON payload with original message snapshot + stacktrace) that can publish either to a fixed topic or `<received_topic>.DLQ`. Enable it with `WithPoisonQueue` so the SDK places it outside retry — a message is dead-lettered only once its retries are spent.
 - **Kafka backend**: `backends/kafka` contains a slight-fork wrapper of Watermill Kafka (publisher/subscriber + OTEL tracer). RabbitMQ is not yet implemented (stub).
 
 ## Installation
@@ -102,6 +102,62 @@ Values are read from `github.com/shortlink-org/go-sdk/config.Config` (Viper). Im
 | `WATERMILL_DLQ_ENABLED` | `false` | enable the Shortlink DLQ (poison middleware) |
 | `WATERMILL_DLQ_TOPIC` | `""` | custom DLQ topic (empty means `<received_topic>.DLQ`) |
 
+## Middleware order
+
+`watermill.New` installs one stack, outermost first:
+
+```
+Recoverer → CorrelationID → [Timeout] → [CircuitBreaker] → [PoisonQueue] → [Retry] → OTEL → Metrics → handler
+```
+
+Watermill runs the middleware added first as the outermost one, so this is the
+order of the `AddMiddleware` calls.
+
+Two positions in it are load-bearing:
+
+- **PoisonQueue wraps Retry.** The poison queue publishes the dead letter and
+  then reports success to whatever wraps it. Below retry, that success is all
+  retry ever sees: a message that failed once on a database timeout and would
+  have succeeded on the second attempt is dead-lettered immediately, while the
+  queue keeps moving and the metrics stay green. This is why the DLQ is
+  configured through `WithPoisonQueue` rather than added to the router by the
+  service — a middleware added after `New` lands *inside* retry and silently
+  disables it.
+- **OTEL and metrics sit inside Retry**, so every attempt gets its own span and
+  its own `watermill_messages_consumed_total` / `watermill_messages_failed_total`
+  measurement.
+
+Anything a service adds itself with `client.Router.AddMiddleware` runs inside
+this stack, closest to the handler.
+
+## Dead letter queue
+
+```go
+client, err := watermill.New(ctx, log, cfg, backend, meter, tracer,
+    watermill.WithPoisonQueue(publisher, "shortlink.dlq"),
+)
+```
+
+An empty topic routes each message to `<received_topic>.DLQ`; a `nil` publisher
+means the client's own instrumented publisher. `WATERMILL_DLQ_ENABLED=true`
+does the same thing from configuration, using the client's own publisher and
+`WATERMILL_DLQ_TOPIC`. `DisablePoisonQueue()` overrides that flag.
+
+`WithPoisonQueueFilter` adds a say in what counts as poison — see
+[Read-your-writes across the queue](#read-your-writes-across-the-queue).
+
+`NewShortlinkPoisonMiddleware` and `NewShortlinkPoisonMiddlewareWithFilter`
+stay exported for routers assembled by hand. They carry the same requirement:
+add them **before** the retry middleware, so they wrap it.
+
+```go
+router.AddMiddleware(watermill.NewShortlinkPoisonMiddleware(pub, "shortlink.dlq"))
+router.AddMiddleware(retryMiddleware.Middleware)
+```
+
+`service_name` on each DLQ event comes from `SERVICE_NAME` in the config passed
+to `New`, falling back to the environment variable read at publication time.
+
 ### Kafka backend configuration
 
 | Key | Default | Description |
@@ -193,9 +249,11 @@ redelivered after `NACK_SLEEP` without the offset advancing.
 Exclude that error from the dead-letter queue explicitly:
 
 ```go
-poison, err := watermill.NewShortlinkPoisonMiddlewareWithFilter(pub, dlqTopic, func(err error) bool {
-	return !watermill.IsConsistencyError(err)
-})
+client, err := watermill.New(ctx, log, cfg, backend, meter, tracer,
+	watermill.WithPoisonQueueFilter(pub, dlqTopic, func(err error) bool {
+		return !watermill.IsConsistencyError(err)
+	}),
+)
 ```
 
 Metrics: `watermill_consistency_stamps_total{outcome}` and

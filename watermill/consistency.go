@@ -279,7 +279,7 @@ func NewConsistencyMiddleware(gate ReplicaGate, opts ConsistencyOptions, provide
 // Pass it to the poison-queue filter so that an early message is retried
 // instead of dead-lettered:
 //
-//	NewShortlinkPoisonMiddlewareWithFilter(pub, topic, func(err error) bool {
+//	WithPoisonQueueFilter(pub, topic, func(err error) bool {
 //		return !watermill.IsConsistencyError(err)
 //	})
 func IsConsistencyError(err error) bool {

@@ -70,14 +70,8 @@ func New(
 		opt(&optsCfg)
 	}
 
-	// Global middleware (panic, retry, correlation, timeout, circuit breaker)
-	configureBaseMiddlewares(router, log, wmLogger, optsCfg)
-	cfg.SetDefault("WATERMILL_DLQ_ENABLED", false)
-	cfg.SetDefault("WATERMILL_DLQ_TOPIC", "")
-
 	// OTEL tracing middleware
 	otelMW := NewOTELMiddleware(tracerProvider)
-	router.AddMiddleware(otelMW.HandlerMiddleware()) //nolint:contextcheck // the middleware carries each message's own context
 
 	// OTEL metrics / exemplars middleware
 	metricsMW, err := NewMetricsMiddleware(log, meterProvider)
@@ -87,11 +81,23 @@ func New(
 
 	publisher := metricsMW.PublisherWrapper(backend.Publisher(), otelMW)
 
-	if cfg.GetBool("WATERMILL_DLQ_ENABLED") {
-		dlqTopic := cfg.GetString("WATERMILL_DLQ_TOPIC")
-		router.AddMiddleware(NewShortlinkPoisonMiddleware(publisher, dlqTopic)) //nolint:contextcheck // the middleware carries each message's own context
+	// Dead letters travel through the client's own publisher unless the caller
+	// named another one via WithPoisonQueue.
+	if optsCfg.Poison.Enabled && optsCfg.Poison.Publisher == nil {
+		optsCfg.Poison.Publisher = publisher
 	}
 
+	// Global middleware (panic, correlation, timeout, circuit breaker, poison, retry).
+	// The poison queue belongs to this stack rather than to the caller,
+	// because only here can it be placed outside retry.
+	err = configureBaseMiddlewares(router, log, wmLogger, optsCfg) //nolint:contextcheck // the middleware carries each message's own context
+	if err != nil {
+		return nil, err
+	}
+
+	// Tracing and metrics stay inside retry, so every attempt gets its own
+	// span and its own consume measurement.
+	router.AddMiddleware(otelMW.HandlerMiddleware())    //nolint:contextcheck // the middleware carries each message's own context
 	router.AddMiddleware(metricsMW.HandlerMiddleware()) //nolint:contextcheck // the middleware carries each message's own context
 
 	client := &Client{

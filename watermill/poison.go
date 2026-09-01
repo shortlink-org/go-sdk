@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"os"
 	"runtime/debug"
-	"sync"
+	"strings"
 	"time"
 
 	"github.com/ThreeDotsLabs/watermill/message"
@@ -28,21 +28,46 @@ const defaultDLQTopic = "shortlink.dlq"
 // publisher to send dead letters to.
 var ErrPoisonPublisherRequired = errors.New("watermill: poison middleware requires a publisher")
 
-var (
-	serviceNameOnce sync.Once
-	cachedService   string
-)
-
 // NewShortlinkPoisonMiddleware adapts Watermill's poison queue to Shortlink DLQ builder.
+//
+// Order matters: add this middleware BEFORE the retry middleware, so that it
+// wraps retry rather than sits under it. The poison queue publishes the dead
+// letter and then reports success to whatever wraps it; underneath retry that
+// success is all retry ever sees, and no message is retried — the first
+// failure dead-letters it. Watermill executes the middleware added first as
+// the outermost one, so "before retry" means literally the earlier
+// AddMiddleware call:
+//
+//	router.AddMiddleware(watermill.NewShortlinkPoisonMiddleware(pub, "shortlink.dlq"))
+//	router.AddMiddleware(retryMiddleware.Middleware)
+//
+// Clients built by New get this order for free — see WithPoisonQueue.
 func NewShortlinkPoisonMiddleware(publisher message.Publisher, dlqTopic string) message.HandlerMiddleware {
+	mw, err := newPoisonMiddleware(publisher, dlqTopic, "", nil)
+	if err != nil {
+		panic(fmt.Sprintf("watermill: %v", err))
+	}
+
+	return mw
+}
+
+// newPoisonMiddleware builds the poison middleware. A nil filter dead-letters
+// every failure; an empty serviceName defers to SERVICE_NAME, read at each
+// publication rather than cached, so a name set after start-up still lands on
+// the DLQ event.
+func newPoisonMiddleware(
+	publisher message.Publisher,
+	dlqTopic, serviceName string,
+	shouldGoToPoisonQueue func(err error) bool,
+) (message.HandlerMiddleware, error) {
 	if publisher == nil {
-		panic("watermill: poison middleware requires a publisher")
+		return nil, ErrPoisonPublisherRequired
 	}
 
 	wrappedPublisher := &poisonPublisher{
 		topic:       dlqTopic,
 		publisher:   publisher,
-		serviceName: detectServiceName(),
+		serviceName: serviceName,
 	}
 
 	poisonTopic := dlqTopic
@@ -50,9 +75,19 @@ func NewShortlinkPoisonMiddleware(publisher message.Publisher, dlqTopic string) 
 		poisonTopic = defaultDLQTopic
 	}
 
-	poisonMW, err := middleware.PoisonQueue(wrappedPublisher, poisonTopic)
+	var (
+		poisonMW message.HandlerMiddleware
+		err      error
+	)
+
+	if shouldGoToPoisonQueue == nil {
+		poisonMW, err = middleware.PoisonQueue(wrappedPublisher, poisonTopic)
+	} else {
+		poisonMW, err = middleware.PoisonQueueWithFilter(wrappedPublisher, poisonTopic, shouldGoToPoisonQueue)
+	}
+
 	if err != nil {
-		panic(fmt.Sprintf("watermill: poison middleware init failed: %v", err))
+		return nil, fmt.Errorf("watermill: poison middleware init failed: %w", err)
 	}
 
 	return func(h message.HandlerFunc) message.HandlerFunc {
@@ -63,18 +98,17 @@ func NewShortlinkPoisonMiddleware(publisher message.Publisher, dlqTopic string) 
 
 			return h(msg)
 		})
-	}
+	}, nil
 }
 
-func detectServiceName() string {
-	serviceNameOnce.Do(func() {
-		cachedService = os.Getenv("SERVICE_NAME")
-		if cachedService == "" {
-			cachedService = "unknown-service"
-		}
-	})
+// poisonTopicDescription names the configured DLQ topic for logs, spelling out
+// the per-topic default that an empty configuration means.
+func poisonTopicDescription(dlqTopic string) string {
+	if dlqTopic == "" {
+		return "<received_topic>.DLQ"
+	}
 
-	return cachedService
+	return dlqTopic
 }
 
 func ensureContext(ctx context.Context) context.Context {
@@ -122,7 +156,7 @@ func (p *poisonPublisher) Publish(_ string, msgs ...*message.Message) error {
 			Reason:      poisoned.Metadata.Get(middleware.ReasonForPoisonedKey),
 			OriginalMsg: original,
 			Stacktrace:  string(debug.Stack()),
-			ServiceName: p.serviceName,
+			ServiceName: p.currentServiceName(),
 		}
 
 		if event.Reason == "" {
@@ -140,6 +174,24 @@ func (p *poisonPublisher) Publish(_ string, msgs ...*message.Message) error {
 
 func (p *poisonPublisher) Close() error {
 	return p.publisher.Close()
+}
+
+// currentServiceName resolves the name stamped on a DLQ event. The environment
+// is read on every publication on purpose: caching it in a sync.Once pinned
+// the very first read for the life of the process, so a SERVICE_NAME exported
+// after the first dead letter — or after the first test touched the package —
+// left every later event attributed to "unknown-service".
+func (p *poisonPublisher) currentServiceName() string {
+	if p.serviceName != "" {
+		return p.serviceName
+	}
+
+	name := strings.TrimSpace(os.Getenv("SERVICE_NAME"))
+	if name == "" {
+		return "unknown-service"
+	}
+
+	return name
 }
 
 func (p *poisonPublisher) resolveTopic(msg *message.Message) (string, error) {
@@ -171,42 +223,14 @@ func (p *poisonPublisher) resolveTopic(msg *message.Message) (string, error) {
 //	NewShortlinkPoisonMiddlewareWithFilter(pub, topic, func(err error) bool {
 //		return !IsConsistencyError(err)
 //	})
+//
+// It carries the same ordering requirement as NewShortlinkPoisonMiddleware:
+// add it BEFORE the retry middleware, or retry never sees a failure and never
+// retries anything.
 func NewShortlinkPoisonMiddlewareWithFilter(
 	publisher message.Publisher,
 	dlqTopic string,
 	shouldGoToPoisonQueue func(err error) bool,
 ) (message.HandlerMiddleware, error) {
-	if publisher == nil {
-		return nil, ErrPoisonPublisherRequired
-	}
-
-	if shouldGoToPoisonQueue == nil {
-		shouldGoToPoisonQueue = func(error) bool { return true }
-	}
-
-	wrappedPublisher := &poisonPublisher{
-		topic:       dlqTopic,
-		publisher:   publisher,
-		serviceName: detectServiceName(),
-	}
-
-	poisonTopic := dlqTopic
-	if poisonTopic == "" {
-		poisonTopic = defaultDLQTopic
-	}
-
-	poisonMW, err := middleware.PoisonQueueWithFilter(wrappedPublisher, poisonTopic, shouldGoToPoisonQueue)
-	if err != nil {
-		return nil, fmt.Errorf("watermill: poison middleware init failed: %w", err)
-	}
-
-	return func(h message.HandlerFunc) message.HandlerFunc {
-		return poisonMW(func(msg *message.Message) ([]*message.Message, error) {
-			ctx := ensureContext(msg.Context())
-			ctx = context.WithValue(ctx, originalMessageCtxKey{}, snapshotMessage(msg))
-			msg.SetContext(ctx)
-
-			return h(msg)
-		})
-	}, nil
+	return newPoisonMiddleware(publisher, dlqTopic, "", shouldGoToPoisonQueue)
 }

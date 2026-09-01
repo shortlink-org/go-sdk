@@ -66,3 +66,24 @@ func TestShortlinkPoisonMiddlewareDerivesTopicWhenEmpty(t *testing.T) {
 	require.Len(t, pub.published, 1)
 	require.Equal(t, "payments.DLQ", pub.published[0].topic)
 }
+
+// TestShortlinkPoisonMiddlewareReadsServiceNamePerPublication covers a name
+// exported after the middleware was built — the normal case in tests, and the
+// case a sync.Once cache used to pin to "unknown-service" for the whole
+// process.
+func TestShortlinkPoisonMiddlewareReadsServiceNamePerPublication(t *testing.T) {
+	pub := &poisonTestPublisher{}
+	mw := NewShortlinkPoisonMiddleware(pub, "dlq.topic")
+
+	handler := mw(func(_ *message.Message) ([]*message.Message, error) {
+		return nil, errors.New("boom")
+	})
+
+	t.Setenv("SERVICE_NAME", "orders-service")
+
+	_, err := handler(message.NewMessage("msg-id", []byte("test")))
+	require.NoError(t, err)
+
+	require.Len(t, pub.published, 1)
+	require.Equal(t, "orders-service", pub.published[0].msg.Metadata.Get("service_name"))
+}
