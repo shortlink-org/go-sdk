@@ -30,7 +30,9 @@ func TestDebugTraceMiddleware_HeaderTrigger(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	t.Cleanup(cancel)
 
-	dumpPath := t.TempDir()
+	// ArtifactDir behaves like TempDir by default; with `go test -artifacts`
+	// the dumps survive the run and can be opened with `go tool trace`.
+	dumpPath := t.ArtifactDir()
 
 	cfg, err := config.New()
 	require.NoError(t, err)
@@ -78,7 +80,9 @@ func TestDebugTraceMiddleware_SlowRequest(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	t.Cleanup(cancel)
 
-	dumpPath := t.TempDir()
+	// ArtifactDir behaves like TempDir by default; with `go test -artifacts`
+	// the dumps survive the run and can be opened with `go tool trace`.
+	dumpPath := t.ArtifactDir()
 
 	cfg, err := config.New()
 	require.NoError(t, err)
@@ -120,7 +124,9 @@ func TestDebugTraceMiddleware_NoTrigger(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	t.Cleanup(cancel)
 
-	dumpPath := t.TempDir()
+	// ArtifactDir behaves like TempDir by default; with `go test -artifacts`
+	// the dumps survive the run and can be opened with `go tool trace`.
+	dumpPath := t.ArtifactDir()
 
 	cfg, err := config.New()
 	require.NoError(t, err)

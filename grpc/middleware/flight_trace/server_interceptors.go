@@ -8,8 +8,8 @@ import (
 	"log/slog"
 	"path"
 	"time"
+	"uuid"
 
-	"github.com/google/uuid"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
 	"google.golang.org/grpc"
@@ -49,7 +49,7 @@ func UnaryServerInterceptor(
 		shouldDump = shouldDump || duration > threshold
 
 		if shouldDump {
-			fileName := "grpc-" + uuid.NewString() + ".out"
+			fileName := "grpc-" + uuid.New().String() + ".out"
 
 			if span := trace.SpanFromContext(ctx); span != nil && span.IsRecording() {
 				span.SetAttributes(attribute.String("flight_trace.file", fileName))
@@ -96,7 +96,7 @@ func StreamServerInterceptor(
 		shouldDump = shouldDump || duration > threshold
 
 		if shouldDump {
-			fileName := "grpc-" + uuid.NewString() + ".out"
+			fileName := "grpc-" + uuid.New().String() + ".out"
 
 			if span := trace.SpanFromContext(stream.Context()); span != nil && span.IsRecording() {
 				span.SetAttributes(attribute.String("flight_trace.file", fileName))

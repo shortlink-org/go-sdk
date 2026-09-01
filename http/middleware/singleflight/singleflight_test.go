@@ -222,15 +222,15 @@ func TestSingleFlight_Integration(t *testing.T) {
 	mockLog := newSilentLogger(t)
 	middleware := SingleFlight(mockLog)
 
-	server := httptest.NewServer(middleware(handler))
-	defer server.Close()
+	server := httptest.NewTestServer(t, middleware(handler))
+	client := server.Client() // also fills in server.URL
 
 	ctx := context.Background()
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, server.URL+"/test", http.NoBody)
 	require.NoError(t, err)
 
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := client.Do(req)
 	require.NoError(t, err)
 
 	t.Cleanup(func() {

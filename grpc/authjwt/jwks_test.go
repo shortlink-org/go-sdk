@@ -61,14 +61,14 @@ func TestJWKSFetcher_CacheHit(t *testing.T) {
 
 	var calls atomic.Int32
 
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+	server := httptest.NewTestServer(t, http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		calls.Add(1)
 		w.WriteHeader(http.StatusOK)
 
 		_, werr := w.Write(jwksBody(t, "kid-1", &priv.PublicKey))
 		assert.NoError(t, werr)
 	}))
-	t.Cleanup(server.Close)
+	server.Start()
 
 	clock := &fakeClock{now: time.Now()}
 	fetcher := NewJWKSFetcher(JWKSConfig{
@@ -94,11 +94,11 @@ func TestJWKSFetcher_Backoff(t *testing.T) {
 
 	var calls atomic.Int32
 
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+	server := httptest.NewTestServer(t, http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		calls.Add(1)
 		w.WriteHeader(http.StatusInternalServerError)
 	}))
-	t.Cleanup(server.Close)
+	server.Start()
 
 	clock := &fakeClock{now: time.Now()}
 	fetcher := NewJWKSFetcher(JWKSConfig{

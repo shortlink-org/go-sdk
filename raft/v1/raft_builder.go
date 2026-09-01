@@ -3,8 +3,7 @@ package v1
 import (
 	"errors"
 	"net/url"
-
-	"github.com/google/uuid"
+	"uuid"
 )
 
 // RaftBuilder is used to build a new Raft.
@@ -62,13 +61,8 @@ func (b *RaftBuilder) Build() (*Raft, error) {
 
 	b.raft.status = RaftStatus_RAFT_STATUS_FOLLOWER
 
-	var err error
-
 	// generate a new UUID for the Raft
-	b.raft.id, err = uuid.NewV7()
-	if err != nil {
-		return nil, err
-	}
+	b.raft.id = uuid.NewV7()
 
 	return b.raft, nil
 }

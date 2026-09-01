@@ -7,9 +7,9 @@ import (
 	"fmt"
 	"maps"
 	"time"
+	"uuid"
 
 	"github.com/ThreeDotsLabs/watermill/message"
-	"github.com/google/uuid"
 )
 
 // DLQEvent describes the payload stored inside Shortlink DLQ messages.

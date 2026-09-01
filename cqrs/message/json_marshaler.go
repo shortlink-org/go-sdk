@@ -4,9 +4,9 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"uuid"
 
 	wmmessage "github.com/ThreeDotsLabs/watermill/message"
-	"github.com/google/uuid"
 )
 
 // JSONMarshaler marshals JSON payloads with Shortlink metadata.
@@ -30,7 +30,7 @@ func (m *JSONMarshaler) Marshal(ctx context.Context, value any) (*wmmessage.Mess
 		ctx = context.Background()
 	}
 
-	wmMsg := wmmessage.NewMessageWithContext(ctx, uuid.NewString(), payload)
+	wmMsg := wmmessage.NewMessageWithContext(ctx, uuid.New().String(), payload)
 	ensureMetadata(wmMsg)
 
 	name := m.Name(value)

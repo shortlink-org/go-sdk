@@ -5,8 +5,8 @@ import (
 	"log/slog"
 	"net/http"
 	"time"
+	"uuid"
 
-	"github.com/google/uuid"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
 
@@ -40,7 +40,7 @@ func DebugTraceMiddleware(recorder *flight_trace.Recorder, loggerInstance *slog.
 			}
 
 			if shouldDump {
-				fileName := "trace-" + uuid.NewString() + ".out"
+				fileName := "trace-" + uuid.New().String() + ".out"
 				ctx := request.Context()
 
 				if span := trace.SpanFromContext(ctx); span != nil && span.IsRecording() {

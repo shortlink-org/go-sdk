@@ -3,7 +3,7 @@ package server
 import (
 	"context"
 	"log/slog"
-	"math/rand"
+	"math/rand/v2"
 	"time"
 
 	rpc "github.com/shortlink-org/go-sdk/grpc"
@@ -26,7 +26,7 @@ type Server struct {
 
 func New(ctx context.Context, serverRPC *rpc.Server, peers []string, options ...Option) (*Server, error) {
 	const ElectionResetTimer = 150 * time.Millisecond
-	const MaxRandomTime = 51
+	const MaxRandomTime = 51 * time.Millisecond
 
 	rpcServer, err := api.NewServer(serverRPC)
 	if err != nil {
@@ -55,7 +55,7 @@ func New(ctx context.Context, serverRPC *rpc.Server, peers []string, options ...
 	// if electionResetTimer is nil, set default value
 	if server.electionResetTimer == 0 {
 		//nolint:gosec // it's not a security issue
-		randTime := time.Duration(rand.Intn(MaxRandomTime)) * time.Millisecond
+		randTime := rand.N(MaxRandomTime)
 		server.electionResetTimer = ElectionResetTimer + randTime
 	}
 

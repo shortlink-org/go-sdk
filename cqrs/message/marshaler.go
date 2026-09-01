@@ -4,9 +4,9 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"uuid"
 
 	wmmessage "github.com/ThreeDotsLabs/watermill/message"
-	"github.com/google/uuid"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -46,7 +46,7 @@ func (m *ProtoMarshaler) Marshal(ctx context.Context, value any) (*wmmessage.Mes
 		ctx = context.Background()
 	}
 
-	wmMsg := wmmessage.NewMessageWithContext(ctx, uuid.NewString(), payload)
+	wmMsg := wmmessage.NewMessageWithContext(ctx, uuid.New().String(), payload)
 	ensureMetadata(wmMsg)
 
 	name := m.Name(value)

@@ -2,8 +2,8 @@ package v1
 
 import (
 	"net/url"
+	"uuid"
 
-	"github.com/google/uuid"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 

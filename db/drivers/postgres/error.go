@@ -71,8 +71,8 @@ func storeError(phase string, kind, cause error, details string) *StoreError {
 // for is reported as a connection failure, which is the honest answer — we
 // know the connection did not come up, not why.
 func classify(err error) error {
-	var pgErr *pgconn.PgError
-	if !errors.As(err, &pgErr) {
+	pgErr, ok := errors.AsType[*pgconn.PgError](err)
+	if !ok {
 		return ErrClientConnection
 	}
 

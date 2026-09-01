@@ -33,6 +33,12 @@ func New(
 	cfg.SetDefault("HTTP_SERVER_IDLE_TIMEOUT", "30s")
 	cfg.SetDefault("HTTP_SERVER_READ_HEADER_TIMEOUT", "2s")
 
+	// A single header repeated thousands of times costs the server memory and
+	// CPU long before any timeout fires, so cap the count as well as the size.
+	// http.DefaultMaxHeaderValueCount is what net/http applies on its own when
+	// the field is zero; naming it here makes the limit visible and tunable.
+	cfg.SetDefault("HTTP_SERVER_MAX_HEADER_VALUE_COUNT", http.DefaultMaxHeaderValueCount)
+
 	//nolint:gosec,exhaustruct // timeouts configured via viper immediately below
 	server := &http.Server{}
 	server.Addr = fmt.Sprintf(":%d", serverConfig.Port)
@@ -45,6 +51,7 @@ func New(
 	server.WriteTimeout = serverConfig.Timeout + cfg.GetDuration("HTTP_SERVER_WRITE_TIMEOUT")
 	server.IdleTimeout = cfg.GetDuration("HTTP_SERVER_IDLE_TIMEOUT")
 	server.ReadHeaderTimeout = cfg.GetDuration("HTTP_SERVER_READ_HEADER_TIMEOUT")
+	server.MaxHeaderValueCount = cfg.GetInt("HTTP_SERVER_MAX_HEADER_VALUE_COUNT")
 
 	return server
 }

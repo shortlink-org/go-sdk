@@ -4,7 +4,7 @@ package serverlimit
 
 import (
 	"io"
-	"math/rand"
+	"math/rand/v2"
 	"net/http"
 	"runtime"
 	"strconv"
@@ -202,7 +202,7 @@ func newHostLimiter() *hostLimiter {
 	hostLimiterInstance := &hostLimiter{
 		stop: make(chan struct{}),
 		//nolint:gosec // jitter does not require cryptographic randomness
-		rand: rand.New(rand.NewSource(time.Now().UnixNano())),
+		rand: rand.New(rand.NewPCG(rand.Uint64(), rand.Uint64())),
 	}
 
 	go hostLimiterInstance.cleanupLoop()
@@ -234,7 +234,7 @@ func (h *hostLimiter) addJitter(duration time.Duration, fraction float64) time.D
 	}
 
 	h.muRand.Lock()
-	offset := h.rand.Int63n(2*jitterRange+1) - jitterRange
+	offset := h.rand.N(2*jitterRange+1) - jitterRange
 	h.muRand.Unlock()
 
 	return duration + time.Duration(offset)

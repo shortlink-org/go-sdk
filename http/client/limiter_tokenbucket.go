@@ -2,7 +2,7 @@ package http_client
 
 import (
 	"context"
-	"math/rand"
+	"math/rand/v2"
 	"sync"
 	"time"
 
@@ -45,7 +45,8 @@ func NewTokenBucketLimiter(ratePerSec float64, burst int, jitterFraction float64
 	limiter.tokens = float64(burst)
 	limiter.last = time.Now()
 	limiter.jitterFraction = jitterFraction
-	limiter.rand = rand.New(rand.NewSource(time.Now().UnixNano())) //nolint:gosec // jitter does not require cryptographic randomness
+	//nolint:gosec // jitter does not require cryptographic randomness
+	limiter.rand = rand.New(rand.NewPCG(rand.Uint64(), rand.Uint64()))
 
 	return limiter, nil
 }
@@ -110,7 +111,7 @@ func (l *tokenBucketLimiter) jitter(duration time.Duration) time.Duration {
 	}
 
 	l.muRand.Lock()
-	offset := l.rand.Int63n(2*jitterRange+1) - jitterRange
+	offset := l.rand.N(2*jitterRange+1) - jitterRange
 	l.muRand.Unlock()
 
 	return duration + time.Duration(offset)

@@ -8,8 +8,8 @@ import (
 	"os"
 	"testing"
 	"time"
+	"uuid"
 
-	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/wait"
@@ -77,8 +77,7 @@ func TestPostgres(t *testing.T) {
 	}
 
 	t.Run("TestEventSourcingSaveAndLoad", func(t *testing.T) {
-		eventUID, err := uuid.NewV7()
-		require.NoError(t, err)
+		eventUID := uuid.NewV7()
 
 		// Create a dummy event
 		event := &eventsourcing.Event{
@@ -110,10 +109,8 @@ func TestPostgres(t *testing.T) {
 
 	t.Run("TestEventSourcingSaveMultipleEvents", func(t *testing.T) {
 		// Create multiple dummy events with unique aggregate IDs
-		eventUID1, err := uuid.NewV7()
-		require.NoError(t, err)
-		eventUID2, err := uuid.NewV7()
-		require.NoError(t, err)
+		eventUID1 := uuid.NewV7()
+		eventUID2 := uuid.NewV7()
 		events := []*eventsourcing.Event{
 			{
 				AggregateId:   eventUID1.String(),
@@ -153,8 +150,7 @@ func TestPostgres(t *testing.T) {
 	})
 
 	t.Run("TestEventSourcingSaveEventExistingAggregate", func(t *testing.T) {
-		eventUID, err := uuid.NewV7()
-		require.NoError(t, err)
+		eventUID := uuid.NewV7()
 
 		// Create a dummy event with an existing aggregate ID but a different version
 		event := &eventsourcing.Event{
@@ -192,8 +188,7 @@ func TestPostgres(t *testing.T) {
 
 	t.Run("TestEventSourcingLoadNoEvents", func(t *testing.T) {
 		// Try to load events for a non-existent aggregate ID
-		eventUID, err := uuid.NewV7()
-		require.NoError(t, err)
+		eventUID := uuid.NewV7()
 		_, events, err := eventSourcing.Load(ctx, eventUID.String())
 		require.NoError(t, err, "Error occurred while loading events")
 
@@ -202,8 +197,7 @@ func TestPostgres(t *testing.T) {
 	})
 
 	t.Run("TestEventSourcingUpdateAggregate", func(t *testing.T) {
-		eventUID, err := uuid.NewV7()
-		require.NoError(t, err)
+		eventUID := uuid.NewV7()
 
 		// Create a dummy event
 		event := &eventsourcing.Event{

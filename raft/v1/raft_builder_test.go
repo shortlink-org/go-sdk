@@ -3,8 +3,8 @@ package v1
 import (
 	"net/url"
 	"testing"
+	"uuid"
 
-	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
 )
 
@@ -50,7 +50,7 @@ func TestRaftBuilder(t *testing.T) {
 			} else {
 				require.NoError(t, err)
 				require.NotNil(t, raft)
-				require.NotEqual(t, uuid.Nil, raft.id)
+				require.NotEqual(t, uuid.Nil(), raft.id)
 				require.Equal(t, tc.peerIDs, raft.peerIDs)
 				require.Equal(t, tc.nameField, raft.name)
 				require.Equal(t, tc.weight, raft.weight)

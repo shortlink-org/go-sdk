@@ -34,8 +34,9 @@ func New() (*Config, error) {
 
 	err := v.ReadInConfig()
 	if err != nil {
-		var typeErr viper.ConfigFileNotFoundError
-		if !errors.As(err, &typeErr) {
+		// A missing .env is normal: the settings may come from the environment alone.
+		//nolint:errcheck // AsType's first result is the matched error itself; only the match matters here
+		if _, isMissing := errors.AsType[viper.ConfigFileNotFoundError](err); !isMissing {
 			return nil, fmt.Errorf("failed to read config: %w", err)
 		}
 	}

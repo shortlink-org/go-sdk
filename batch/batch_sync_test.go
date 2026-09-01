@@ -127,8 +127,7 @@ func testBatchProcessingWithSynctestInner(t *testing.T) {
 
 	ch4 := batchInst.Push("item4")
 
-	time.Sleep(100 * time.Millisecond)
-	synctest.Wait()
+	synctest.Sleep(100 * time.Millisecond)
 
 	require.Equal(t, int64(2), callbackCount.Load())
 	require.Equal(t, "item4", <-ch4)
@@ -222,8 +221,7 @@ func TestBatchTimeBasedFlushWithSynctest(t *testing.T) {
 		ch1 := batch.Push("item1")
 
 		// Advance time to the first interval flush (50ms)
-		time.Sleep(50 * time.Millisecond)
-		synctest.Wait()
+		synctest.Sleep(50 * time.Millisecond)
 		require.Equal(t, int64(1), flushCount.Load())
 		require.Equal(t, "item1", <-ch1)
 
@@ -232,8 +230,7 @@ func TestBatchTimeBasedFlushWithSynctest(t *testing.T) {
 		ch3 := batch.Push("item3")
 
 		// Advance time to the next interval flush
-		time.Sleep(50 * time.Millisecond)
-		synctest.Wait()
+		synctest.Sleep(50 * time.Millisecond)
 		require.Equal(t, int64(2), flushCount.Load())
 		require.Equal(t, "item2", <-ch2)
 		require.Equal(t, "item3", <-ch3)

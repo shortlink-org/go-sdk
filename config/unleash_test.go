@@ -18,7 +18,7 @@ func TestConfigClose(t *testing.T) {
 	})
 
 	t.Run("feature toggles enabled", func(t *testing.T) {
-		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		srv := httptest.NewTestServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("Content-Type", "application/json")
 
 			if r.URL.Path == "/api/client/features" {
@@ -29,7 +29,7 @@ func TestConfigClose(t *testing.T) {
 
 			w.WriteHeader(http.StatusAccepted)
 		}))
-		t.Cleanup(srv.Close)
+		srv.Start()
 
 		// New reads the feature toggle settings itself, so they have to be in the
 		// environment before it runs: a Config no longer shares the global Viper.
