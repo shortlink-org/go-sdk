@@ -3,6 +3,7 @@ package singleflightmiddleware
 import (
 	"context"
 	"io"
+	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"sync"
@@ -12,9 +13,34 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-
-	"github.com/shortlink-org/go-sdk/http/middleware/logger/mocks"
 )
+
+// failOnLogHandler preserves what the previous mock asserted: it was created
+// with no expectations, which under mockery means any call fails the test.
+// SingleFlight is expected to stay silent on the happy paths below
+type failOnLogHandler struct{ t *testing.T }
+
+func (h failOnLogHandler) Enabled(context.Context, slog.Level) bool { return true }
+
+//nolint:gocritic // slog.Handler.Handle takes the record by value; the signature is not ours
+func (h failOnLogHandler) Handle(_ context.Context, record slog.Record) error {
+	h.t.Errorf("unexpected log record: %s", record.Message)
+
+	return nil
+}
+
+//nolint:ireturn // slog.Handler is the stdlib contract
+func (h failOnLogHandler) WithAttrs([]slog.Attr) slog.Handler { return h }
+
+//nolint:ireturn // slog.Handler is the stdlib contract
+func (h failOnLogHandler) WithGroup(string) slog.Handler { return h }
+
+// newSilentLogger builds a logger that fails the test if anything is logged
+func newSilentLogger(t *testing.T) *slog.Logger {
+	t.Helper()
+
+	return slog.New(failOnLogHandler{t: t})
+}
 
 func TestSingleFlight_CoalescesRequests(t *testing.T) {
 	t.Parallel()
@@ -33,7 +59,7 @@ func TestSingleFlight_CoalescesRequests(t *testing.T) {
 		assert.NoError(t, werr)
 	})
 
-	mockLog := mocks.NewMockLogger(t)
+	mockLog := newSilentLogger(t)
 	middleware := SingleFlight(mockLog)
 	wrapped := middleware(handler)
 
@@ -79,7 +105,7 @@ func TestSingleFlight_NonGETNotCoalesced(t *testing.T) {
 		writer.WriteHeader(http.StatusCreated)
 	})
 
-	mockLog := mocks.NewMockLogger(t)
+	mockLog := newSilentLogger(t)
 	middleware := SingleFlight(mockLog)
 	wrapped := middleware(handler)
 
@@ -116,7 +142,7 @@ func TestSingleFlight_DifferentKeysNotCoalesced(t *testing.T) {
 		assert.NoError(t, werr)
 	})
 
-	mockLog := mocks.NewMockLogger(t)
+	mockLog := newSilentLogger(t)
 	middleware := SingleFlight(mockLog)
 	wrapped := middleware(handler)
 
@@ -152,7 +178,7 @@ func TestSingleFlight_PreservesStatusCode(t *testing.T) {
 		assert.NoError(t, werr)
 	})
 
-	mockLog := mocks.NewMockLogger(t)
+	mockLog := newSilentLogger(t)
 	middleware := SingleFlight(mockLog)
 	wrapped := middleware(handler)
 
@@ -193,7 +219,7 @@ func TestSingleFlight_Integration(t *testing.T) {
 		assert.NoError(t, werr)
 	})
 
-	mockLog := mocks.NewMockLogger(t)
+	mockLog := newSilentLogger(t)
 	middleware := SingleFlight(mockLog)
 
 	server := httptest.NewServer(middleware(handler))

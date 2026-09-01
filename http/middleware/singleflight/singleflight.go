@@ -10,8 +10,6 @@ import (
 	"sync"
 
 	"golang.org/x/sync/singleflight"
-
-	"github.com/shortlink-org/go-sdk/logger"
 )
 
 // Option configures the singleflight middleware.
@@ -25,7 +23,7 @@ func WithKeyFn(keyFn func(r *http.Request) string) Option {
 }
 
 type singleFlight struct {
-	log   logger.Logger
+	log   *slog.Logger
 	group singleflight.Group
 	keyFn func(r *http.Request) string
 }
@@ -108,7 +106,7 @@ func (r *bufferedResponse) replayTo(writer http.ResponseWriter) error {
 
 // SingleFlight is a middleware that coalesces duplicate GET requests.
 // Only one request proceeds to the handler; others wait and receive the same response.
-func SingleFlight(log logger.Logger, options ...Option) func(next http.Handler) http.Handler {
+func SingleFlight(log *slog.Logger, options ...Option) func(next http.Handler) http.Handler {
 	keyFn := func(r *http.Request) string {
 		return fmt.Sprintf("%s?%s", r.URL.Path, r.URL.RawQuery)
 	}

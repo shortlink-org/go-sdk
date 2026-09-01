@@ -2,6 +2,7 @@ package flight_trace
 
 import (
 	"context"
+	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"path/filepath"
@@ -13,7 +14,6 @@ import (
 
 	"github.com/shortlink-org/go-sdk/config"
 	"github.com/shortlink-org/go-sdk/flight_trace"
-	"github.com/shortlink-org/go-sdk/logger"
 )
 
 // The runtime allows only one active flight recorder; serialize tests and
@@ -42,10 +42,7 @@ func TestDebugTraceMiddleware_HeaderTrigger(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, rec)
 
-	var loggerCfg logger.Configuration
-
-	logInstance, err := logger.New(loggerCfg)
-	require.NoError(t, err)
+	logInstance := slog.New(slog.DiscardHandler)
 
 	handler := DebugTraceMiddleware(rec, logInstance, cfg)(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		time.Sleep(10 * time.Millisecond)
@@ -93,10 +90,7 @@ func TestDebugTraceMiddleware_SlowRequest(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, rec)
 
-	var loggerCfg logger.Configuration
-
-	logInstance, err := logger.New(loggerCfg)
-	require.NoError(t, err)
+	logInstance := slog.New(slog.DiscardHandler)
 
 	handler := DebugTraceMiddleware(rec, logInstance, cfg)(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		time.Sleep(300 * time.Millisecond) // exceed threshold
@@ -138,10 +132,7 @@ func TestDebugTraceMiddleware_NoTrigger(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, rec)
 
-	var loggerCfg logger.Configuration
-
-	logInstance, err := logger.New(loggerCfg)
-	require.NoError(t, err)
+	logInstance := slog.New(slog.DiscardHandler)
 
 	handler := DebugTraceMiddleware(rec, logInstance, cfg)(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		time.Sleep(50 * time.Millisecond) // faster than threshold
