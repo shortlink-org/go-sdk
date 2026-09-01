@@ -22,6 +22,7 @@ use (
 	./mq
 	./notify
 	./observability
+	./outbox
 	./protoc
 	./raft
 	./s3
