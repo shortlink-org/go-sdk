@@ -7,6 +7,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"log/slog"
 	"net/http"
 	"os"
 	"testing"
@@ -19,7 +20,6 @@ import (
 	"go.uber.org/goleak"
 
 	"github.com/shortlink-org/go-sdk/config"
-	"github.com/shortlink-org/go-sdk/logger"
 )
 
 func TestMain(m *testing.M) {
@@ -31,8 +31,7 @@ func TestMain(m *testing.M) {
 func TestMinio(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 
-	log, err := logger.New(logger.Configuration{})
-	require.NoError(t, err, "Error init a logger")
+	log := slog.New(slog.DiscardHandler)
 
 	cfg, err := config.New()
 	require.NoError(t, err, "Error init config")

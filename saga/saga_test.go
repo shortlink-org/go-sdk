@@ -5,6 +5,7 @@ package saga
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"os"
 	"sync"
 	"testing"
@@ -12,8 +13,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/goleak"
-
-	"github.com/shortlink-org/go-sdk/logger"
 )
 
 type Wallet struct {
@@ -30,11 +29,7 @@ func TestMain(m *testing.M) {
 
 func TestNewSaga(t *testing.T) {
 	// Init logger
-	conf := logger.Configuration{
-		Level: logger.DEBUG_LEVEL,
-	}
-	log, err := logger.New(conf)
-	require.NoError(t, err, "Error init a logger")
+	log := slog.New(slog.NewJSONHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelDebug}))
 
 	t.Run("create simple saga", func(t *testing.T) {
 		const SAGA_NAME = "Number magic"
