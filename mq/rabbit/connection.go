@@ -1,6 +1,7 @@
 package rabbit
 
 import (
+	"context"
 	"fmt"
 	"log/slog"
 
@@ -46,6 +47,10 @@ func (mq *MQ) watchState(conn *amqp.Connection) {
 	conn.NotifyStateChange(states)
 
 	go func() {
+		// This watcher outlives any single caller, so there is no request
+		// context to correlate against.
+		ctx := context.Background()
+
 		// The library closes the listener channel right after the terminal
 		// StateClosed transition, which ends this goroutine.
 		for state := range states {
@@ -58,13 +63,14 @@ func (mq *MQ) watchState(conn *amqp.Connection) {
 
 			switch {
 			case state.Err != nil:
-				mq.log.Error("RabbitMQ recovery failed", append(fields, slog.String("error", state.Err.Error()))...)
+				fields = append(fields, slog.String("error", state.Err.Error()))
+				mq.log.LogAttrs(ctx, slog.LevelError, "RabbitMQ recovery failed", fields...)
 			case state.To == amqp.StateOpen && state.From == amqp.StateReconnecting:
-				mq.log.Info("RabbitMQ connection recovered", fields...)
+				mq.log.LogAttrs(ctx, slog.LevelInfo, "RabbitMQ connection recovered", fields...)
 			case state.To == amqp.StateReconnecting:
-				mq.log.Warn("RabbitMQ connection lost, recovering", fields...)
+				mq.log.LogAttrs(ctx, slog.LevelWarn, "RabbitMQ connection lost, recovering", fields...)
 			default:
-				mq.log.Info("RabbitMQ connection state changed", fields...)
+				mq.log.LogAttrs(ctx, slog.LevelInfo, "RabbitMQ connection state changed", fields...)
 			}
 
 			for _, entity := range state.SkippedTopologyEntities {

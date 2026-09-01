@@ -5,20 +5,19 @@ package mq
 import (
 	"context"
 	"errors"
+	"log/slog"
 	"maps"
 	"testing"
 
 	"github.com/stretchr/testify/require"
 
 	"github.com/shortlink-org/go-sdk/config"
-	"github.com/shortlink-org/go-sdk/logger"
 )
 
-func testDeps(t *testing.T) (logger.Logger, *config.Config) {
+func testDeps(t *testing.T) (*slog.Logger, *config.Config) {
 	t.Helper()
 
-	log, err := logger.New(logger.Configuration{})
-	require.NoError(t, err, "Error init a logger")
+	log := slog.New(slog.DiscardHandler)
 
 	cfg, err := config.New()
 	require.NoError(t, err, "Error init config")

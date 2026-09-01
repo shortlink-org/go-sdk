@@ -4,6 +4,7 @@ package rabbit
 
 import (
 	"context"
+	"log/slog"
 	"os"
 	"testing"
 	"time"
@@ -14,7 +15,6 @@ import (
 	"go.uber.org/goleak"
 
 	"github.com/shortlink-org/go-sdk/config"
-	"github.com/shortlink-org/go-sdk/logger"
 	"github.com/shortlink-org/go-sdk/mq/query"
 )
 
@@ -32,8 +32,7 @@ func TestRabbitMQ(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	t.Cleanup(cancel)
 
-	log, err := logger.New(logger.Configuration{})
-	require.NoError(t, err)
+	log := slog.New(slog.NewJSONHandler(os.Stderr, nil))
 
 	ctr, err := tcrabbit.Run(ctx, "rabbitmq:3.13-management-alpine")
 	testcontainers.CleanupContainer(t, ctr)

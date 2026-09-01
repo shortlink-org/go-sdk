@@ -13,7 +13,6 @@ import (
 	"go.opentelemetry.io/otel"
 
 	"github.com/shortlink-org/go-sdk/config"
-	"github.com/shortlink-org/go-sdk/logger"
 	"github.com/shortlink-org/go-sdk/mq/query"
 )
 
@@ -48,7 +47,7 @@ type Kafka struct {
 	*Config
 
 	cfg *config.Config
-	log logger.Logger
+	log *slog.Logger
 
 	client   sarama.Client
 	producer sarama.SyncProducer
@@ -82,7 +81,7 @@ func New(cfg *config.Config) *Kafka {
 	}
 }
 
-func (mq *Kafka) Init(ctx context.Context, log logger.Logger) error {
+func (mq *Kafka) Init(ctx context.Context, log *slog.Logger) error {
 	mq.log = log
 
 	// Set configuration
@@ -244,7 +243,7 @@ func (mq *Kafka) consume(ctx context.Context, group sarama.ConsumerGroup, target
 		default:
 			// A failed `Consume` is usually transient (coordinator moved, connection
 			// dropped): report it and retry instead of taking the process down.
-			mq.log.ErrorWithContext(ctx, "Kafka consume error",
+			mq.log.ErrorContext(ctx, "Kafka consume error",
 				slog.String("topic", target),
 				slog.Any("error", err),
 			)

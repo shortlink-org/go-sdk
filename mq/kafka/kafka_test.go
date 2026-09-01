@@ -4,6 +4,7 @@ package kafka
 
 import (
 	"context"
+	"log/slog"
 	"os"
 	"strings"
 	"testing"
@@ -15,7 +16,6 @@ import (
 	"go.uber.org/goleak"
 
 	"github.com/shortlink-org/go-sdk/config"
-	"github.com/shortlink-org/go-sdk/logger"
 	"github.com/shortlink-org/go-sdk/mq/query"
 )
 
@@ -33,8 +33,7 @@ func TestKafka(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	mq := New(cfg)
 
-	log, err := logger.New(logger.Configuration{})
-	require.NoError(t, err, "Cannot create logger")
+	log := slog.New(slog.NewJSONHandler(os.Stderr, nil))
 
 	kafkaC, err := tckafka.Run(ctx, "confluentinc/confluent-local:7.5.0",
 		tckafka.WithClusterID("go-sdk-test-kraft"),

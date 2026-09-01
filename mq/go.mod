@@ -10,7 +10,6 @@ require (
 	github.com/rabbitmq/amqp091-go v1.14.0
 	github.com/redis/rueidis v1.0.77
 	github.com/shortlink-org/go-sdk/db v0.0.0-20260424225420-a63676f29741
-	github.com/shortlink-org/go-sdk/logger v0.0.0-20260423005905-959e3e589a42
 	github.com/stretchr/testify v1.12.1
 	github.com/testcontainers/testcontainers-go v0.44.0
 	github.com/testcontainers/testcontainers-go/modules/kafka v0.44.0
@@ -114,7 +113,6 @@ require (
 	golang.org/x/text v0.41.0 // indirect
 	google.golang.org/protobuf v1.36.12 // indirect
 	gopkg.in/DATA-DOG/go-sqlmock.v1 v1.3.0 // indirect
-	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
 
 replace github.com/shortlink-org/go-sdk/config => ../config

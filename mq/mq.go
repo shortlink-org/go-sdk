@@ -17,7 +17,6 @@ import (
 	"sort"
 
 	"github.com/shortlink-org/go-sdk/config"
-	"github.com/shortlink-org/go-sdk/logger"
 	"github.com/shortlink-org/go-sdk/mq/query"
 )
 
@@ -32,7 +31,7 @@ import (
 //	}
 //
 // Deprecated: Use github.com/shortlink-org/go-sdk/watermill instead.
-func New(ctx context.Context, log logger.Logger, cfg *config.Config, opts ...Option) (*DataBus, error) {
+func New(ctx context.Context, log *slog.Logger, cfg *config.Config, opts ...Option) (*DataBus, error) {
 	cfg.SetDefault("MQ_ENABLED", "false") // Enabled MQ
 
 	if !cfg.GetBool("MQ_ENABLED") {
@@ -92,7 +91,7 @@ func New(ctx context.Context, log logger.Logger, cfg *config.Config, opts ...Opt
 }
 
 // Init - init connection
-func (mq *DataBus) Init(ctx context.Context, log logger.Logger) error {
+func (mq *DataBus) Init(ctx context.Context, log *slog.Logger) error {
 	err := mq.mq.Init(ctx, log)
 	if err != nil {
 		return err

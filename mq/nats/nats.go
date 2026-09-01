@@ -11,7 +11,6 @@ import (
 	"go.opentelemetry.io/otel/propagation"
 
 	"github.com/shortlink-org/go-sdk/config"
-	"github.com/shortlink-org/go-sdk/logger"
 	"github.com/shortlink-org/go-sdk/mq/query"
 )
 
@@ -22,7 +21,7 @@ func New(cfg *config.Config) *MQ {
 	}
 }
 
-func (mq *MQ) Init(ctx context.Context, log logger.Logger) error {
+func (mq *MQ) Init(ctx context.Context, log *slog.Logger) error {
 	// Set configuration
 	err := mq.setConfig()
 	if err != nil {
