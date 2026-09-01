@@ -17,9 +17,9 @@ func TestWithToken(t *testing.T) {
 		token    string
 		expected string
 	}{
-		{"valid token", "Bearer abc123", "Bearer abc123"},
+		{"valid token", testBearer, testBearer},
 		{"empty token", "", ""},
-		{"raw token", "abc123", "abc123"},
+		{"raw token", testToken, testToken},
 	}
 
 	for _, testCase := range tests {
@@ -95,20 +95,20 @@ func TestSetOutgoingToken(t *testing.T) {
 		{
 			name:          "set new token",
 			existingToken: "",
-			newToken:      "Bearer new",
-			expected:      "Bearer new",
+			newToken:      testBearerNew,
+			expected:      testBearerNew,
 		},
 		{
 			name:          "replace existing token",
-			existingToken: "Bearer old",
-			newToken:      "Bearer new",
-			expected:      "Bearer new",
+			existingToken: testBearerOld,
+			newToken:      testBearerNew,
+			expected:      testBearerNew,
 		},
 		{
 			name:          "empty token does nothing",
-			existingToken: "Bearer old",
+			existingToken: testBearerOld,
 			newToken:      "",
-			expected:      "Bearer old",
+			expected:      testBearerOld,
 		},
 	}
 
@@ -163,11 +163,11 @@ func TestExtractBearerToken(t *testing.T) {
 		input    string
 		expected string
 	}{
-		{"valid bearer", "Bearer abc123", "abc123"},
-		{"no prefix", "abc123", ""},
+		{"valid bearer", testBearer, testToken},
+		{"no prefix", testToken, ""},
 		{"empty", "", ""},
 		{"wrong prefix", "Basic abc123", ""},
-		{"lowercase bearer", "bearer abc123", "abc123"},
+		{"lowercase bearer", "bearer abc123", testToken},
 	}
 
 	for _, testCase := range tests {
@@ -188,8 +188,8 @@ func TestFormatBearerToken(t *testing.T) {
 		input    string
 		expected string
 	}{
-		{"raw token", "abc123", "Bearer abc123"},
-		{"already formatted", "Bearer abc123", "Bearer abc123"},
+		{"raw token", testToken, testBearer},
+		{"already formatted", testBearer, testBearer},
 		{"empty", "", ""},
 	}
 

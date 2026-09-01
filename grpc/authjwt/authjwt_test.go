@@ -54,35 +54,33 @@ func TestValidator_ValidToken(t *testing.T) {
 	t.Parallel()
 
 	validator, err := NewValidator(ValidatorConfig{
-		Issuer:        "https://shortlink.best",
-		Audience:      "shortlink-api",
+		Issuer:        testIssuer,
+		Audience:      testAudience,
 		CustomKeyfunc: mockKeyfunc,
 	})
 	require.NoError(t, err)
 
 	token := createTestToken(t, &Claims{
-		RegisteredClaims: jwt.RegisteredClaims{
-			Subject:   "user-123",
-			Issuer:    "https://shortlink.best",
-			Audience:  jwt.ClaimStrings{"shortlink-api"},
-			ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Hour)),
-			IssuedAt:  jwt.NewNumericDate(time.Now()),
-		},
-		Email: "test@example.com",
+		Subject:   testSubject,
+		Issuer:    testIssuer,
+		Audience:  jwt.ClaimStrings{testAudience},
+		ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Hour)),
+		IssuedAt:  jwt.NewNumericDate(time.Now()),
+		Email:     testEmail,
 	})
 
 	result := validator.Validate(context.Background(), token)
 	require.True(t, result.Valid)
 	require.NoError(t, result.Error)
 	require.NotNil(t, result.Claims)
-	assert.Equal(t, "user-123", result.Claims.Subject)
+	assert.Equal(t, testSubject, result.Claims.Subject)
 }
 
 func TestValidator_EmptyToken(t *testing.T) {
 	t.Parallel()
 
 	validator, err := NewValidator(ValidatorConfig{
-		Issuer:        "https://shortlink.best",
+		Issuer:        testIssuer,
 		SkipAudience:  true,
 		CustomKeyfunc: mockKeyfunc,
 	})
@@ -97,7 +95,7 @@ func TestValidator_InvalidTokenFormat(t *testing.T) {
 	t.Parallel()
 
 	validator, err := NewValidator(ValidatorConfig{
-		Issuer:        "https://shortlink.best",
+		Issuer:        testIssuer,
 		SkipAudience:  true,
 		CustomKeyfunc: mockKeyfunc,
 	})
@@ -112,20 +110,18 @@ func TestValidator_ExpiredToken(t *testing.T) {
 	t.Parallel()
 
 	validator, err := NewValidator(ValidatorConfig{
-		Issuer:        "https://shortlink.best",
-		Audience:      "shortlink-api",
+		Issuer:        testIssuer,
+		Audience:      testAudience,
 		CustomKeyfunc: mockKeyfunc,
 	})
 	require.NoError(t, err)
 
 	token := createTestToken(t, &Claims{
-		RegisteredClaims: jwt.RegisteredClaims{
-			Subject:   "user-123",
-			Issuer:    "https://shortlink.best",
-			Audience:  jwt.ClaimStrings{"shortlink-api"},
-			ExpiresAt: jwt.NewNumericDate(time.Now().Add(-time.Hour)),
-			IssuedAt:  jwt.NewNumericDate(time.Now().Add(-2 * time.Hour)),
-		},
+		Subject:   testSubject,
+		Issuer:    testIssuer,
+		Audience:  jwt.ClaimStrings{testAudience},
+		ExpiresAt: jwt.NewNumericDate(time.Now().Add(-time.Hour)),
+		IssuedAt:  jwt.NewNumericDate(time.Now().Add(-2 * time.Hour)),
 	})
 
 	result := validator.Validate(context.Background(), token)
@@ -137,19 +133,17 @@ func TestValidator_WrongIssuer(t *testing.T) {
 	t.Parallel()
 
 	validator, err := NewValidator(ValidatorConfig{
-		Issuer:        "https://shortlink.best",
+		Issuer:        testIssuer,
 		SkipAudience:  true,
 		CustomKeyfunc: mockKeyfunc,
 	})
 	require.NoError(t, err)
 
 	token := createTestToken(t, &Claims{
-		RegisteredClaims: jwt.RegisteredClaims{
-			Subject:   "user-123",
-			Issuer:    "https://wrong-issuer.com",
-			ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Hour)),
-			IssuedAt:  jwt.NewNumericDate(time.Now()),
-		},
+		Subject:   testSubject,
+		Issuer:    "https://wrong-issuer.com",
+		ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Hour)),
+		IssuedAt:  jwt.NewNumericDate(time.Now()),
 	})
 
 	result := validator.Validate(context.Background(), token)
@@ -160,20 +154,18 @@ func TestValidator_WrongAudience(t *testing.T) {
 	t.Parallel()
 
 	validator, err := NewValidator(ValidatorConfig{
-		Issuer:        "https://shortlink.best",
-		Audience:      "shortlink-api",
+		Issuer:        testIssuer,
+		Audience:      testAudience,
 		CustomKeyfunc: mockKeyfunc,
 	})
 	require.NoError(t, err)
 
 	token := createTestToken(t, &Claims{
-		RegisteredClaims: jwt.RegisteredClaims{
-			Subject:   "user-123",
-			Issuer:    "https://shortlink.best",
-			Audience:  jwt.ClaimStrings{"wrong-audience"},
-			ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Hour)),
-			IssuedAt:  jwt.NewNumericDate(time.Now()),
-		},
+		Subject:   testSubject,
+		Issuer:    testIssuer,
+		Audience:  jwt.ClaimStrings{"wrong-audience"},
+		ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Hour)),
+		IssuedAt:  jwt.NewNumericDate(time.Now()),
 	})
 
 	result := validator.Validate(context.Background(), token)
@@ -184,20 +176,18 @@ func TestValidator_BearerPrefix(t *testing.T) {
 	t.Parallel()
 
 	validator, err := NewValidator(ValidatorConfig{
-		Issuer:        "https://shortlink.best",
-		Audience:      "shortlink-api",
+		Issuer:        testIssuer,
+		Audience:      testAudience,
 		CustomKeyfunc: mockKeyfunc,
 	})
 	require.NoError(t, err)
 
 	token := "Bearer " + createTestToken(t, &Claims{
-		RegisteredClaims: jwt.RegisteredClaims{
-			Subject:   "user-456",
-			Issuer:    "https://shortlink.best",
-			Audience:  jwt.ClaimStrings{"shortlink-api"},
-			ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Hour)),
-			IssuedAt:  jwt.NewNumericDate(time.Now()),
-		},
+		Subject:   "user-456",
+		Issuer:    testIssuer,
+		Audience:  jwt.ClaimStrings{testAudience},
+		ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Hour)),
+		IssuedAt:  jwt.NewNumericDate(time.Now()),
 	})
 
 	result := validator.Validate(context.Background(), token)
@@ -208,7 +198,7 @@ func TestValidator_SkipAudience(t *testing.T) {
 	t.Parallel()
 
 	validator, err := NewValidator(ValidatorConfig{
-		Issuer:        "https://shortlink.best",
+		Issuer:        testIssuer,
 		SkipAudience:  true,
 		CustomKeyfunc: mockKeyfunc,
 	})
@@ -216,12 +206,10 @@ func TestValidator_SkipAudience(t *testing.T) {
 
 	// Token without audience should be valid
 	token := createTestToken(t, &Claims{
-		RegisteredClaims: jwt.RegisteredClaims{
-			Subject:   "user-123",
-			Issuer:    "https://shortlink.best",
-			ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Hour)),
-			IssuedAt:  jwt.NewNumericDate(time.Now()),
-		},
+		Subject:   testSubject,
+		Issuer:    testIssuer,
+		ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Hour)),
+		IssuedAt:  jwt.NewNumericDate(time.Now()),
 	})
 
 	result := validator.Validate(context.Background(), token)
@@ -232,12 +220,10 @@ func TestClaims_Context(t *testing.T) {
 	t.Parallel()
 
 	claims := &Claims{
-		RegisteredClaims: jwt.RegisteredClaims{
-			Subject:   "user-789",
-			ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Hour)),
-			IssuedAt:  jwt.NewNumericDate(time.Now()),
-		},
-		Email:      "test@example.com",
+		Subject:    "user-789",
+		ExpiresAt:  jwt.NewNumericDate(time.Now().Add(time.Hour)),
+		IssuedAt:   jwt.NewNumericDate(time.Now()),
+		Email:      testEmail,
 		Name:       "Test User",
 		IdentityID: "identity-123",
 	}
@@ -248,11 +234,11 @@ func TestClaims_Context(t *testing.T) {
 	got := ClaimsFromContext(ctx)
 	require.NotNil(t, got)
 	assert.Equal(t, "user-789", got.Subject)
-	assert.Equal(t, "test@example.com", got.Email)
+	assert.Equal(t, testEmail, got.Email)
 
 	// Test helpers
 	assert.Equal(t, "user-789", GetSubject(ctx))
-	assert.Equal(t, "test@example.com", GetEmail(ctx))
+	assert.Equal(t, testEmail, GetEmail(ctx))
 	assert.True(t, IsAuthenticated(ctx))
 
 	// Test empty context
@@ -273,12 +259,10 @@ func TestValidator_NoIssuer(t *testing.T) {
 	require.NoError(t, err)
 
 	token := createTestToken(t, &Claims{
-		RegisteredClaims: jwt.RegisteredClaims{
-			Subject:   "user-123",
-			Issuer:    "any-issuer",
-			ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Hour)),
-			IssuedAt:  jwt.NewNumericDate(time.Now()),
-		},
+		Subject:   testSubject,
+		Issuer:    "any-issuer",
+		ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Hour)),
+		IssuedAt:  jwt.NewNumericDate(time.Now()),
 	})
 
 	result := validator.Validate(context.Background(), token)
@@ -289,7 +273,7 @@ func TestNewValidator_RequiresIssuer(t *testing.T) {
 	t.Parallel()
 
 	_, err := NewValidator(ValidatorConfig{
-		Audience:      "shortlink-api",
+		Audience:      testAudience,
 		SkipAudience:  true,
 		CustomKeyfunc: mockKeyfunc,
 	})
@@ -300,7 +284,7 @@ func TestNewValidator_RequiresAudience(t *testing.T) {
 	t.Parallel()
 
 	_, err := NewValidator(ValidatorConfig{
-		Issuer:        "https://shortlink.best",
+		Issuer:        testIssuer,
 		CustomKeyfunc: mockKeyfunc,
 	})
 	assert.ErrorIs(t, err, ErrAudienceRequired)

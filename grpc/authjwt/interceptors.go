@@ -24,6 +24,9 @@ const (
 	reflectionMethod  = "/grpc.reflection"
 	healthCheckMethod = "/grpc.health"
 	authorizationKey  = "authorization"
+
+	// Prometheus label carrying the result of an attempt.
+	outcomeLabel = "outcome"
 )
 
 var (
@@ -34,7 +37,7 @@ var (
 			Name: "grpc_jwt_validations_total",
 			Help: "Total JWT validation attempts in gRPC interceptors",
 		},
-		[]string{"outcome", "method"},
+		[]string{outcomeLabel, "method"},
 	)
 
 	jwtValidationSeconds = promauto.NewHistogramVec(
@@ -44,7 +47,7 @@ var (
 			Unit:    "seconds",
 			Buckets: prometheus.DefBuckets,
 		},
-		[]string{"outcome"},
+		[]string{outcomeLabel},
 	)
 )
 
@@ -255,7 +258,10 @@ func shouldSkip(method string, skipMethods []string) bool {
 }
 
 func mergeSkipMethods(custom []string) []string {
-	defaults := make([]string, 0, 2+len(custom))
+	// reflectionMethod and healthCheckMethod are always skipped.
+	const alwaysSkipped = 2
+
+	defaults := make([]string, 0, alwaysSkipped+len(custom))
 	defaults = append(defaults, reflectionMethod, healthCheckMethod)
 
 	return append(defaults, custom...)

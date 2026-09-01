@@ -58,7 +58,8 @@ func InitClient(
 	)
 
 	cleanup := func() {
-		if closeErr := conn.Close(); closeErr != nil {
+		closeErr := conn.Close()
+		if closeErr != nil {
 			log.Error("gRPC client conn close failed", slog.Any("err", closeErr))
 		}
 	}

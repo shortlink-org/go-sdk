@@ -29,7 +29,7 @@ const (
 	// The metadata key populated by Istio outputClaimToHeaders for the user email.
 	xUserEmailKey = "x-user-email"
 
-	// initialPairsCapacity is the initial capacity for metadata pairs slice.
+	// Initial capacity for the metadata pairs slice.
 	initialPairsCapacity = 4
 )
 

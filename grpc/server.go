@@ -68,7 +68,10 @@ func InitServer(
 		return nil, nil
 	}
 
-	srv, err := setServerConfig(log, tracer, prom, flightRecorder, cfg) //nolint:contextcheck // ctx is for Listen/Serve/shutdown; wiring-only path; WithLogger chain triggers false positive.
+	// ctx belongs to Listen/Serve/shutdown; this is a wiring-only path and the
+	// WithLogger chain is what trips the check.
+	//nolint:contextcheck // wiring-only path, see above
+	srv, err := setServerConfig(log, tracer, prom, flightRecorder, cfg)
 	if err != nil {
 		return nil, err
 	}
@@ -112,7 +115,8 @@ func InitServer(
 		<-ctx.Done()
 
 		if srv.authValidator != nil {
-			if closeErr := srv.authValidator.Close(); closeErr != nil {
+			closeErr := srv.authValidator.Close()
+			if closeErr != nil {
 				log.Error("auth validator close failed", slog.Any("err", closeErr))
 			}
 		}

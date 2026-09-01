@@ -31,10 +31,12 @@ func getInterceptorKeys(t *testing.T) (*rsa.PrivateKey, *rsa.PublicKey) {
 
 	interceptorKeyOnce.Do(func() {
 		var err error
+
 		interceptorPrivKey, err = rsa.GenerateKey(rand.Reader, interceptorRSAKeyBits)
 		if err != nil {
 			panic(err)
 		}
+
 		interceptorPubKey = &interceptorPrivKey.PublicKey
 	})
 
@@ -59,8 +61,8 @@ func TestValidateRequest_MissingToken(t *testing.T) {
 
 	_, pub := getInterceptorKeys(t)
 	validator, err := NewValidator(ValidatorConfig{
-		Issuer:        "https://shortlink.best",
-		Audience:      "shortlink-api",
+		Issuer:        testIssuer,
+		Audience:      testAudience,
 		CustomKeyfunc: func(_ *jwt.Token) (any, error) { return pub, nil },
 	})
 	require.NoError(t, err)
@@ -75,8 +77,8 @@ func TestValidateRequest_MultipleAuthHeaders(t *testing.T) {
 
 	_, pub := getInterceptorKeys(t)
 	validator, err := NewValidator(ValidatorConfig{
-		Issuer:        "https://shortlink.best",
-		Audience:      "shortlink-api",
+		Issuer:        testIssuer,
+		Audience:      testAudience,
 		CustomKeyfunc: func(_ *jwt.Token) (any, error) { return pub, nil },
 	})
 	require.NoError(t, err)
@@ -97,21 +99,19 @@ func TestValidateRequest_SetsSessionClaims(t *testing.T) {
 
 	_, pub := getInterceptorKeys(t)
 	validator, err := NewValidator(ValidatorConfig{
-		Issuer:        "https://shortlink.best",
-		Audience:      "shortlink-api",
+		Issuer:        testIssuer,
+		Audience:      testAudience,
 		CustomKeyfunc: func(_ *jwt.Token) (any, error) { return pub, nil },
 	})
 	require.NoError(t, err)
 
 	token := createInterceptorToken(t, &Claims{
-		RegisteredClaims: jwt.RegisteredClaims{
-			Subject:   "user-123",
-			Issuer:    "https://shortlink.best",
-			Audience:  jwt.ClaimStrings{"shortlink-api"},
-			ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Hour)),
-			IssuedAt:  jwt.NewNumericDate(time.Now()),
-		},
-		Email: "test@example.com",
+		Subject:   testSubject,
+		Issuer:    testIssuer,
+		Audience:  jwt.ClaimStrings{testAudience},
+		ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Hour)),
+		IssuedAt:  jwt.NewNumericDate(time.Now()),
+		Email:     testEmail,
 	})
 
 	md := metadata.Pairs("authorization", "Bearer "+token)
@@ -122,9 +122,9 @@ func TestValidateRequest_SetsSessionClaims(t *testing.T) {
 
 	claims := ClaimsFromContext(newCtx)
 	require.NotNil(t, claims)
-	assert.Equal(t, "user-123", claims.Subject)
+	assert.Equal(t, testSubject, claims.Subject)
 
 	userID, err := session.GetUserID(newCtx)
 	require.NoError(t, err)
-	assert.Equal(t, "user-123", userID)
+	assert.Equal(t, testSubject, userID)
 }

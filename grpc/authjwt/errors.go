@@ -37,6 +37,10 @@ var (
 
 // errorMappings defines how errors map to gRPC status codes.
 //
+// Message returned for every failure that means the JWKS side is unreachable,
+// so a caller cannot tell the individual causes apart.
+const msgAuthUnavailable = "authentication service unavailable"
+
 //nolint:gochecknoglobals // Intentional mapping table
 var errorMappings = []struct {
 	err     error
@@ -54,9 +58,9 @@ var errorMappings = []struct {
 	{ErrKeyNotFound, codes.Unauthenticated, "unknown signing key"},
 	{ErrMissingKid, codes.InvalidArgument, "missing key id in token"},
 	{ErrUnexpectedSignMethod, codes.InvalidArgument, "unsupported signing method"},
-	{ErrNoValidKeys, codes.Unavailable, "authentication service unavailable"},
-	{ErrUnexpectedStatus, codes.Unavailable, "authentication service unavailable"},
-	{ErrJWKSBackoff, codes.Unavailable, "authentication service unavailable"},
+	{ErrNoValidKeys, codes.Unavailable, msgAuthUnavailable},
+	{ErrUnexpectedStatus, codes.Unavailable, msgAuthUnavailable},
+	{ErrJWKSBackoff, codes.Unavailable, msgAuthUnavailable},
 	{ErrInvalidToken, codes.Unauthenticated, "invalid token"},
 	{ErrIssuerRequired, codes.Internal, "authentication configuration error"},
 	{ErrAudienceRequired, codes.Internal, "authentication configuration error"},

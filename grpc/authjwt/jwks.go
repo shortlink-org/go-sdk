@@ -26,9 +26,9 @@ const (
 	DefaultJWKSBackoffMin = 500 * time.Millisecond
 	// DefaultJWKSBackoffMax is the maximum backoff after JWKS fetch failures.
 	DefaultJWKSBackoffMax = 30 * time.Second
-	// maxJWKSBodySize is the maximum size of JWKS response body (1MB).
+	// Maximum size of a JWKS response body (1MB).
 	maxJWKSBodySize = 1 << 20
-	// exponentBitShift is used for RSA exponent parsing.
+	// Bit shift used when parsing the RSA exponent.
 	exponentBitShift = 8
 )
 
@@ -45,7 +45,7 @@ var (
 			Name: "jwks_fetch_total",
 			Help: "Total JWKS fetch attempts.",
 		},
-		[]string{"outcome"},
+		[]string{outcomeLabel},
 	)
 	jwksFetchSeconds = promauto.NewHistogram(
 		prometheus.HistogramOpts{

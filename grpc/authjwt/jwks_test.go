@@ -37,6 +37,7 @@ func jwksBody(t *testing.T, kid string, pub *rsa.PublicKey) []byte {
 	n := base64.RawURLEncoding.EncodeToString(pub.N.Bytes())
 	e := base64.RawURLEncoding.EncodeToString(big.NewInt(int64(pub.E)).Bytes())
 
+	//nolint:errchkjson // the check guards future changes to the fixture type
 	body, err := json.Marshal(jwksResponse{
 		Keys: []jwkKey{{
 			Kty: "RSA",
@@ -59,6 +60,7 @@ func TestJWKSFetcher_CacheHit(t *testing.T) {
 	require.NoError(t, err)
 
 	var calls atomic.Int32
+
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		calls.Add(1)
 		w.WriteHeader(http.StatusOK)
@@ -91,6 +93,7 @@ func TestJWKSFetcher_Backoff(t *testing.T) {
 	t.Parallel()
 
 	var calls atomic.Int32
+
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		calls.Add(1)
 		w.WriteHeader(http.StatusInternalServerError)
@@ -116,6 +119,7 @@ func TestJWKSFetcher_Backoff(t *testing.T) {
 	require.ErrorIs(t, err, ErrJWKSBackoff)
 
 	clock.Advance(time.Second)
+
 	_, err = fetcher.GetKey(context.Background(), "kid-1")
 	require.Error(t, err)
 	require.ErrorIs(t, err, ErrUnexpectedStatus)
