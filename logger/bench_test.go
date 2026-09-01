@@ -73,7 +73,7 @@ func BenchmarkInfoContext(b *testing.B) {
 	b.ResetTimer()
 
 	for i := range b.N {
-		log.InfoWithContext(ctx, "Benchmark message (ctx)",
+		log.InfoContext(ctx, "Benchmark message (ctx)",
 			slog.Int("iteration", i),
 			slog.Time("timestamp", time.Now()),
 			slog.String("request_id", "bench-ctx-123"),

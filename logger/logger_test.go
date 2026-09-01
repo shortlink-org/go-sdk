@@ -46,7 +46,7 @@ func TestOutputInfoWithContextSlog(t *testing.T) {
 	log, err := logger.New(conf)
 	require.NoError(t, err, "Error init a logger")
 
-	log.InfoWithContext(context.Background(), "Hello World")
+	log.InfoContext(context.Background(), "Hello World")
 
 	expectedTime := time.Now().Format(time.RFC822)
 
@@ -103,7 +103,7 @@ func TestFieldsSlog(t *testing.T) {
 	log, err := logger.New(conf)
 	require.NoError(t, err, "Error init a logger")
 
-	log.InfoWithContext(context.Background(), "Hello World", slog.String("hello", "world"), slog.Int("first", 1))
+	log.InfoContext(context.Background(), "Hello World", slog.String("hello", "world"), slog.Int("first", 1))
 
 	expectedTime := time.Now().Format(time.RFC822)
 
@@ -250,7 +250,7 @@ func TestErrorWithContext(t *testing.T) {
 	require.NoError(t, err)
 
 	ctx := context.WithValue(context.Background(), requestIDKey, "req-123")
-	log.ErrorWithContext(ctx, "Request failed", slog.Int("status", 500), slog.String("path", "/api/users"))
+	log.ErrorContext(ctx, "Request failed", slog.Int("status", 500), slog.String("path", "/api/users"))
 
 	require.Contains(t, buffer.String(), `"level":"ERROR"`)
 	require.Contains(t, buffer.String(), `"msg":"Request failed"`)
@@ -272,7 +272,7 @@ func TestWarnWithContext(t *testing.T) {
 	require.NoError(t, err)
 
 	ctx := context.WithValue(context.Background(), userIDKey, "user-456")
-	log.WarnWithContext(ctx, "Slow query detected", slog.String("duration", "2.5s"), slog.String("query", "SELECT * FROM users"))
+	log.WarnContext(ctx, "Slow query detected", slog.String("duration", "2.5s"), slog.String("query", "SELECT * FROM users"))
 
 	require.Contains(t, buffer.String(), `"level":"WARN"`)
 	require.Contains(t, buffer.String(), `"msg":"Slow query detected"`)
@@ -305,7 +305,7 @@ func TestDebugWithContext(t *testing.T) {
 	})
 
 	ctx := context.WithValue(trace.ContextWithSpanContext(context.Background(), spanCtx), sessionIDKey, "sess-789")
-	log.DebugWithContext(ctx, "Processing step", slog.String("step", "validation"), slog.Int("data_size", 1024))
+	log.DebugContext(ctx, "Processing step", slog.String("step", "validation"), slog.Int("data_size", 1024))
 
 	require.Contains(t, buffer.String(), `"level":"DEBUG"`)
 	require.Contains(t, buffer.String(), `"msg":"Processing step"`)
