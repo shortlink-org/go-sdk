@@ -36,9 +36,8 @@ func TestBackendPublishSubscribeWithTestcontainer(t *testing.T) {
 	cfg.Set("WATERMILL_KAFKA_BROKERS", brokers)
 	cfg.Set("WATERMILL_KAFKA_SARAMA_VERSION", "default")
 
-	log, cleanup, err := logger.NewDefault(ctx, cfg)
+	log, err := logger.New(logger.Default())
 	require.NoError(t, err)
-	t.Cleanup(cleanup)
 
 	backend, err := New(ctx, log, cfg)
 	require.NoError(t, err)
