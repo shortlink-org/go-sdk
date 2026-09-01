@@ -1,13 +1,14 @@
 package server_test
 
 import (
+	"log/slog"
+	"os"
 	"testing"
 
 	"github.com/stretchr/testify/require"
 
 	"github.com/shortlink-org/go-sdk/config"
 	rpc "github.com/shortlink-org/go-sdk/grpc"
-	"github.com/shortlink-org/go-sdk/logger"
 	"github.com/shortlink-org/go-sdk/raft/server"
 	v1 "github.com/shortlink-org/go-sdk/raft/v1"
 )
@@ -16,11 +17,7 @@ func Test_Raft(t *testing.T) {
 	ctx := t.Context()
 
 	// Init logger
-	conf := logger.Configuration{
-		Level: logger.INFO_LEVEL,
-	}
-	log, err := logger.New(conf)
-	require.NoError(t, err, "Error init a logger")
+	log := slog.New(slog.NewJSONHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelInfo}))
 
 	// Init config
 	cfg, err := config.New()
