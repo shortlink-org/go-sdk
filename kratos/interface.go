@@ -14,4 +14,3 @@ type KratosClient interface {
 
 // Ensure Client implements KratosClient interface
 var _ KratosClient = (*Client)(nil)
-

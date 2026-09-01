@@ -11,6 +11,10 @@ linters:
   default: all
   disable:
     - exhaustruct      # deprecated since v2.13.0, superseded by exhaustruct_v5
+    - exhaustruct_v5   # too noisy: it recurses into third-party option structs
+                       # (minio.PutObjectOptions alone wants 26 fields plus a
+                       # nested struct) and pins the lint to dependency versions,
+                       # so any upgrade that adds a field breaks it.
     - godox            # incorrect results in our project
     - gochecknoglobals # too noisy
     - wsl              # deprecated
@@ -22,7 +26,6 @@ linters:
   # Linters outside the `all` set, or that replace a deprecated one.
   enable:
     - gomodguard_v2
-    - exhaustruct_v5
 
   exclusions:
     paths:
@@ -248,7 +251,8 @@ formatters:
       sections: [standard, default, prefix(github.com/shortlink-org/go-sdk), prefix(github.com/shortlink-org/shortlink)]
       custom-order: true
     gofumpt:
-      extra-rules: true
+      extra:
+        group-params: true
     goimports:
       local-prefixes:
         - github.com/shortlink-org/go-sdk

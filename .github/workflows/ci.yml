@@ -61,6 +61,8 @@ jobs:
             tags: unit
           - module: http
             tags: unit
+          - module: kratos
+            tags: unit
           - module: logger
             tags: unit
           - module: mq
