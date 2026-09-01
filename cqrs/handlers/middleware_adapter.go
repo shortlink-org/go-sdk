@@ -12,14 +12,14 @@ func AsMiddleware(cfg DecoratorConfig) wmmessage.HandlerMiddleware {
 }
 
 // Chain applies handler middlewares sequentially.
-func Chain(h wmmessage.HandlerFunc, middlewares ...wmmessage.HandlerMiddleware) wmmessage.HandlerFunc {
+func Chain(handler wmmessage.HandlerFunc, middlewares ...wmmessage.HandlerMiddleware) wmmessage.HandlerFunc {
 	for _, mw := range middlewares {
 		if mw == nil {
 			continue
 		}
 
-		h = mw(h)
+		handler = mw(handler)
 	}
 
-	return h
+	return handler
 }

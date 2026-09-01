@@ -60,7 +60,8 @@ func TestTypedPayloadMismatch(t *testing.T) {
 	registryType := reflect.TypeFor[*sampleStruct]()
 	handlerType := handlerTypeOf[*sampleImpl]()
 
-	if _, err := typedPayload[*sampleImpl](&sampleStruct{}, handlerType, registryType); err == nil {
+	_, err := typedPayload[*sampleImpl](&sampleStruct{}, handlerType, registryType)
+	if err == nil {
 		t.Fatal("expected handler type mismatch error")
 	}
 }

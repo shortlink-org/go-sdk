@@ -3,7 +3,6 @@ package message
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 
 	wmmessage "github.com/ThreeDotsLabs/watermill/message"
@@ -21,8 +20,8 @@ func NewJSONMarshaler(namer Namer) *JSONMarshaler {
 }
 
 // Marshal encodes JSON payload and enriches metadata.
-func (m *JSONMarshaler) Marshal(ctx context.Context, v any) (*wmmessage.Message, error) {
-	payload, err := json.Marshal(v)
+func (m *JSONMarshaler) Marshal(ctx context.Context, value any) (*wmmessage.Message, error) { //nolint:contextcheck // nil-ctx fallback, not a discarded parent
+	payload, err := json.Marshal(value)
 	if err != nil {
 		return nil, fmt.Errorf("marshal json: %w", err)
 	}
@@ -34,7 +33,7 @@ func (m *JSONMarshaler) Marshal(ctx context.Context, v any) (*wmmessage.Message,
 	wmMsg := wmmessage.NewMessageWithContext(ctx, uuid.NewString(), payload)
 	ensureMetadata(wmMsg)
 
-	name := m.Name(v)
+	name := m.Name(value)
 	typeName, version := splitCanonicalName(name)
 
 	if wmMsg.Metadata.Get(MetadataTypeName) == "" {
@@ -53,37 +52,37 @@ func (m *JSONMarshaler) Marshal(ctx context.Context, v any) (*wmmessage.Message,
 		wmMsg.Metadata.Set(MetadataServiceName, m.namer.ServiceName())
 	}
 
-	kind := string(inferKind(v))
+	kind := string(inferKind(value))
 	wmMsg.Metadata.Set(MetadataMessageKind, kind)
 
 	return wmMsg, nil
 }
 
 // Unmarshal decodes JSON payload into provided value.
-func (m *JSONMarshaler) Unmarshal(msg *wmmessage.Message, v any) error {
+func (m *JSONMarshaler) Unmarshal(msg *wmmessage.Message, value any) error {
 	if msg == nil {
-		return errors.New("message is nil")
+		return errMessageNil
 	}
 
 	if len(msg.Payload) == 0 {
-		return errors.New("message payload is empty")
+		return errMessageEmptyBody
 	}
 
-	return json.Unmarshal(msg.Payload, v)
+	return json.Unmarshal(msg.Payload, value)
 }
 
 // Name returns canonical name for payload.
-func (m *JSONMarshaler) Name(v any) string {
+func (m *JSONMarshaler) Name(value any) string {
 	if m != nil && m.namer != nil {
-		switch inferKind(v) {
+		switch inferKind(value) {
 		case KindEvent:
-			return m.namer.EventName(v)
+			return m.namer.EventName(value)
 		default:
-			return m.namer.CommandName(v)
+			return m.namer.CommandName(value)
 		}
 	}
 
-	return NameOf(v)
+	return NameOf(value)
 }
 
 // NameFromMessage reconstructs canonical name using message metadata.

@@ -2,7 +2,6 @@ package message
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"strings"
 
@@ -12,6 +11,8 @@ import (
 )
 
 // Marshaler serializes domain messages to Watermill messages.
+//
+//nolint:iface // exported contract implemented by SDK consumers outside this package.
 type Marshaler interface {
 	Marshal(ctx context.Context, v any) (*wmmessage.Message, error)
 	Unmarshal(msg *wmmessage.Message, v any) error
@@ -30,10 +31,10 @@ func NewProtoMarshaler(namer Namer) *ProtoMarshaler {
 }
 
 // Marshal encodes protobuf payload and enriches metadata.
-func (m *ProtoMarshaler) Marshal(ctx context.Context, v any) (*wmmessage.Message, error) {
-	msg, ok := toProto(v)
+func (m *ProtoMarshaler) Marshal(ctx context.Context, value any) (*wmmessage.Message, error) { //nolint:contextcheck // nil-ctx fallback, not a discarded parent
+	msg, ok := toProto(value)
 	if !ok {
-		return nil, fmt.Errorf("value %T does not implement proto.Message", v)
+		return nil, fmt.Errorf("%w: got %T", errValueNotProto, value)
 	}
 
 	payload, err := proto.Marshal(msg)
@@ -48,7 +49,7 @@ func (m *ProtoMarshaler) Marshal(ctx context.Context, v any) (*wmmessage.Message
 	wmMsg := wmmessage.NewMessageWithContext(ctx, uuid.NewString(), payload)
 	ensureMetadata(wmMsg)
 
-	name := m.Name(v)
+	name := m.Name(value)
 	typeName, version := splitCanonicalName(name)
 
 	if wmMsg.Metadata.Get(MetadataTypeName) == "" {
@@ -67,42 +68,42 @@ func (m *ProtoMarshaler) Marshal(ctx context.Context, v any) (*wmmessage.Message
 		wmMsg.Metadata.Set(MetadataServiceName, m.namer.ServiceName())
 	}
 
-	kind := string(inferKind(v))
+	kind := string(inferKind(value))
 	wmMsg.Metadata.Set(MetadataMessageKind, kind)
 
 	return wmMsg, nil
 }
 
 // Unmarshal decodes protobuf payload into provided value.
-func (m *ProtoMarshaler) Unmarshal(msg *wmmessage.Message, v any) error {
+func (m *ProtoMarshaler) Unmarshal(msg *wmmessage.Message, value any) error {
 	if msg == nil {
-		return errors.New("message is nil")
+		return errMessageNil
 	}
 
 	if len(msg.Payload) == 0 {
-		return errors.New("message payload is empty")
+		return errMessageEmptyBody
 	}
 
-	protoMsg, ok := v.(proto.Message)
+	protoMsg, ok := value.(proto.Message)
 	if !ok {
-		return fmt.Errorf("target %T does not implement proto.Message", v)
+		return fmt.Errorf("%w: got %T", errTargetNotProto, value)
 	}
 
 	return proto.Unmarshal(msg.Payload, protoMsg)
 }
 
 // Name returns canonical name for payload.
-func (m *ProtoMarshaler) Name(v any) string {
+func (m *ProtoMarshaler) Name(value any) string {
 	if m != nil && m.namer != nil {
-		switch inferKind(v) {
+		switch inferKind(value) {
 		case KindEvent:
-			return m.namer.EventName(v)
+			return m.namer.EventName(value)
 		default:
-			return m.namer.CommandName(v)
+			return m.namer.CommandName(value)
 		}
 	}
 
-	return NameOf(v)
+	return NameOf(value)
 }
 
 // NameFromMessage reconstructs canonical name using message metadata.

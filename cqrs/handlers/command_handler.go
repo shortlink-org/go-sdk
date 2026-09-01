@@ -25,5 +25,12 @@ func NewCommandHandler[T any](
 		handle = logic.Handle
 	}
 
-	return newWatermillTypedHandler(handle, registry, marshaler, (*bus.TypeRegistry).ResolveCommand, errCommandNotRegistered, errNilCommandLogic, "command")
+	return newWatermillTypedHandler(handle, &typedHandlerDeps{
+		registry:         registry,
+		marshaler:        marshaler,
+		resolve:          (*bus.TypeRegistry).ResolveCommand,
+		errNotRegistered: errCommandNotRegistered,
+		errNilLogic:      errNilCommandLogic,
+		kind:             "command",
+	})
 }

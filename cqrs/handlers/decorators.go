@@ -50,14 +50,21 @@ func DecorateHandler(h wmmessage.HandlerFunc, cfg DecoratorConfig) wmmessage.Han
 	return decorated
 }
 
+// Circuit breaker defaults for CQRS handlers.
+const (
+	circuitBreakerTimeout          = 30 * time.Second
+	circuitBreakerMaxRequests      = 1
+	circuitBreakerFailureThreshold = 5
+)
+
 func defaultCircuitBreakerSettings() gobreaker.Settings {
 	return gobreaker.Settings{
 		Name:        "shortlink_cqrs_handler",
-		Timeout:     30 * time.Second,
+		Timeout:     circuitBreakerTimeout,
 		Interval:    0,
-		MaxRequests: 1,
+		MaxRequests: circuitBreakerMaxRequests,
 		ReadyToTrip: func(counts gobreaker.Counts) bool {
-			return counts.ConsecutiveFailures >= 5
+			return counts.ConsecutiveFailures >= circuitBreakerFailureThreshold
 		},
 	}
 }

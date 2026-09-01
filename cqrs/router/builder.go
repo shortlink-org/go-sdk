@@ -18,6 +18,7 @@ var (
 	errNilPublisher    = errors.New("cqrs/router: publisher is required")
 	errNoHandlers      = errors.New("cqrs/router: at least one handler must be configured")
 	errNilHandlerLogic = errors.New("cqrs/router: handler function is nil")
+	errEmptyTopic      = errors.New("cqrs/router: topic is empty")
 )
 
 // NewRouter builds CQRS-aware Watermill router.
@@ -64,7 +65,7 @@ func NewRouter(
 		}
 
 		if registration.Topic == "" {
-			return nil, fmt.Errorf("cqrs/router: topic is empty for handler %s", registration.Name)
+			return nil, fmt.Errorf("%w: handler %s", errEmptyTopic, registration.Name)
 		}
 
 		decorated := handlers.DecorateHandler(registration.Handler, decoratorCfg)

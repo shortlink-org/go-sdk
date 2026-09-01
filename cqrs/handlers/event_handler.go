@@ -25,5 +25,12 @@ func NewEventHandler[T any](
 		handle = logic.Handle
 	}
 
-	return newWatermillTypedHandler(handle, registry, marshaler, (*bus.TypeRegistry).ResolveEvent, errEventNotRegistered, errNilEventLogic, "event")
+	return newWatermillTypedHandler(handle, &typedHandlerDeps{
+		registry:         registry,
+		marshaler:        marshaler,
+		resolve:          (*bus.TypeRegistry).ResolveEvent,
+		errNotRegistered: errEventNotRegistered,
+		errNilLogic:      errNilEventLogic,
+		kind:             "event",
+	})
 }

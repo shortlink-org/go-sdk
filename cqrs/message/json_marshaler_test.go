@@ -8,14 +8,16 @@ import (
 	wmmessage "github.com/ThreeDotsLabs/watermill/message"
 )
 
+const testAmount = 99.99
+
 type testCommand struct {
-	OrderId string  `json:"order_id"`
+	OrderID string  `json:"orderId"`
 	Amount  float64 `json:"amount"`
 }
 
 type testEvent struct {
-	OrderId   string `json:"order_id"`
-	CreatedAt int64  `json:"created_at"`
+	OrderID   string `json:"orderId"`
+	CreatedAt int64  `json:"createdAt"`
 }
 
 func TestJSONMarshalerMarshal(t *testing.T) {
@@ -23,8 +25,8 @@ func TestJSONMarshalerMarshal(t *testing.T) {
 	m := NewJSONMarshaler(namer)
 
 	cmd := &testCommand{
-		OrderId: "order-123",
-		Amount:  99.99,
+		OrderID: "order-123",
+		Amount:  testAmount,
 	}
 
 	msg, err := m.Marshal(context.Background(), cmd)
@@ -54,8 +56,8 @@ func TestJSONMarshalerUnmarshal(t *testing.T) {
 	m := NewJSONMarshaler(namer)
 
 	original := &testCommand{
-		OrderId: "order-123",
-		Amount:  99.99,
+		OrderID: "order-123",
+		Amount:  testAmount,
 	}
 
 	msg, err := m.Marshal(context.Background(), original)
@@ -64,12 +66,14 @@ func TestJSONMarshalerUnmarshal(t *testing.T) {
 	}
 
 	var unmarshaled testCommand
-	if err := m.Unmarshal(msg, &unmarshaled); err != nil {
+
+	err = m.Unmarshal(msg, &unmarshaled)
+	if err != nil {
 		t.Fatalf("Unmarshal failed: %v", err)
 	}
 
-	if unmarshaled.OrderId != original.OrderId {
-		t.Errorf("expected OrderId %s, got %s", original.OrderId, unmarshaled.OrderId)
+	if unmarshaled.OrderID != original.OrderID {
+		t.Errorf("expected OrderID %s, got %s", original.OrderID, unmarshaled.OrderID)
 	}
 
 	if unmarshaled.Amount != original.Amount {
@@ -104,7 +108,7 @@ func TestJSONMarshalerName(t *testing.T) {
 	namer := NewShortlinkNamer("test")
 	m := NewJSONMarshaler(namer)
 
-	cmd := &testCommand{OrderId: "123"}
+	cmd := &testCommand{OrderID: "123"}
 	name := m.Name(cmd)
 
 	if name == "" {
@@ -124,7 +128,7 @@ func TestJSONMarshalerNameFromMessage(t *testing.T) {
 	namer := NewShortlinkNamer("test")
 	m := NewJSONMarshaler(namer)
 
-	cmd := &testCommand{OrderId: "123"}
+	cmd := &testCommand{OrderID: "123"}
 
 	msg, err := m.Marshal(context.Background(), cmd)
 	if err != nil {
@@ -158,7 +162,7 @@ func TestJSONMarshalerEventName(t *testing.T) {
 	namer := NewShortlinkNamer("test")
 	m := NewJSONMarshaler(namer)
 
-	evt := &testEvent{OrderId: "123"}
+	evt := &testEvent{OrderID: "123"}
 	name := m.Name(evt)
 
 	if !strings.Contains(name, "event") {

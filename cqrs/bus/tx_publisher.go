@@ -11,7 +11,7 @@ import (
 // newTxPublisher creates a watermill publisher that writes to the outbox table in the same transaction as tx.
 //
 //nolint:ireturn // Watermill publishers are interface-typed by design.
-func newTxPublisher(tx pgx.Tx, cfg *txOutboxConfig) (wmmessage.Publisher, error) {
+func newTxPublisher(transaction pgx.Tx, cfg *txOutboxConfig) (wmmessage.Publisher, error) {
 	if cfg == nil {
 		return nil, errNilTxOutboxConfig
 	}
@@ -21,7 +21,7 @@ func newTxPublisher(tx pgx.Tx, cfg *txOutboxConfig) (wmmessage.Publisher, error)
 		wmLogger = watermill.NewStdLogger(false, false)
 	}
 
-	sqlTx := wmsql.TxFromPgx(tx)
+	sqlTx := wmsql.TxFromPgx(transaction)
 
 	sqlPub, err := wmsql.NewPublisher(
 		sqlTx,

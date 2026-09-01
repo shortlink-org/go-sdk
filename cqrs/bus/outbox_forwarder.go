@@ -52,6 +52,7 @@ func (s *forwarderState) Run(ctx context.Context) error {
 		slog.String("forwarder", s.cfg.ForwarderName),
 	)
 
+	//nolint:contextcheck // forwarder middleware takes ctx from each message, not from this call.
 	fwd, err := s.ensureForwarder()
 	if err != nil {
 		s.cfg.Logger.Error("Failed to initialize outbox forwarder",
@@ -93,6 +94,7 @@ func (s *forwarderState) Close(ctx context.Context) error {
 		return nil
 	}
 
+	//nolint:contextcheck // forwarder middleware takes ctx from each message, not from this call.
 	fwd, err := s.ensureForwarder()
 	if err != nil {
 		return err
@@ -138,6 +140,7 @@ func (s *forwarderState) Close(ctx context.Context) error {
 	}
 }
 
+//nolint:ireturn // Watermill publishers are interface-typed by design.
 func (s *forwarderState) wrapPublisher(pub wmmessage.Publisher) wmmessage.Publisher {
 	if s == nil || s.cfg == nil || pub == nil {
 		return pub
@@ -202,17 +205,19 @@ func newForwarderMonitor(log *slog.Logger, provider metric.MeterProvider, name s
 		err     error
 	)
 
-	if success, err = meter.Int64Counter(
+	success, err = meter.Int64Counter(
 		"shortlink_cqrs_outbox_forwarded_total",
 		metric.WithDescription("Total number of successfully forwarded messages"),
-	); err != nil {
+	)
+	if err != nil {
 		log.Warn("Failed to create CQRS outbox success counter", slog.String("error", err.Error()))
 	}
 
-	if fail, err = meter.Int64Counter(
+	fail, err = meter.Int64Counter(
 		"shortlink_cqrs_outbox_failed_total",
 		metric.WithDescription("Total number of failed forwarder deliveries"),
-	); err != nil {
+	)
+	if err != nil {
 		log.Warn("Failed to create CQRS outbox failure counter", slog.String("error", err.Error()))
 	}
 

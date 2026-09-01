@@ -74,7 +74,7 @@ func ServiceNameFromContext(ctx context.Context) string {
 }
 
 // SetTrace injects tracing metadata and propagates OTEL headers through Watermill message.
-func SetTrace(ctx context.Context, msg *wmmessage.Message) {
+func SetTrace(ctx context.Context, msg *wmmessage.Message) { //nolint:contextcheck // nil-ctx fallback, not a discarded parent
 	if msg == nil {
 		return
 	}

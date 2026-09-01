@@ -13,9 +13,12 @@ import (
 
 const (
 	defaultVersion = "v1"
+
+	// Segment count for a "<kind>.<name>" message name.
+	segmentsKindName = 2
 )
 
-var versionSegment = regexp.MustCompile(`^v[0-9]+$`)
+var versionSegment = regexp.MustCompile(`^v\d+$`)
 
 // MessageKind distinguishes commands from events.
 type MessageKind string
@@ -135,7 +138,7 @@ func (c nameComponents) String() string {
 	return strings.Join([]string{service, kind, name, version}, ".")
 }
 
-func buildNameComponents(v any, fallbackService, fallbackKind, fallbackVersion string) nameComponents {
+func buildNameComponents(value any, fallbackService, fallbackKind, fallbackVersion string) nameComponents {
 	comps := nameComponents{
 		Service: fallbackService,
 		Kind:    fallbackKind,
@@ -143,7 +146,7 @@ func buildNameComponents(v any, fallbackService, fallbackKind, fallbackVersion s
 		Version: fallbackVersion,
 	}
 
-	meta := metadataFromValue(v)
+	meta := metadataFromValue(value)
 	if service := meta[MetadataServiceName]; service != "" {
 		comps.Service = service
 	}
@@ -162,14 +165,14 @@ func buildNameComponents(v any, fallbackService, fallbackKind, fallbackVersion s
 
 	if comps.Name == "" {
 		// Try to extract from protobuf descriptor.
-		if msg, ok := toProto(v); ok {
+		if msg, ok := toProto(value); ok {
 			full := string(proto.MessageName(msg))
 			assignComponentsFromProto(&comps, full)
 		}
 	}
 
 	if comps.Name == "" {
-		comps.Name = camelToSnake(typeNameOf(v))
+		comps.Name = camelToSnake(typeNameOf(value))
 	}
 
 	if comps.Version == "" {
@@ -187,7 +190,7 @@ func buildNameComponents(v any, fallbackService, fallbackKind, fallbackVersion s
 	return comps
 }
 
-func assignComponentsFromProto(c *nameComponents, full string) {
+func assignComponentsFromProto(comps *nameComponents, full string) {
 	if full == "" {
 		return
 	}
@@ -200,102 +203,103 @@ func assignComponentsFromProto(c *nameComponents, full string) {
 	// This ensures canonical naming per ADR-0002: {service}.{aggregate}.{event}.{version}
 	if len(parts) > 0 {
 		typeName := parts[len(parts)-1]
-		c.Name = camelToSnake(typeName)
+		comps.Name = camelToSnake(typeName)
 
 		// For events, extract aggregate from protobuf package if Kind is still "event"
 		// Format: domain.{aggregate}.v1.TypeName -> aggregate = parts[1]
-		if c.Kind == string(KindEvent) && len(parts) >= 3 {
+		if comps.Kind == string(KindEvent) && len(parts) >= 3 {
 			// Extract aggregate from protobuf package (second segment)
 			aggregate := normalizeSegment(parts[1])
 			if aggregate != "" {
-				c.Kind = aggregate
+				comps.Kind = aggregate
 			}
 			// Remove aggregate prefix from event name if present
 			// e.g., "LinkCreated" -> "created" (if aggregate is "link")
 			eventName := camelToSnake(typeName)
 			if strings.HasPrefix(strings.ToLower(eventName), strings.ToLower(aggregate)+"_") {
-				c.Name = strings.TrimPrefix(eventName, strings.ToLower(aggregate)+"_")
+				comps.Name = strings.TrimPrefix(eventName, strings.ToLower(aggregate)+"_")
 			}
 		}
 	}
 
 	// Only extract version if it's not already set and protobuf package has version segment
-	if c.Version == "" && len(parts) >= 3 && versionSegment.MatchString(parts[len(parts)-2]) {
-		c.Version = parts[len(parts)-2]
+	if comps.Version == "" && len(parts) >= 3 && versionSegment.MatchString(parts[len(parts)-2]) {
+		comps.Version = parts[len(parts)-2]
 	}
 }
 
-func assignComponentsFromQualifiedName(c *nameComponents, qualified string) {
+func assignComponentsFromQualifiedName(comps *nameComponents, qualified string) {
 	segments := strings.Split(qualified, ".")
 	switch len(segments) {
 	case 0:
 		return
 	case 1:
-		c.Name = segments[0]
-	case 2:
-		c.Kind = segments[0]
-		c.Name = segments[1]
+		comps.Name = segments[0]
+	case segmentsKindName:
+		comps.Kind = segments[0]
+		comps.Name = segments[1]
 	default:
-		c.Service = segments[0]
-		c.Kind = segments[1]
-		c.Name = segments[len(segments)-1]
+		comps.Service = segments[0]
+		comps.Kind = segments[1]
+		comps.Name = segments[len(segments)-1]
 	}
 }
 
-func camelToSnake(s string) string {
-	if s == "" {
+func camelToSnake(input string) string {
+	if input == "" {
 		return ""
 	}
 
-	var b strings.Builder
-	b.Grow(len(s))
+	var builder strings.Builder
+	builder.Grow(len(input))
 
-	for i, r := range s {
-		if unicode.IsUpper(r) {
+	for i, char := range input {
+		if unicode.IsUpper(char) {
 			if i > 0 {
-				b.WriteByte('_')
+				builder.WriteByte('_')
 			}
 
-			b.WriteRune(unicode.ToLower(r))
+			builder.WriteRune(unicode.ToLower(char))
 		} else {
-			b.WriteRune(r)
+			builder.WriteRune(char)
 		}
 	}
 
-	return b.String()
+	return builder.String()
 }
 
-func typeNameOf(v any) string {
-	if v == nil {
+func typeNameOf(value any) string {
+	if value == nil {
 		return ""
 	}
 
-	t := reflect.TypeOf(v)
-	if t == nil {
+	typ := reflect.TypeOf(value)
+	if typ == nil {
 		return ""
 	}
 
-	for t.Kind() == reflect.Pointer {
-		if t.Elem() == nil {
+	for typ.Kind() == reflect.Pointer {
+		if typ.Elem() == nil {
 			break
 		}
 
-		t = t.Elem()
+		typ = typ.Elem()
 	}
 
-	return t.Name()
+	return typ.Name()
 }
 
-func toProto(v any) (proto.Message, bool) {
-	if v == nil {
+//nolint:ireturn // proto.Message is the protobuf runtime contract.
+func toProto(value any) (proto.Message, bool) {
+	if value == nil {
 		return nil, false
 	}
 
-	if msg, ok := v.(proto.Message); ok {
+	if msg, ok := value.(proto.Message); ok {
 		return msg, true
 	}
 
-	val := reflect.ValueOf(v)
+	val := reflect.ValueOf(value)
 	if !val.IsValid() {
 		return nil, false
 	}
@@ -303,7 +307,7 @@ func toProto(v any) (proto.Message, bool) {
 	if val.Kind() == reflect.Pointer && val.IsNil() {
 		// Create zero instance of the pointer element.
 		elem := reflect.New(val.Type().Elem())
-		if msg, ok := elem.Interface().(proto.Message); ok {
+		if msg, ok := reflect.TypeAssert[proto.Message](elem); ok {
 			return msg, true
 		}
 	}
@@ -349,17 +353,17 @@ func normalizeSegment(s string) string {
 	return strings.ToLower(strings.TrimSpace(s))
 }
 
-func normalizeVersion(v string) string {
-	v = strings.TrimSpace(v)
-	if versionSegment.MatchString(v) {
-		return strings.ToLower(v)
+func normalizeVersion(version string) string {
+	version = strings.TrimSpace(version)
+	if versionSegment.MatchString(version) {
+		return strings.ToLower(version)
 	}
 
-	if v == "" {
+	if version == "" {
 		return defaultVersion
 	}
 
-	return strings.ToLower(v)
+	return strings.ToLower(version)
 }
 
 func sanitizeTopic(name string) string {

@@ -5,6 +5,7 @@ import (
 	"sync"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	cqrsmessage "github.com/shortlink-org/go-sdk/cqrs/message"
@@ -30,7 +31,7 @@ func TestTypeRegistryConcurrentAccess(t *testing.T) {
 				},
 			}
 			err := reg.RegisterCommand(cmd)
-			require.NoError(t, err, "register command %d", i)
+			assert.NoError(t, err, "register command %d", i)
 		}(i)
 
 		go func(i int) {
@@ -43,7 +44,7 @@ func TestTypeRegistryConcurrentAccess(t *testing.T) {
 				},
 			}
 			err := reg.RegisterEvent(evt)
-			require.NoError(t, err, "register event %d", i)
+			assert.NoError(t, err, "register event %d", i)
 		}(i)
 	}
 

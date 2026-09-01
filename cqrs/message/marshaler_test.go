@@ -5,14 +5,9 @@ import (
 	"testing"
 
 	wmmessage "github.com/ThreeDotsLabs/watermill/message"
-	"google.golang.org/protobuf/runtime/protoimpl"
 )
 
-type dummyProto struct {
-	state         protoimpl.MessageState
-	sizeCache     protoimpl.SizeCache
-	unknownFields protoimpl.UnknownFields
-}
+type dummyProto struct{}
 
 func (*dummyProto) Reset()         {}
 func (*dummyProto) String() string { return "dummy" }
