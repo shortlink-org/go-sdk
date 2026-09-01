@@ -3,6 +3,7 @@ package db
 import (
 	"errors"
 	"fmt"
+	"log/slog"
 	"sort"
 	"sync"
 
@@ -11,7 +12,6 @@ import (
 
 	"github.com/shortlink-org/go-sdk/config"
 	"github.com/shortlink-org/go-sdk/db/drivers/ram"
-	"github.com/shortlink-org/go-sdk/logger"
 )
 
 // Deps carries the shared dependencies handed to every driver factory.
@@ -19,7 +19,7 @@ import (
 // Driver-specific options travel alongside them and stay opaque to this
 // package; a driver unwraps its own with DriverOptions.
 type Deps struct {
-	Log     logger.Logger
+	Log     *slog.Logger
 	Tracer  trace.TracerProvider
 	Metrics *metric.MeterProvider
 	Cfg     *config.Config

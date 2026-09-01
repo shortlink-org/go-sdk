@@ -10,7 +10,6 @@ import (
 	sdkmetric "go.opentelemetry.io/otel/sdk/metric"
 
 	"github.com/shortlink-org/go-sdk/db/drivers/postgres/replica/metrics"
-	"github.com/shortlink-org/go-sdk/logger"
 )
 
 // applicationNameReplica labels each replica pool's connections. It is the
@@ -32,7 +31,7 @@ type Config struct {
 	PrimaryConfig *pgxpool.Config
 
 	Options Options
-	Log     logger.Logger
+	Log     *slog.Logger
 	Meter   *sdkmetric.MeterProvider
 
 	// Instrument wires tracing into a pool config, so a replica query is traced
@@ -162,7 +161,7 @@ func buildPools(ctx context.Context, cfg *Config) ([]*replicaNode, error) {
 
 // verify rejects a topology that cannot support read routing, so that startup
 // fails loudly instead of the feature quietly doing nothing.
-func verify(ctx context.Context, gate *gate, nodes []*replicaNode, log logger.Logger, opts *Options) error {
+func verify(ctx context.Context, gate *gate, nodes []*replicaNode, log *slog.Logger, opts *Options) error {
 	errs := make([]error, 0, len(nodes))
 
 	for _, node := range nodes {

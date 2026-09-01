@@ -5,6 +5,7 @@ package dgraph
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"os"
 	"testing"
 	"time"
@@ -17,7 +18,6 @@ import (
 	"go.uber.org/goleak"
 
 	"github.com/shortlink-org/go-sdk/config"
-	"github.com/shortlink-org/go-sdk/logger"
 )
 
 // A Dgraph cluster is two processes: zero assigns the tablets, alpha serves
@@ -48,15 +48,7 @@ func TestDgraph(t *testing.T) {
 	cfg, err := config.New()
 	require.NoError(t, err)
 
-	logConf := logger.Configuration{
-		Level: logger.INFO_LEVEL,
-	}
-	log, err := logger.New(logConf)
-	require.NoError(t, err)
-	t.Cleanup(func() {
-		//nolint:errcheck // cleanup path: there is nothing useful to do with the error
-		_ = log.Close()
-	})
+	log := slog.New(slog.NewJSONHandler(os.Stderr, nil))
 
 	store := New(log, cfg)
 

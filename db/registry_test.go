@@ -4,6 +4,7 @@ package db
 
 import (
 	"context"
+	"log/slog"
 	"maps"
 	"slices"
 	"testing"
@@ -11,15 +12,13 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/shortlink-org/go-sdk/config"
-	"github.com/shortlink-org/go-sdk/logger"
 )
 
 //nolint:ireturn // the logger interface is what Deps takes
-func testDeps(t *testing.T) (logger.Logger, *config.Config) {
+func testDeps(t *testing.T) (*slog.Logger, *config.Config) {
 	t.Helper()
 
-	log, err := logger.New(logger.Configuration{})
-	require.NoError(t, err, "Error init a logger")
+	log := slog.New(slog.DiscardHandler)
 
 	cfg, err := config.New()
 	require.NoError(t, err, "Error init config")

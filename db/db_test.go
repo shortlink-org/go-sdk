@@ -4,21 +4,19 @@ package db
 
 import (
 	"context"
+	"log/slog"
 	"testing"
 
 	"github.com/stretchr/testify/require"
 
 	"github.com/shortlink-org/go-sdk/config"
-	"github.com/shortlink-org/go-sdk/logger"
 )
 
 func TestLink(t *testing.T) {
 	ctx := context.Background()
 
 	// Init logger
-	conf := logger.Configuration{}
-	log, err := logger.New(conf)
-	require.NoError(t, err, "Error init a logger")
+	log := slog.New(slog.DiscardHandler)
 
 	cfg, err := config.New()
 	require.NoError(t, err, "Error init config")
