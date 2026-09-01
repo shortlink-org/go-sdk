@@ -19,13 +19,12 @@ import (
 	"go.opentelemetry.io/otel/trace"
 
 	"github.com/shortlink-org/go-sdk/config"
-	"github.com/shortlink-org/go-sdk/logger"
 )
 
 // New - return implementation of db
 func New(
 	ctx context.Context,
-	log logger.Logger,
+	log *slog.Logger,
 	tracer trace.TracerProvider,
 	metrics *metric.MeterProvider,
 	cfg *config.Config,

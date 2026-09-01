@@ -18,7 +18,6 @@ import (
 
 	"github.com/shortlink-org/go-sdk/config"
 	"github.com/shortlink-org/go-sdk/flight_trace"
-	"github.com/shortlink-org/go-sdk/logger"
 )
 
 const debugTraceKey = "X-DEBUG-TRACE"
@@ -28,7 +27,7 @@ const debugTraceKey = "X-DEBUG-TRACE"
 // - The request latency exceeds FLIGHT_TRACE_LATENCY_THRESHOLD.
 func UnaryServerInterceptor(
 	flightRecorder *flight_trace.Recorder,
-	log logger.Logger,
+	log *slog.Logger,
 	cfg *config.Config,
 ) grpc.UnaryServerInterceptor {
 	cfg.SetDefault("FLIGHT_TRACE_LATENCY_THRESHOLD", "1s")
@@ -58,7 +57,7 @@ func UnaryServerInterceptor(
 
 			go func() {
 				flightRecorder.DumpToFileAsync(fileName)
-				log.InfoWithContext(ctx, "flight recorder dump triggered",
+				log.InfoContext(ctx, "flight recorder dump triggered",
 					slog.String("file", fileName),
 					slog.String("grpc.service", path.Dir(info.FullMethod)[1:]),
 					slog.String("grpc.method", path.Base(info.FullMethod)),
@@ -75,7 +74,7 @@ func UnaryServerInterceptor(
 // StreamServerInterceptor is similar to UnaryServerInterceptor but for streaming RPCs.
 func StreamServerInterceptor(
 	flightRecorder *flight_trace.Recorder,
-	log logger.Logger,
+	log *slog.Logger,
 	cfg *config.Config,
 ) grpc.StreamServerInterceptor {
 	cfg.SetDefault("FLIGHT_TRACE_LATENCY_THRESHOLD", "1s")
@@ -105,7 +104,7 @@ func StreamServerInterceptor(
 
 			go func() {
 				flightRecorder.DumpToFileAsync(fileName)
-				log.InfoWithContext(stream.Context(), "flight recorder dump triggered (stream)",
+				log.InfoContext(stream.Context(), "flight recorder dump triggered (stream)",
 					slog.String("file", fileName),
 					slog.String("grpc.service", path.Dir(info.FullMethod)[1:]),
 					slog.String("grpc.method", path.Base(info.FullMethod)),

@@ -4,6 +4,8 @@ package kafka
 
 import (
 	"context"
+	"log/slog"
+	"os"
 	"testing"
 	"time"
 
@@ -12,7 +14,6 @@ import (
 	tcredpanda "github.com/testcontainers/testcontainers-go/modules/redpanda"
 
 	"github.com/shortlink-org/go-sdk/config"
-	"github.com/shortlink-org/go-sdk/logger"
 	"github.com/shortlink-org/go-sdk/mq/query"
 )
 
@@ -25,8 +26,7 @@ func TestRedPanda(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	mq := New(cfg)
 
-	log, err := logger.New(logger.Configuration{})
-	require.NoError(t, err, "Cannot create logger")
+	log := slog.New(slog.NewJSONHandler(os.Stderr, nil))
 
 	rp, err := tcredpanda.Run(ctx,
 		"docker.redpanda.com/redpandadata/redpanda:v23.3.18",

@@ -5,64 +5,84 @@ import (
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
+	"sync"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/otel"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	tracenoop "go.opentelemetry.io/otel/trace/noop"
 
 	logger_middleware "github.com/shortlink-org/go-sdk/http/middleware/logger"
-	"github.com/shortlink-org/go-sdk/http/middleware/logger/mocks"
 )
 
 const (
-	attrKeyStatus     = "status"
-	mockVariadicSlots = 15
+	attrKeyStatus = "status"
+	bytesWritten  = 3
 )
 
-func extractAttrs(args mock.Arguments) []slog.Attr {
-	var out []slog.Attr
-
-	for _, a := range args[2:] { // skip ctx + msg
-		switch v := a.(type) {
-		case slog.Attr:
-			out = append(out, v)
-
-		case []slog.Attr: // rarely happens
-			out = append(out, v...)
-
-		case []any:
-			for _, iv := range v {
-				if attr, ok := iv.(slog.Attr); ok {
-					out = append(out, attr)
-				}
-			}
-
-		case any:
-			if attr, ok := v.(slog.Attr); ok {
-				out = append(out, attr)
-			}
-
-		default:
-			// ignore unsupported slog handler shapes in tests
-		}
-	}
-
-	return out
+// captureHandler keeps every record the middleware emits, so a test can
+// assert on the level and the attributes without a mock
+type captureHandler struct {
+	mu      sync.Mutex
+	records []slog.Record
 }
 
-// setupMockLoggerCall sets up a mock logger call that captures variadic attributes
-// without hardcoding the number of arguments
-func setupMockLoggerCall(mockLogger *mocks.MockLogger, method string, msg any) *mock.Call {
-	variadicMatchers := make([]any, mockVariadicSlots)
-	for i := range variadicMatchers {
-		variadicMatchers[i] = mock.Anything
-	}
+func (h *captureHandler) Enabled(context.Context, slog.Level) bool { return true }
 
-	return mockLogger.On(method, append([]any{mock.Anything, msg}, variadicMatchers...)...)
+// Handle stores a clone: slog.Record keeps its first attrs in an inline array
+// and the rest in a slice it may share, so holding an unmodified record past
+// the call is a documented aliasing hazard
+//
+//nolint:gocritic // slog.Handler.Handle takes the record by value; the signature is not ours
+func (h *captureHandler) Handle(_ context.Context, record slog.Record) error {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+
+	h.records = append(h.records, record.Clone())
+
+	return nil
+}
+
+//nolint:ireturn // slog.Handler is the stdlib contract
+func (h *captureHandler) WithAttrs([]slog.Attr) slog.Handler { return h }
+
+//nolint:ireturn // slog.Handler is the stdlib contract
+func (h *captureHandler) WithGroup(string) slog.Handler { return h }
+
+// only asserts the middleware logged exactly once and returns that record
+func (h *captureHandler) only(t *testing.T) slog.Record {
+	t.Helper()
+
+	h.mu.Lock()
+	defer h.mu.Unlock()
+
+	require.Len(t, h.records, 1, "the middleware must log the request exactly once")
+
+	return h.records[0]
+}
+
+// newCapturingMiddleware wires the middleware to a capturing handler
+func newCapturingMiddleware(t *testing.T) (*captureHandler, func(http.Handler) http.Handler) {
+	t.Helper()
+
+	handler := &captureHandler{mu: sync.Mutex{}, records: nil}
+
+	return handler, logger_middleware.Logger(slog.New(handler))
+}
+
+//nolint:gocritic // a test helper: copying the record here is not a hot path
+func attrsOf(record slog.Record) []slog.Attr {
+	out := make([]slog.Attr, 0, record.NumAttrs())
+
+	record.Attrs(func(attr slog.Attr) bool {
+		out = append(out, attr)
+
+		return true
+	})
+
+	return out
 }
 
 func attrsContainStatus(attrs []slog.Attr, want int64) bool {
@@ -75,18 +95,27 @@ func attrsContainStatus(attrs []slog.Attr, want int64) bool {
 	return false
 }
 
+func serve(t *testing.T, mw func(http.Handler) http.Handler, req *http.Request, next http.HandlerFunc) *httptest.ResponseRecorder {
+	t.Helper()
+
+	rr := httptest.NewRecorder()
+	mw(next).ServeHTTP(rr, req)
+
+	return rr
+}
+
 func TestLoggerMiddleware_RequestCompletedByStatus(t *testing.T) {
 	tests := []struct {
-		name       string
-		mockMethod string
-		path       string
-		setup      func(*testing.T, http.ResponseWriter)
-		wantCode   int
+		name      string
+		wantLevel slog.Level
+		path      string
+		setup     func(*testing.T, http.ResponseWriter)
+		wantCode  int
 	}{
 		{
-			name:       "info_200",
-			mockMethod: "InfoWithContext",
-			path:       "/info",
+			name:      "info_200",
+			wantLevel: slog.LevelInfo,
+			path:      "/info",
 			setup: func(t *testing.T, w http.ResponseWriter) {
 				t.Helper()
 
@@ -98,18 +127,18 @@ func TestLoggerMiddleware_RequestCompletedByStatus(t *testing.T) {
 			wantCode: http.StatusOK,
 		},
 		{
-			name:       "warn_400",
-			mockMethod: "WarnWithContext",
-			path:       "/bad",
+			name:      "warn_400",
+			wantLevel: slog.LevelWarn,
+			path:      "/bad",
 			setup: func(_ *testing.T, w http.ResponseWriter) {
 				http.Error(w, "bad request", http.StatusBadRequest)
 			},
 			wantCode: http.StatusBadRequest,
 		},
 		{
-			name:       "error_500",
-			mockMethod: "ErrorWithContext",
-			path:       "/err",
+			name:      "error_500",
+			wantLevel: slog.LevelError,
+			path:      "/err",
 			setup: func(_ *testing.T, w http.ResponseWriter) {
 				http.Error(w, "fail", http.StatusInternalServerError)
 			},
@@ -119,72 +148,48 @@ func TestLoggerMiddleware_RequestCompletedByStatus(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			mockLogger := mocks.NewMockLogger(t)
-
-			var capturedAttrs []slog.Attr
-
-			setupMockLoggerCall(mockLogger, tt.mockMethod, "request completed").Run(func(args mock.Arguments) {
-				capturedAttrs = extractAttrs(args)
-			}).Return().Maybe()
-
-			mw := logger_middleware.Logger(mockLogger)
-
-			handler := mw(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-				tt.setup(t, w)
-			}))
+			capture, mw := newCapturingMiddleware(t)
 
 			req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, tt.path, http.NoBody)
-			rr := httptest.NewRecorder()
-
-			handler.ServeHTTP(rr, req)
+			rr := serve(t, mw, req, func(w http.ResponseWriter, _ *http.Request) {
+				tt.setup(t, w)
+			})
 
 			require.Equal(t, tt.wantCode, rr.Code)
-			require.True(t, attrsContainStatus(capturedAttrs, int64(tt.wantCode)),
-				"expected status=%d in attributes", tt.wantCode)
 
-			mockLogger.AssertExpectations(t)
+			record := capture.only(t)
+			require.Equal(t, tt.wantLevel, record.Level)
+			require.Equal(t, "request completed", record.Message)
+			require.True(t, attrsContainStatus(attrsOf(record), int64(tt.wantCode)),
+				"expected status=%d in attributes", tt.wantCode)
 		})
 	}
 }
 
-// Panic recovery → 500 + ERROR
+// Panic recovery must report 500 and log the panic value with its stack
 func TestLoggerMiddleware_Panic(t *testing.T) {
-	mockLogger := mocks.NewMockLogger(t)
-
-	var capturedMsg string
-
-	var capturedAttrs []slog.Attr
-
-	setupMockLoggerCall(mockLogger, "ErrorWithContext", mock.Anything).Run(func(args mock.Arguments) {
-		if s, ok := args[1].(string); ok {
-			capturedMsg = s
-		}
-
-		capturedAttrs = extractAttrs(args)
-	}).Return().Maybe()
-
-	mw := logger_middleware.Logger(mockLogger)
-
-	handler := mw(http.HandlerFunc(func(http.ResponseWriter, *http.Request) {
-		panic("boom")
-	}))
+	capture, mw := newCapturingMiddleware(t)
 
 	req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/panic", http.NoBody)
-	rr := httptest.NewRecorder()
 
 	defer func() {
-		recover() //nolint:errcheck // recover return is the panic value, not an error
+		recover() //nolint:errcheck // recover returns the panic value, not an error
 	}()
 
-	handler.ServeHTTP(rr, req)
+	rr := serve(t, mw, req, func(http.ResponseWriter, *http.Request) {
+		panic("boom")
+	})
 
 	require.Equal(t, http.StatusInternalServerError, rr.Code)
-	require.Contains(t, capturedMsg, "panic recovered")
+
+	record := capture.only(t)
+	require.Equal(t, slog.LevelError, record.Level)
+	require.Contains(t, record.Message, "panic recovered")
 
 	hasPanic := false
 	hasStack := false
 
-	for _, attr := range capturedAttrs {
+	for _, attr := range attrsOf(record) {
 		if attr.Key == "panic" {
 			hasPanic = true
 		}
@@ -196,122 +201,75 @@ func TestLoggerMiddleware_Panic(t *testing.T) {
 
 	require.True(t, hasPanic, "expected panic attribute")
 	require.True(t, hasStack, "expected stack attribute")
-
-	mockLogger.AssertExpectations(t)
 }
 
-// BytesWritten
 func TestLoggerMiddleware_BytesWritten(t *testing.T) {
-	mockLogger := mocks.NewMockLogger(t)
-
-	var capturedAttrs []slog.Attr
-
-	setupMockLoggerCall(mockLogger, "InfoWithContext", "request completed").Run(func(args mock.Arguments) {
-		capturedAttrs = extractAttrs(args)
-	}).Return().Maybe()
-
-	mw := logger_middleware.Logger(mockLogger)
-
-	handler := mw(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-		_, err := w.Write([]byte("abc"))
-		assert.NoError(t, err)
-	}))
+	capture, mw := newCapturingMiddleware(t)
 
 	req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/bytes", http.NoBody)
-	rr := httptest.NewRecorder()
-
-	handler.ServeHTTP(rr, req)
+	serve(t, mw, req, func(w http.ResponseWriter, _ *http.Request) {
+		_, err := w.Write([]byte("abc"))
+		assert.NoError(t, err)
+	})
 
 	found := false
 
-	for _, attr := range capturedAttrs {
-		if attr.Key == "bytes" && attr.Value.Int64() == 3 {
+	for _, attr := range attrsOf(capture.only(t)) {
+		if attr.Key == "bytes" && attr.Value.Int64() == bytesWritten {
 			found = true
+
 			break
 		}
 	}
 
 	require.True(t, found, "expected bytes=3 in attributes")
-
-	mockLogger.AssertExpectations(t)
 }
 
-// Query string logged
 func TestLoggerMiddleware_QueryString(t *testing.T) {
-	mockLogger := mocks.NewMockLogger(t)
-
-	var capturedAttrs []slog.Attr
-
-	setupMockLoggerCall(mockLogger, "InfoWithContext", "request completed").Run(func(args mock.Arguments) {
-		capturedAttrs = extractAttrs(args)
-	}).Return().Maybe()
-
-	mw := logger_middleware.Logger(mockLogger)
-
-	handler := mw(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-		w.WriteHeader(http.StatusOK)
-	}))
+	capture, mw := newCapturingMiddleware(t)
 
 	req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/search?term=go", http.NoBody)
-	rr := httptest.NewRecorder()
-
-	handler.ServeHTTP(rr, req)
+	serve(t, mw, req, func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	})
 
 	found := false
 
-	for _, attr := range capturedAttrs {
+	for _, attr := range attrsOf(capture.only(t)) {
 		if attr.Key == "query" && attr.Value.String() == "term=go" {
 			found = true
+
 			break
 		}
 	}
 
 	require.True(t, found, "expected query=term=go in attributes")
-
-	mockLogger.AssertExpectations(t)
 }
 
-// Parent span must propagate trace_id + span_id
+// A parent span must propagate trace_id and span_id onto the log record
 func TestLoggerMiddleware_OtelTracePropagation(t *testing.T) {
-	tp := sdktrace.NewTracerProvider()
-
-	otel.SetTracerProvider(tp)
+	otel.SetTracerProvider(sdktrace.NewTracerProvider())
 
 	defer otel.SetTracerProvider(tracenoop.NewTracerProvider())
 
-	mockLogger := mocks.NewMockLogger(t)
+	capture, mw := newCapturingMiddleware(t)
 
-	var capturedAttrs []slog.Attr
-
-	setupMockLoggerCall(mockLogger, "InfoWithContext", "request completed").Run(func(args mock.Arguments) {
-		capturedAttrs = extractAttrs(args)
-	}).Return().Maybe()
-
-	mw := logger_middleware.Logger(mockLogger)
-
-	tracer := otel.Tracer("test-tracer")
-
-	ctx, span := tracer.Start(context.Background(), "parent-span")
+	ctx, span := otel.Tracer("test-tracer").Start(context.Background(), "parent-span")
 
 	defer span.End()
 
-	spanCtx := span.SpanContext()
-	traceID := spanCtx.TraceID().String()
-	spanID := spanCtx.SpanID().String()
+	traceID := span.SpanContext().TraceID().String()
+	spanID := span.SpanContext().SpanID().String()
 
 	req := httptest.NewRequestWithContext(ctx, http.MethodGet, "/otel", http.NoBody)
-	rr := httptest.NewRecorder()
-
-	handler := mw(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+	serve(t, mw, req, func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
-	}))
-
-	handler.ServeHTTP(rr, req)
+	})
 
 	hasTraceID := false
 	hasSpanID := false
 
-	for _, attr := range capturedAttrs {
+	for _, attr := range attrsOf(capture.only(t)) {
 		if attr.Key == "trace_id" && attr.Value.String() == traceID {
 			hasTraceID = true
 		}
@@ -323,56 +281,32 @@ func TestLoggerMiddleware_OtelTracePropagation(t *testing.T) {
 
 	require.True(t, hasTraceID, "trace_id must be logged")
 	require.True(t, hasSpanID, "span_id must be logged")
-
-	mockLogger.AssertExpectations(t)
 }
 
-// No span in context → no trace_id / span_id fields
+// Without a span in context there is nothing to correlate, so neither field
+// may be emitted
 func TestLoggerMiddleware_Otel_NoSpan(t *testing.T) {
-	mockLogger := mocks.NewMockLogger(t)
-
-	var capturedAttrs []slog.Attr
-
-	setupMockLoggerCall(mockLogger, "InfoWithContext", "request completed").Run(func(args mock.Arguments) {
-		capturedAttrs = extractAttrs(args)
-	}).Return().Maybe()
-
-	mw := logger_middleware.Logger(mockLogger)
+	capture, mw := newCapturingMiddleware(t)
 
 	req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/nospan", http.NoBody)
-	rr := httptest.NewRecorder()
-
-	handler := mw(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+	serve(t, mw, req, func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
-	}))
+	})
 
-	handler.ServeHTTP(rr, req)
-
-	for _, attr := range capturedAttrs {
+	for _, attr := range attrsOf(capture.only(t)) {
 		require.NotEqual(t, "trace_id", attr.Key, "should not have trace_id")
 		require.NotEqual(t, "span_id", attr.Key, "should not have span_id")
 	}
-
-	mockLogger.AssertExpectations(t)
 }
 
-// Child span created inside handler must override parent
+// A child span started inside the handler must not displace the span the
+// middleware logs, which is the one it saw on the way in
 func TestLoggerMiddleware_Otel_ChildSpan(t *testing.T) {
-	tp := sdktrace.NewTracerProvider()
-
-	otel.SetTracerProvider(tp)
+	otel.SetTracerProvider(sdktrace.NewTracerProvider())
 
 	defer otel.SetTracerProvider(tracenoop.NewTracerProvider())
 
-	mockLogger := mocks.NewMockLogger(t)
-
-	var capturedAttrs []slog.Attr
-
-	setupMockLoggerCall(mockLogger, "InfoWithContext", "request completed").Run(func(args mock.Arguments) {
-		capturedAttrs = extractAttrs(args)
-	}).Return().Maybe()
-
-	mw := logger_middleware.Logger(mockLogger)
+	capture, mw := newCapturingMiddleware(t)
 
 	tracer := otel.Tracer("test-tracer")
 
@@ -388,34 +322,27 @@ func TestLoggerMiddleware_Otel_ChildSpan(t *testing.T) {
 	childIDsCh := make(chan spanIDs, 1)
 
 	req := httptest.NewRequestWithContext(ctx, http.MethodGet, "/child", http.NoBody)
-	rr := httptest.NewRecorder()
-
-	handler := mw(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	serve(t, mw, req, func(w http.ResponseWriter, r *http.Request) {
 		_, childSpan := tracer.Start(r.Context(), "child")
 
 		defer childSpan.End()
 
-		sc := childSpan.SpanContext()
 		childIDsCh <- spanIDs{
-			traceID: sc.TraceID().String(),
-			spanID:  sc.SpanID().String(),
+			traceID: childSpan.SpanContext().TraceID().String(),
+			spanID:  childSpan.SpanContext().SpanID().String(),
 		}
 
 		w.WriteHeader(http.StatusOK)
-	}))
-
-	handler.ServeHTTP(rr, req)
+	})
 
 	childIDs := <-childIDsCh
-
-	parentCtx := parent.SpanContext()
-	parentTraceID := parentCtx.TraceID().String()
-	parentSpanID := parentCtx.SpanID().String()
+	parentTraceID := parent.SpanContext().TraceID().String()
+	parentSpanID := parent.SpanContext().SpanID().String()
 
 	hasTraceID := false
 	hasSpanID := false
 
-	for _, attr := range capturedAttrs {
+	for _, attr := range attrsOf(capture.only(t)) {
 		if attr.Key == "trace_id" && attr.Value.String() == parentTraceID {
 			hasTraceID = true
 		}
@@ -428,11 +355,6 @@ func TestLoggerMiddleware_Otel_ChildSpan(t *testing.T) {
 	require.True(t, hasTraceID, "parent trace_id must be logged")
 	require.True(t, hasSpanID, "parent span_id must be logged")
 
-	childTraceID := childIDs.traceID
-	childSpanID := childIDs.spanID
-
-	require.Equal(t, parentTraceID, childTraceID, "child should have same trace_id as parent")
-	require.NotEqual(t, parentSpanID, childSpanID, "child should have different span_id than parent")
-
-	mockLogger.AssertExpectations(t)
+	require.Equal(t, parentTraceID, childIDs.traceID, "child should have same trace_id as parent")
+	require.NotEqual(t, parentSpanID, childIDs.spanID, "child should have different span_id than parent")
 }

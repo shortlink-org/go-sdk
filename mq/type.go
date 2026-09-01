@@ -2,9 +2,9 @@ package mq
 
 import (
 	"context"
+	"log/slog"
 
 	"github.com/shortlink-org/go-sdk/config"
-	"github.com/shortlink-org/go-sdk/logger"
 	"github.com/shortlink-org/go-sdk/mq/query"
 )
 
@@ -12,7 +12,7 @@ import (
 //
 // Deprecated: Use github.com/shortlink-org/go-sdk/watermill instead.
 type MQ interface {
-	Init(ctx context.Context, log logger.Logger) error
+	Init(ctx context.Context, log *slog.Logger) error
 
 	// Pub/Sub a pattern
 	Publish(ctx context.Context, target string, routingKey, payload []byte) error
@@ -24,7 +24,7 @@ type MQ interface {
 //
 // Deprecated: Use github.com/shortlink-org/go-sdk/watermill instead.
 type DataBus struct {
-	log    logger.Logger
+	log    *slog.Logger
 	mq     MQ
 	typeMQ string
 	cfg    *config.Config

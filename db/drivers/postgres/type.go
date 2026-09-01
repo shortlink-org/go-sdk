@@ -2,6 +2,7 @@ package postgres
 
 import (
 	"context"
+	"log/slog"
 	"sync"
 
 	"github.com/jackc/pgx/v5"
@@ -10,7 +11,6 @@ import (
 
 	"github.com/shortlink-org/go-sdk/config"
 	"github.com/shortlink-org/go-sdk/db/drivers/postgres/replica"
-	"github.com/shortlink-org/go-sdk/logger"
 )
 
 // AfterConnectFunc is a callback executed after each new connection is established.
@@ -44,7 +44,7 @@ type Store struct {
 	tracer       Tracer
 	metrics      *metric.MeterProvider
 	cfg          *config.Config
-	log          logger.Logger
+	log          *slog.Logger
 	afterConnect AfterConnectFunc
 
 	// opts are kept rather than applied at construction, so that Init can lay

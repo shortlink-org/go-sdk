@@ -8,7 +8,6 @@ import (
 	"github.com/minio/minio-go/v7/pkg/credentials"
 
 	"github.com/shortlink-org/go-sdk/config"
-	"github.com/shortlink-org/go-sdk/logger"
 )
 
 type Client struct {
@@ -16,7 +15,7 @@ type Client struct {
 }
 
 // New creates a new S3 client
-func New(ctx context.Context, log logger.Logger, cfg *config.Config) (*Client, error) {
+func New(ctx context.Context, log *slog.Logger, cfg *config.Config) (*Client, error) {
 	cfg.SetDefault("S3_ENDPOINT", "localhost:9000")
 	cfg.SetDefault("S3_ACCESS_KEY_ID", "minio_access_key")
 	cfg.SetDefault("S3_SECRET_ACCESS_KEY", "minio_secret_key")

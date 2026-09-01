@@ -18,7 +18,6 @@ import (
 	"google.golang.org/grpc/metadata"
 
 	"github.com/shortlink-org/go-sdk/auth/session"
-	"github.com/shortlink-org/go-sdk/logger"
 )
 
 const (
@@ -55,7 +54,7 @@ type InterceptorConfig struct {
 	// Default: /grpc.reflection, /grpc.health
 	SkipMethods []string
 	// Logger logs authentication failures (optional).
-	Logger logger.Logger
+	Logger *slog.Logger
 }
 
 // UnaryServerInterceptor validates JWT tokens on incoming unary requests.
@@ -108,7 +107,11 @@ func StreamServerInterceptor(validator *Validator, cfg InterceptorConfig) grpc.S
 	}
 }
 
-func validateRequest(ctx context.Context, validator *Validator, method string, log logger.Logger) (context.Context, error) {
+func validateRequest(ctx context.Context, validator *Validator, method string, log *slog.Logger) (context.Context, error) {
+	if log == nil {
+		log = slog.New(slog.DiscardHandler)
+	}
+
 	start := time.Now()
 
 	ctx, span := tracer.Start(ctx, "authjwt.ValidateToken",
@@ -126,12 +129,10 @@ func validateRequest(ctx context.Context, validator *Validator, method string, l
 		span.RecordError(tokenErr)
 		span.SetStatus(codes.Error, tokenErr.Error())
 
-		if log != nil {
-			log.Warn("jwt validation failed",
-				slog.String("method", method),
-				slog.String("reason", outcome),
-			)
-		}
+		log.Warn("jwt validation failed",
+			slog.String("method", method),
+			slog.String("reason", outcome),
+		)
 
 		return nil, ToGRPCStatus(tokenErr)
 	}
@@ -144,12 +145,10 @@ func validateRequest(ctx context.Context, validator *Validator, method string, l
 		span.RecordError(result.Error)
 		span.SetStatus(codes.Error, result.Error.Error())
 
-		if log != nil {
-			log.Warn("jwt validation failed",
-				slog.String("method", method),
-				slog.String("reason", outcome),
-			)
-		}
+		log.Warn("jwt validation failed",
+			slog.String("method", method),
+			slog.String("reason", outcome),
+		)
 
 		return nil, ToGRPCStatus(result.Error)
 	}

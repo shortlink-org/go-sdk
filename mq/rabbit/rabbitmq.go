@@ -11,7 +11,6 @@ import (
 	amqp "github.com/rabbitmq/amqp091-go"
 
 	"github.com/shortlink-org/go-sdk/config"
-	"github.com/shortlink-org/go-sdk/logger"
 )
 
 type MQ struct {
@@ -23,7 +22,7 @@ type MQ struct {
 	config *Config
 	cfg    *config.Config
 
-	log  logger.Logger
+	log  *slog.Logger
 	conn *amqp.Connection
 	ch   *amqp.Channel
 
@@ -31,7 +30,7 @@ type MQ struct {
 	state atomic.Int32
 }
 
-func New(log logger.Logger, cfg *config.Config) *MQ {
+func New(log *slog.Logger, cfg *config.Config) *MQ {
 	mq := &MQ{
 		log:    log,
 		cfg:    cfg,
@@ -47,7 +46,7 @@ func New(log logger.Logger, cfg *config.Config) *MQ {
 // Init initializes the RabbitMQ connection and sets up the channel.
 // It also sets up a graceful shutdown mechanism to close the connection and channel
 // when the context is done.
-func (mq *MQ) Init(ctx context.Context, log logger.Logger) error {
+func (mq *MQ) Init(ctx context.Context, log *slog.Logger) error {
 	// connect to RabbitMQ server
 	err := mq.Dial()
 	if err != nil {

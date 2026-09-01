@@ -8,15 +8,13 @@ import (
 
 	"github.com/go-chi/chi/v5/middleware"
 	"go.opentelemetry.io/otel/trace"
-
-	"github.com/shortlink-org/go-sdk/logger"
 )
 
 type chilogger struct {
-	log logger.Logger
+	log *slog.Logger
 }
 
-func Logger(log logger.Logger) func(next http.Handler) http.Handler {
+func Logger(log *slog.Logger) func(next http.Handler) http.Handler {
 	return chilogger{log: log}.middleware
 }
 
@@ -34,7 +32,7 @@ func (c chilogger) middleware(next http.Handler) http.Handler {
 
 			// Recover panic if happened
 			if rec := recover(); rec != nil {
-				c.log.ErrorWithContext(
+				c.log.ErrorContext(
 					req.Context(),
 					"panic recovered",
 					slog.Any("panic", rec),
@@ -79,11 +77,11 @@ func (c chilogger) middleware(next http.Handler) http.Handler {
 			// Log level depending on status
 			switch {
 			case status >= http.StatusInternalServerError:
-				c.log.ErrorWithContext(req.Context(), "request completed", fields...)
+				c.log.LogAttrs(req.Context(), slog.LevelError, "request completed", fields...)
 			case status >= http.StatusBadRequest:
-				c.log.WarnWithContext(req.Context(), "request completed", fields...)
+				c.log.LogAttrs(req.Context(), slog.LevelWarn, "request completed", fields...)
 			default:
-				c.log.InfoWithContext(req.Context(), "request completed", fields...)
+				c.log.LogAttrs(req.Context(), slog.LevelInfo, "request completed", fields...)
 			}
 		}()
 

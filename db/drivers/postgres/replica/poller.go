@@ -211,7 +211,7 @@ func (g *gate) probePrimary(ctx context.Context) {
 	g.pmu.Unlock()
 
 	if previous != 0 && timeline != 0 && previous != timeline {
-		g.logWarn("postgres: primary timeline changed, watermarks from the previous timeline are no longer comparable",
+		g.log.LogAttrs(ctx, slog.LevelWarn, "postgres: primary timeline changed, watermarks from the previous timeline are no longer comparable",
 			slog.Uint64("previous", uint64(previous)),
 			slog.Uint64("current", uint64(timeline)),
 		)
@@ -256,7 +256,7 @@ func (g *gate) probeReplica(ctx context.Context, node *replicaNode) {
 
 		if !alreadyKnown {
 			g.metrics.Promotion(ctx, node.host)
-			g.logWarn("postgres: replica left recovery and was quarantined",
+			g.log.LogAttrs(ctx, slog.LevelWarn, "postgres: replica left recovery and was quarantined",
 				slog.String("server.address", node.host),
 			)
 		}
@@ -303,7 +303,7 @@ func (g *gate) resolveSystemID(ctx context.Context) {
 
 	err := g.primary.QueryRow(ctx, systemIDSQL).Scan(&systemID)
 	if err != nil {
-		g.logDebug("postgres: system identifier unavailable, lineage checks will use the timeline alone",
+		g.log.LogAttrs(ctx, slog.LevelDebug, "postgres: system identifier unavailable, lineage checks will use the timeline alone",
 			slog.String("error", err.Error()),
 		)
 
@@ -365,20 +365,4 @@ func isZeroDelay(value string) bool {
 	amount, err := strconv.ParseUint(trimmed[:end], decimalBase, delayBits)
 
 	return err != nil || amount == 0 //nolint:gosec // compared, never converted
-}
-
-func (g *gate) logWarn(msg string, fields ...slog.Attr) {
-	if g.log == nil {
-		return
-	}
-
-	g.log.Warn(msg, fields...)
-}
-
-func (g *gate) logDebug(msg string, fields ...slog.Attr) {
-	if g.log == nil {
-		return
-	}
-
-	g.log.Debug(msg, fields...)
 }

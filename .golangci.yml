@@ -12,7 +12,6 @@ linters:
   disable:
     - exhaustruct      # deprecated since v2.13.0, superseded by exhaustruct_v5
     - godox            # incorrect results in our project
-    - depguard         # too restrictive for our use case
     - gochecknoglobals # too noisy
     - wsl              # deprecated
     - wrapcheck        # too much for sdk code
@@ -31,6 +30,14 @@ linters:
       - ".*mocks.+"              # Generated mocks
       - "wire_gen.go"            # Wire‑generated
     rules:
+      # The logger module is allowed to import itself and its tracer
+      # subpackage. Anchoring on ^logger/ scopes this to that module only:
+      # http/middleware/logger and grpc/middleware/logger are still guarded,
+      # since their paths start with http/ and grpc/.
+      - path: "^logger/"
+        linters:
+          - depguard
+
       - path: "(.+)_test.go"
         linters:
           - wrapcheck
@@ -42,6 +49,17 @@ linters:
 
   # Per‑linter tuning ---------------------------------------------------------
   settings:
+    # Keeps go-sdk/logger out of the dependency graph. Every module in the SDK
+    # takes the standard library's *slog.Logger; go-sdk/logger exists only to
+    # supply the OpenTelemetry slog.Handler, and importing it in order to log
+    # is what this guards against.
+    depguard:
+      rules:
+        sdk-logger:
+          deny:
+            - pkg: github.com/shortlink-org/go-sdk/logger
+              desc: "take a *slog.Logger instead; go-sdk/logger is only for its slog.Handler"
+
     wsl_v5:
       allow-first-in-block: true
       allow-whole-block: false

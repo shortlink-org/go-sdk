@@ -10,51 +10,35 @@ import (
 	"github.com/ThreeDotsLabs/watermill/message"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/propagation"
-
-	"github.com/shortlink-org/go-sdk/logger"
 )
 
+//nolint:gochecknoglobals // package-level default, mirroring slog.Default()
 var (
-	logOnce   sync.Once
 	logMu     sync.RWMutex
-	pkgLogger logger.Logger
+	pkgLogger = slog.Default()
 )
 
-//nolint:ireturn // the interface is the library's own contract
-func getLogger() logger.Logger {
-	logOnce.Do(func() {
-		l, err := logger.New(logger.Default())
-		if err != nil {
-			panic(fmt.Sprintf("dlq logger init failed: %v", err))
-		}
+// SetLogger plugs a service's configured logger into the DLQ helpers. A nil
+// logger restores the default rather than being ignored.
+func SetLogger(log *slog.Logger) {
+	logMu.Lock()
+	defer logMu.Unlock()
 
-		logMu.Lock()
-		pkgLogger = l
-		logMu.Unlock()
-	})
+	if log == nil {
+		pkgLogger = slog.Default()
 
+		return
+	}
+
+	pkgLogger = log
+}
+
+// Logger reports the logger currently used by the DLQ helpers.
+func Logger() *slog.Logger {
 	logMu.RLock()
 	defer logMu.RUnlock()
 
 	return pkgLogger
-}
-
-// SetLogger allows services to plug their configured logger into DLQ helpers.
-func SetLogger(log logger.Logger) {
-	if log == nil {
-		return
-	}
-
-	logMu.Lock()
-	pkgLogger = log
-	logMu.Unlock()
-}
-
-// Logger exposes the logger currently used by the DLQ helpers.
-//
-//nolint:ireturn // the interface is the library's own contract
-func Logger() logger.Logger {
-	return getLogger()
 }
 
 // Preconditions PublishDLQ refuses to guess at.
@@ -90,7 +74,7 @@ func PublishDLQ(ctx context.Context, publisher message.Publisher, topic string, 
 	otel.GetTextMapPropagator().Inject(ctx, propagation.MapCarrier(msg.Metadata))
 
 	log := Logger()
-	log.DebugWithContext(ctx, "Publishing DLQ message",
+	log.DebugContext(ctx, "Publishing DLQ message",
 		slog.String("topic", topic),
 		slog.String("reason", event.Reason),
 		slog.String("message_id", msg.UUID),
@@ -98,7 +82,7 @@ func PublishDLQ(ctx context.Context, publisher message.Publisher, topic string, 
 
 	err = publisher.Publish(topic, msg)
 	if err != nil {
-		log.ErrorWithContext(ctx, "Failed to publish DLQ message",
+		log.ErrorContext(ctx, "Failed to publish DLQ message",
 			slog.String("topic", topic),
 			slog.String("reason", event.Reason),
 			slog.String("message_id", msg.UUID),
@@ -108,7 +92,7 @@ func PublishDLQ(ctx context.Context, publisher message.Publisher, topic string, 
 		return fmt.Errorf("publish dlq message: %w", err)
 	}
 
-	log.InfoWithContext(ctx, "Published DLQ message",
+	log.InfoContext(ctx, "Published DLQ message",
 		slog.String("topic", topic),
 		slog.String("reason", event.Reason),
 		slog.String("message_id", msg.UUID),

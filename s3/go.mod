@@ -4,7 +4,6 @@ go 1.27.0
 
 require (
 	github.com/minio/minio-go/v7 v7.3.0
-	github.com/shortlink-org/go-sdk/logger v0.0.0-20260423005905-959e3e589a42
 	github.com/stretchr/testify v1.12.1
 	github.com/testcontainers/testcontainers-go v0.44.0
 	go.uber.org/goleak v1.3.0
@@ -12,7 +11,7 @@ require (
 
 require (
 	github.com/Masterminds/semver/v3 v3.5.0 // indirect
-	github.com/Unleash/unleash-go-sdk/v6 v6.5.0 // indirect
+	github.com/Unleash/unleash-go-sdk/v6 v6.5.1 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
 	github.com/containerd/errdefs v1.0.0 // indirect
 	github.com/containerd/errdefs/pkg v0.3.0 // indirect
@@ -90,7 +89,6 @@ require (
 	golang.org/x/net v0.58.0 // indirect
 	golang.org/x/sys v0.47.0 // indirect
 	golang.org/x/text v0.41.0 // indirect
-	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
 
 replace github.com/shortlink-org/go-sdk/config => ../config

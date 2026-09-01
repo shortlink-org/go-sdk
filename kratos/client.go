@@ -7,18 +7,17 @@ import (
 
 	ory "github.com/ory/client-go"
 	"github.com/shortlink-org/go-sdk/config"
-	"github.com/shortlink-org/go-sdk/logger"
 	"github.com/spf13/viper"
 )
 
 // Client wraps Ory Kratos Admin API client for getting user email by user ID
 type Client struct {
 	client *ory.APIClient
-	log    logger.Logger
+	log    *slog.Logger
 }
 
 // New creates a new Kratos Admin API client
-func New(log logger.Logger, cfg *config.Config) (*Client, error) {
+func New(log *slog.Logger, cfg *config.Config) (*Client, error) {
 	viper.AutomaticEnv()
 	kratosAdminURL := viper.GetString("KRATOS_ADMIN_URL")
 	if kratosAdminURL == "" {
@@ -45,7 +44,7 @@ func New(log logger.Logger, cfg *config.Config) (*Client, error) {
 func (c *Client) GetUserEmail(ctx context.Context, userID string) (string, error) {
 	identity, resp, err := c.client.IdentityAPI.GetIdentity(ctx, userID).Execute()
 	if err != nil {
-		c.log.ErrorWithContext(ctx, "failed to get identity from Kratos",
+		c.log.ErrorContext(ctx, "failed to get identity from Kratos",
 			slog.String("user_id", userID),
 			slog.String("error", err.Error()),
 		)
@@ -56,7 +55,7 @@ func (c *Client) GetUserEmail(ctx context.Context, userID string) (string, error
 	}
 
 	if resp.StatusCode != 200 {
-		c.log.ErrorWithContext(ctx, "unexpected status code from Kratos",
+		c.log.ErrorContext(ctx, "unexpected status code from Kratos",
 			slog.String("user_id", userID),
 			slog.Int("status_code", resp.StatusCode),
 		)
@@ -69,7 +68,7 @@ func (c *Client) GetUserEmail(ctx context.Context, userID string) (string, error
 	// Traits is of type map[string]interface{}
 	traits, ok := identity.Traits.(map[string]interface{})
 	if !ok || traits == nil {
-		c.log.ErrorWithContext(ctx, "identity traits is not a valid map or nil",
+		c.log.ErrorContext(ctx, "identity traits is not a valid map or nil",
 			slog.String("user_id", userID),
 		)
 
@@ -78,7 +77,7 @@ func (c *Client) GetUserEmail(ctx context.Context, userID string) (string, error
 
 	emailInterface, exists := traits["email"]
 	if !exists {
-		c.log.ErrorWithContext(ctx, "email not found in identity traits",
+		c.log.ErrorContext(ctx, "email not found in identity traits",
 			slog.String("user_id", userID),
 		)
 
@@ -87,7 +86,7 @@ func (c *Client) GetUserEmail(ctx context.Context, userID string) (string, error
 
 	email, ok := emailInterface.(string)
 	if !ok || email == "" {
-		c.log.ErrorWithContext(ctx, "email is not a valid string or empty",
+		c.log.ErrorContext(ctx, "email is not a valid string or empty",
 			slog.String("user_id", userID),
 		)
 

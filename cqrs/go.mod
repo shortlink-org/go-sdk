@@ -3,7 +3,6 @@ module github.com/shortlink-org/go-sdk/cqrs
 go 1.27.0
 
 replace (
-	github.com/shortlink-org/go-sdk/logger => ../logger
 	github.com/shortlink-org/go-sdk/uow => ../uow
 	github.com/shortlink-org/go-sdk/watermill => ../watermill
 )
@@ -13,7 +12,6 @@ require (
 	github.com/ThreeDotsLabs/watermill-sql/v4 v4.1.5
 	github.com/google/uuid v1.6.0
 	github.com/jackc/pgx/v5 v5.10.0
-	github.com/shortlink-org/go-sdk/logger v0.0.0-20260423005905-959e3e589a42
 	github.com/shortlink-org/go-sdk/uow v0.0.0-00010101000000-000000000000
 	github.com/shortlink-org/go-sdk/watermill v0.0.0-00010101000000-000000000000
 	github.com/sony/gobreaker v1.0.0
@@ -32,7 +30,7 @@ require (
 	github.com/Azure/go-ansiterm v0.0.0-20250102033503-faa5f7b0171c // indirect
 	github.com/Masterminds/semver/v3 v3.5.0 // indirect
 	github.com/Microsoft/go-winio v0.6.2 // indirect
-	github.com/Unleash/unleash-go-sdk/v6 v6.5.0 // indirect
+	github.com/Unleash/unleash-go-sdk/v6 v6.5.1 // indirect
 	github.com/cenkalti/backoff/v4 v4.3.0 // indirect
 	github.com/cenkalti/backoff/v5 v5.0.3 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
@@ -100,5 +98,4 @@ require (
 	golang.org/x/sync v0.22.0 // indirect
 	golang.org/x/sys v0.47.0 // indirect
 	golang.org/x/text v0.41.0 // indirect
-	gopkg.in/yaml.v3 v3.0.1 // indirect
 )

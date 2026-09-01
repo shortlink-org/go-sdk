@@ -2,6 +2,7 @@ package postgres
 
 import (
 	"context"
+	"log/slog"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -9,7 +10,6 @@ import (
 
 	"github.com/shortlink-org/go-sdk/db/drivers/postgres/replica"
 	"github.com/shortlink-org/go-sdk/db/drivers/postgres/replica/sqlclass"
-	"github.com/shortlink-org/go-sdk/logger"
 )
 
 // WithLogger gives the driver a logger. Without one, the replica poller stays
@@ -18,7 +18,7 @@ import (
 //
 // The db.New constructor wires this from its own deps; set it only when
 // building the store directly.
-func WithLogger(log logger.Logger) Option {
+func WithLogger(log *slog.Logger) Option {
 	return func(s *Store) {
 		s.log = log
 	}

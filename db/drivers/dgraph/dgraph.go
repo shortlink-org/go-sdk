@@ -3,12 +3,12 @@ package dgraph
 import (
 	"context"
 	"fmt"
+	"log/slog"
 
 	"github.com/dgraph-io/dgo/v250"
 	"github.com/dgraph-io/dgo/v250/protos/api"
 
 	"github.com/shortlink-org/go-sdk/config"
-	"github.com/shortlink-org/go-sdk/logger"
 )
 
 // Config - config
@@ -18,13 +18,13 @@ type Config struct {
 
 // Store - store struct
 type Store struct {
-	log    logger.Logger
+	log    *slog.Logger
 	client *dgo.Dgraph
 	config Config
 	cfg    *config.Config
 }
 
-func New(log logger.Logger, cfg *config.Config) *Store {
+func New(log *slog.Logger, cfg *config.Config) *Store {
 	return &Store{
 		log: log,
 		config: Config{
@@ -108,7 +108,7 @@ func (s *Store) migrate(ctx context.Context) error {
 	defer func() {
 		errDiscard := txn.Discard(ctx)
 		if errDiscard != nil {
-			s.log.ErrorWithContext(ctx, errDiscard.Error())
+			s.log.ErrorContext(ctx, errDiscard.Error())
 		}
 	}()
 

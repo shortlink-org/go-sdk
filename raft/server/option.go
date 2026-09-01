@@ -1,15 +1,14 @@
 package server
 
 import (
+	"log/slog"
 	"time"
-
-	"github.com/shortlink-org/go-sdk/logger"
 )
 
 type Option func(*Server)
 
 // WithLogger sets the logger for the server
-func WithLogger(log logger.Logger) Option {
+func WithLogger(log *slog.Logger) Option {
 	return func(s *Server) {
 		s.logger = log
 	}

@@ -3,6 +3,7 @@ package bus
 import (
 	"database/sql"
 	"fmt"
+	"log/slog"
 	"strings"
 
 	"github.com/ThreeDotsLabs/watermill"
@@ -10,8 +11,6 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/jackc/pgx/v5/stdlib"
 	"go.opentelemetry.io/otel/metric"
-
-	"github.com/shortlink-org/go-sdk/logger"
 )
 
 const defaultForwarderTopic = "shortlink_cqrs_outbox"
@@ -59,7 +58,7 @@ type OutboxConfig struct {
 	Subscriber    wmmessage.Subscriber
 	RealPublisher wmmessage.Publisher
 	ForwarderName string
-	Logger        logger.Logger
+	Logger        *slog.Logger
 	MeterProvider metric.MeterProvider
 }
 
@@ -182,7 +181,7 @@ func (c *OutboxConfig) prepare() error {
 	}
 
 	if c.Logger == nil {
-		return errOutboxMissingLogger
+		c.Logger = slog.New(slog.DiscardHandler)
 	}
 
 	if c.MeterProvider == nil {

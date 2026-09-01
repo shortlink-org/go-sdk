@@ -8,11 +8,10 @@ import (
 	"strings"
 
 	"github.com/shortlink-org/go-sdk/config"
-	"github.com/shortlink-org/go-sdk/logger"
 )
 
 // Middleware creates a CSRF protection middleware using Go's built-in CrossOriginProtection
-func Middleware(loggerInstance logger.Logger, cfg *config.Config) func(http.Handler) http.Handler {
+func Middleware(loggerInstance *slog.Logger, cfg *config.Config) func(http.Handler) http.Handler {
 	// Initialize CrossOriginProtection
 	antiCSRF := http.NewCrossOriginProtection()
 
@@ -26,7 +25,7 @@ func Middleware(loggerInstance logger.Logger, cfg *config.Config) func(http.Hand
 }
 
 // configureTrustedOrigins sets up trusted origins from environment variables
-func configureTrustedOrigins(antiCSRF *http.CrossOriginProtection, loggerInstance logger.Logger, cfg *config.Config) {
+func configureTrustedOrigins(antiCSRF *http.CrossOriginProtection, loggerInstance *slog.Logger, cfg *config.Config) {
 	// Set default environment variable names
 	cfg.SetDefault("CSRF_TRUSTED_ORIGINS_ENV", "CSRF_TRUSTED_ORIGINS")
 	cfg.SetDefault("CSRF_TRUSTED_ORIGINS", "")

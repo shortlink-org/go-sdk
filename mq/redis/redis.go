@@ -12,7 +12,6 @@ import (
 	"github.com/shortlink-org/go-sdk/config"
 	"github.com/shortlink-org/go-sdk/db"
 	dbredis "github.com/shortlink-org/go-sdk/db/drivers/redis"
-	"github.com/shortlink-org/go-sdk/logger"
 	"github.com/shortlink-org/go-sdk/mq/query"
 )
 
@@ -30,7 +29,7 @@ func New(cfg *config.Config) *Redis {
 	return &Redis{cfg: cfg}
 }
 
-func (r *Redis) Init(ctx context.Context, log logger.Logger) error {
+func (r *Redis) Init(ctx context.Context, log *slog.Logger) error {
 	mq := dbredis.New(trace.NewNoopTracerProvider(), metric.NewMeterProvider(), r.cfg)
 
 	err := mq.Init(ctx)

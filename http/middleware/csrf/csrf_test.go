@@ -2,6 +2,7 @@ package csrf
 
 import (
 	"context"
+	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -10,7 +11,6 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/shortlink-org/go-sdk/config"
-	"github.com/shortlink-org/go-sdk/logger"
 )
 
 func TestMiddleware(t *testing.T) {
@@ -97,10 +97,7 @@ func TestMiddleware(t *testing.T) {
 			})
 
 			// Apply CSRF middleware
-			var loggerCfg logger.Configuration
-
-			logInstance, err := logger.New(loggerCfg)
-			require.NoError(t, err)
+			logInstance := slog.New(slog.DiscardHandler)
 
 			log := logInstance
 			middleware := Middleware(log, cfg)
@@ -250,10 +247,7 @@ func TestConfigureTrustedOrigins(t *testing.T) {
 
 			antiCSRF := http.NewCrossOriginProtection()
 
-			var loggerCfg logger.Configuration
-
-			logInstance, err := logger.New(loggerCfg)
-			require.NoError(t, err)
+			logInstance := slog.New(slog.DiscardHandler)
 
 			log := logInstance
 
@@ -312,10 +306,7 @@ func TestCustomEnvironmentVariable(t *testing.T) {
 	})
 
 	// Apply middleware
-	var loggerCfg logger.Configuration
-
-	logInstance, err := logger.New(loggerCfg)
-	require.NoError(t, err)
+	logInstance := slog.New(slog.DiscardHandler)
 
 	log := logInstance
 	middleware := Middleware(log, appCfg)
@@ -353,10 +344,7 @@ func TestViperConfiguration(t *testing.T) {
 	})
 
 	// Apply middleware
-	var cfg logger.Configuration
-
-	logInstance, err := logger.New(cfg)
-	require.NoError(t, err)
+	logInstance := slog.New(slog.DiscardHandler)
 
 	log := logInstance
 	middleware := Middleware(log, appCfg)
@@ -381,10 +369,7 @@ func BenchmarkMiddleware(b *testing.B) {
 		w.WriteHeader(http.StatusOK)
 	})
 
-	var loggerCfg logger.Configuration
-
-	logInstance, err := logger.New(loggerCfg)
-	require.NoError(b, err)
+	logInstance := slog.New(slog.DiscardHandler)
 
 	log := logInstance
 
@@ -419,10 +404,7 @@ func BenchmarkMiddlewareWithOrigin(b *testing.B) {
 		w.WriteHeader(http.StatusOK)
 	})
 
-	var loggerCfg logger.Configuration
-
-	logInstance, err := logger.New(loggerCfg)
-	require.NoError(b, err)
+	logInstance := slog.New(slog.DiscardHandler)
 
 	log := logInstance
 

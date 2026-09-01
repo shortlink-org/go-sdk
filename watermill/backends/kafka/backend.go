@@ -3,13 +3,13 @@ package kafka
 import (
 	"context"
 	"fmt"
+	"log/slog"
 
 	"github.com/ThreeDotsLabs/watermill/message"
 	"github.com/hashicorp/go-multierror"
 	"github.com/pkg/errors"
 
 	"github.com/shortlink-org/go-sdk/config"
-	"github.com/shortlink-org/go-sdk/logger"
 	sdkwatermill "github.com/shortlink-org/go-sdk/watermill"
 )
 
@@ -20,13 +20,11 @@ type Backend struct {
 }
 
 // New wires Kafka publisher and subscriber using config-driven defaults.
-func New(_ context.Context, log logger.Logger, cfg *config.Config) (*Backend, error) {
+func New(_ context.Context, log *slog.Logger, cfg *config.Config) (*Backend, error) {
+	log = orDiscard(log)
+
 	if cfg == nil {
 		return nil, errors.New("config is nil")
-	}
-
-	if log == nil {
-		return nil, errors.New("logger is nil")
 	}
 
 	settings, err := loadBackendSettings(cfg)
@@ -102,13 +100,11 @@ func (b *Backend) Close() error {
 }
 
 // NewPublisherFromConfig wires only Kafka publisher from config/log.
-func NewPublisherFromConfig(log logger.Logger, cfg *config.Config) (*Publisher, error) {
+func NewPublisherFromConfig(log *slog.Logger, cfg *config.Config) (*Publisher, error) {
+	log = orDiscard(log)
+
 	if cfg == nil {
 		return nil, errors.New("config is nil")
-	}
-
-	if log == nil {
-		return nil, errors.New("logger is nil")
 	}
 
 	settings, err := loadBackendSettings(cfg)
@@ -120,13 +116,11 @@ func NewPublisherFromConfig(log logger.Logger, cfg *config.Config) (*Publisher, 
 }
 
 // NewSubscriberFromConfig wires only Kafka subscriber from config/log.
-func NewSubscriberFromConfig(log logger.Logger, cfg *config.Config) (*Subscriber, error) {
+func NewSubscriberFromConfig(log *slog.Logger, cfg *config.Config) (*Subscriber, error) {
+	log = orDiscard(log)
+
 	if cfg == nil {
 		return nil, errors.New("config is nil")
-	}
-
-	if log == nil {
-		return nil, errors.New("logger is nil")
 	}
 
 	settings, err := loadBackendSettings(cfg)

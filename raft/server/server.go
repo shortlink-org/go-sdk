@@ -7,7 +7,6 @@ import (
 	"time"
 
 	rpc "github.com/shortlink-org/go-sdk/grpc"
-	"github.com/shortlink-org/go-sdk/logger"
 	api "github.com/shortlink-org/go-sdk/raft/rpc/v1"
 	v1 "github.com/shortlink-org/go-sdk/raft/v1"
 )
@@ -18,7 +17,7 @@ type Server struct {
 	clients []*api.Client
 
 	// TODO: use interface for logger
-	logger logger.Logger
+	logger *slog.Logger
 
 	raft *v1.Raft
 
@@ -65,7 +64,6 @@ func New(ctx context.Context, serverRPC *rpc.Server, peers []string, options ...
 		SetName("node1"). // TODO: set name from config
 		SetPeerIDs(peers).
 		Build()
-
 	if err != nil {
 		return nil, err
 	}
@@ -73,7 +71,7 @@ func New(ctx context.Context, serverRPC *rpc.Server, peers []string, options ...
 	// run timer
 	go server.runTimer(ctx)
 
-	server.logger.InfoWithContext(ctx, "raft server started",
+	server.logger.InfoContext(ctx, "raft server started",
 		slog.Duration("election_reset_timer", server.electionResetTimer),
 		slog.String("status", v1.RaftStatus_name[int32(server.raft.GetStatus())]),
 	)
@@ -119,7 +117,7 @@ func (s *Server) sendHeartbeat(ctx context.Context) {
 		})
 
 		if err != nil && s.logger != nil {
-			s.logger.ErrorWithContext(ctx, "failed to send heartbeat",
+			s.logger.ErrorContext(ctx, "failed to send heartbeat",
 				slog.String("peer_id", peerID),
 			)
 		}
@@ -136,7 +134,7 @@ func (s *Server) candidatePromotion(ctx context.Context) {
 	s.raft.SetStatus(v1.RaftStatus_RAFT_STATUS_CANDIDATE)
 
 	if s.logger != nil {
-		s.logger.InfoWithContext(ctx, "node promoted to candidate",
+		s.logger.InfoContext(ctx, "node promoted to candidate",
 			slog.Any("id", s.raft.GetID()),
 		)
 	}

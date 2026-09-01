@@ -7,11 +7,16 @@ import (
 
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
-
-	"github.com/shortlink-org/go-sdk/logger"
 )
 
-func printLog(ctx context.Context, log logger.Logger, err error, fields ...slog.Attr) {
+func printLog(ctx context.Context, log *slog.Logger, err error, fields ...slog.Attr) {
+	log.LogAttrs(ctx, levelFor(err), err.Error(), fields...)
+}
+
+// levelFor grades a gRPC status: the codes a healthy service returns as part
+// of its contract stay at debug, and only the ones that point at a defect
+// climb to warn
+func levelFor(err error) slog.Level {
 	switch status.Code(err) {
 	case
 		codes.OK,
@@ -23,12 +28,12 @@ func printLog(ctx context.Context, log logger.Logger, err error, fields ...slog.
 		codes.FailedPrecondition,
 		codes.Aborted,
 		codes.OutOfRange:
-		log.DebugWithContext(ctx, err.Error(), fields...)
+		return slog.LevelDebug
 	case codes.Unknown, codes.DeadlineExceeded, codes.PermissionDenied, codes.Unauthenticated:
-		log.InfoWithContext(ctx, err.Error(), fields...)
+		return slog.LevelInfo
 	case codes.Unimplemented, codes.Internal, codes.Unavailable, codes.DataLoss:
-		log.WarnWithContext(ctx, err.Error(), fields...)
+		return slog.LevelWarn
 	default:
-		log.InfoWithContext(ctx, err.Error(), fields...)
+		return slog.LevelInfo
 	}
 }

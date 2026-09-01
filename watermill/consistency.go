@@ -9,8 +9,6 @@ import (
 	"github.com/ThreeDotsLabs/watermill/message"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/metric"
-
-	"github.com/shortlink-org/go-sdk/logger"
 )
 
 // MetaWALWatermark carries the database watermark a handler must observe
@@ -83,13 +81,13 @@ type ReplicaGate interface {
 func NewConsistencyPublisher(
 	publisher message.Publisher,
 	watermarker Watermarker,
-	log logger.Logger,
+	log *slog.Logger,
 	provider metric.MeterProvider,
 ) message.Publisher {
 	return &consistencyPublisher{
 		Publisher:   publisher,
 		watermarker: watermarker,
-		log:         log,
+		log:         orDiscard(log),
 		stamps:      consistencyCounter(provider, "watermill_consistency_stamps_total", "Messages stamped with a database watermark."),
 	}
 }
@@ -98,7 +96,7 @@ type consistencyPublisher struct {
 	message.Publisher
 
 	watermarker Watermarker
-	log         logger.Logger
+	log         *slog.Logger
 	stamps      metric.Int64Counter
 }
 
@@ -182,11 +180,9 @@ func (p *consistencyPublisher) stamp(messages []*message.Message) {
 	p.count(ctx, watermark.outcome())
 
 	if watermark.err != nil {
-		if p.log != nil {
-			p.log.Debug("watermill: could not read the database watermark",
-				slog.String("error", watermark.err.Error()),
-			)
-		}
+		p.log.Debug("watermill: could not read the database watermark",
+			slog.String("error", watermark.err.Error()),
+		)
 	}
 }
 

@@ -1,17 +1,17 @@
 package saga
 
 import (
-	"github.com/shortlink-org/go-sdk/logger"
+	"log/slog"
 )
 
 type Options struct {
-	log     logger.Logger
+	log     *slog.Logger
 	limiter int
 }
 
 type Option func(*Options)
 
-func SetLogger(log logger.Logger) Option {
+func SetLogger(log *slog.Logger) Option {
 	return func(args *Options) {
 		args.log = log
 	}

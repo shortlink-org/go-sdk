@@ -13,7 +13,6 @@ require (
 	github.com/shortlink-org/go-sdk/config v0.0.0-20260419222854-fd069f4d5106
 	github.com/shortlink-org/go-sdk/flight_trace v0.0.0-20260424225420-a63676f29741
 	github.com/shortlink-org/go-sdk/grpc v0.0.0-20260417231502-a845b14b1f44
-	github.com/shortlink-org/go-sdk/logger v0.0.0-20260423005905-959e3e589a42
 	github.com/stretchr/testify v1.12.1
 	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.71.0
 	go.opentelemetry.io/otel v1.46.0
@@ -25,7 +24,7 @@ require (
 
 require (
 	github.com/Masterminds/semver/v3 v3.5.0 // indirect
-	github.com/Unleash/unleash-go-sdk/v6 v6.5.0 // indirect
+	github.com/Unleash/unleash-go-sdk/v6 v6.5.1 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
 	github.com/felixge/httpsnoop v1.1.0 // indirect
@@ -63,5 +62,4 @@ replace (
 	github.com/shortlink-org/go-sdk/config => ../config
 	github.com/shortlink-org/go-sdk/flight_trace => ../flight_trace
 	github.com/shortlink-org/go-sdk/grpc => ../grpc
-	github.com/shortlink-org/go-sdk/logger => ../logger //lint:ignore gomoddirectives local development dependency
 )

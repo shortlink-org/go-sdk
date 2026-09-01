@@ -2,6 +2,7 @@ package replica
 
 import (
 	"context"
+	"log/slog"
 	"net"
 	"strconv"
 	"sync"
@@ -12,7 +13,6 @@ import (
 
 	"github.com/shortlink-org/go-sdk/db/drivers/postgres/replica/metrics"
 	"github.com/shortlink-org/go-sdk/db/drivers/postgres/replica/wal"
-	"github.com/shortlink-org/go-sdk/logger"
 )
 
 // ReplicaHealth is what the poller last saw for one replica. It is a snapshot:
@@ -167,7 +167,7 @@ type gate struct {
 	staleAfter   time.Duration
 	maxLagBytes  int64
 
-	log     logger.Logger
+	log     *slog.Logger
 	metrics *metrics.Metrics
 
 	// primary sample
@@ -195,7 +195,11 @@ type gate struct {
 	closeOnce sync.Once
 }
 
-func newGate(primary *pgxpool.Pool, replicas []*replicaNode, cfg *Options, log logger.Logger, instruments *metrics.Metrics) *gate {
+func newGate(primary *pgxpool.Pool, replicas []*replicaNode, cfg *Options, log *slog.Logger, instruments *metrics.Metrics) *gate {
+	if log == nil {
+		log = slog.New(slog.DiscardHandler)
+	}
+
 	return &gate{
 		primary:      primary,
 		replicas:     replicas,

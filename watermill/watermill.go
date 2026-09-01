@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 
 	"github.com/ThreeDotsLabs/watermill/message"
 	"github.com/hashicorp/go-multierror"
@@ -11,7 +12,6 @@ import (
 	"go.opentelemetry.io/otel/trace"
 
 	"github.com/shortlink-org/go-sdk/config"
-	"github.com/shortlink-org/go-sdk/logger"
 	watermilldlq "github.com/shortlink-org/go-sdk/watermill/dlq"
 )
 
@@ -41,7 +41,7 @@ type Client struct {
 //nolint:revive // the argument list is public API; collapsing it would break every caller
 func New(
 	ctx context.Context,
-	log logger.Logger,
+	log *slog.Logger,
 	cfg *config.Config,
 	backend Backend,
 	meterProvider metric.MeterProvider,
@@ -51,6 +51,8 @@ func New(
 	if backend == nil {
 		return nil, ErrNilBackend
 	}
+
+	log = orDiscard(log)
 
 	wmLogger := NewWatermillLogger(log)
 	watermilldlq.SetLogger(log)

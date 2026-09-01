@@ -1,23 +1,22 @@
 package watermill
 
 import (
+	"context"
 	"log/slog"
 	"maps"
 
 	"github.com/ThreeDotsLabs/watermill"
-
-	"github.com/shortlink-org/go-sdk/logger"
 )
 
 type watermillLoggerAdapter struct {
-	log    logger.Logger
+	log    *slog.Logger
 	fields watermill.LogFields
 }
 
 //nolint:ireturn // the interface is the library's own contract
-func NewWatermillLogger(log logger.Logger) watermill.LoggerAdapter {
+func NewWatermillLogger(log *slog.Logger) watermill.LoggerAdapter {
 	return &watermillLoggerAdapter{
-		log:    log,
+		log:    orDiscard(log),
 		fields: make(watermill.LogFields),
 	}
 }
@@ -63,17 +62,17 @@ func (l *watermillLoggerAdapter) Error(msg string, err error, fields watermill.L
 		attrs = append(attrs, slog.Any("error", err))
 	}
 
-	l.log.Error(msg, attrs...)
+	l.log.LogAttrs(context.Background(), slog.LevelError, msg, attrs...)
 }
 
 func (l *watermillLoggerAdapter) Info(msg string, fields watermill.LogFields) {
 	attrs := l.mergeFields(fields)
-	l.log.Info(msg, attrs...)
+	l.log.LogAttrs(context.Background(), slog.LevelInfo, msg, attrs...)
 }
 
 func (l *watermillLoggerAdapter) Debug(msg string, fields watermill.LogFields) {
 	attrs := l.mergeFields(fields)
-	l.log.Debug(msg, attrs...)
+	l.log.LogAttrs(context.Background(), slog.LevelDebug, msg, attrs...)
 }
 
 func (l *watermillLoggerAdapter) Trace(msg string, fields watermill.LogFields) {

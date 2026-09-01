@@ -1,6 +1,8 @@
 package grpc
 
 import (
+	"log/slog"
+
 	"github.com/bhope/hedge"
 	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-middleware/providers/prometheus"
 	"github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors/timeout"
@@ -12,7 +14,6 @@ import (
 
 	"github.com/shortlink-org/go-sdk/grpc/authforward"
 	grpc_logger "github.com/shortlink-org/go-sdk/grpc/middleware/logger"
-	"github.com/shortlink-org/go-sdk/logger"
 )
 
 // Option configures a gRPC client.
@@ -47,7 +48,9 @@ func WithTimeout() Option {
 }
 
 // WithLogger adds unary & stream logging interceptors.
-func WithLogger(log logger.Logger) Option {
+func WithLogger(log *slog.Logger) Option {
+	log = orDiscard(log)
+
 	return func(client *Client) {
 		client.cfg.SetDefault("GRPC_CLIENT_LOGGER_ENABLED", true) // Enable logging for gRPC-Client
 

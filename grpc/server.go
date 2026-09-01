@@ -27,7 +27,6 @@ import (
 	grpc_logger "github.com/shortlink-org/go-sdk/grpc/middleware/logger"
 	pprof_interceptor "github.com/shortlink-org/go-sdk/grpc/middleware/pprof"
 	session_interceptor "github.com/shortlink-org/go-sdk/grpc/middleware/session"
-	"github.com/shortlink-org/go-sdk/logger"
 )
 
 // Server represents a configured gRPC server instance.
@@ -45,7 +44,7 @@ type server struct {
 	port int
 	host string
 
-	log           logger.Logger
+	log           *slog.Logger
 	serverMetrics *grpc_prometheus.ServerMetrics
 	cfg           *config.Config
 	authValidator *authjwt.Validator
@@ -54,12 +53,14 @@ type server struct {
 // InitServer - initialize gRPC server.
 func InitServer(
 	ctx context.Context,
-	log logger.Logger,
+	log *slog.Logger,
 	tracer trace.TracerProvider,
 	prom *prometheus.Registry,
 	flightRecorder *flight_trace.Recorder,
 	cfg *config.Config,
 ) (*Server, error) {
+	log = orDiscard(log)
+
 	cfg.SetDefault("GRPC_SERVER_ENABLED", true) // gRPC server enable
 
 	if !cfg.GetBool("GRPC_SERVER_ENABLED") {
@@ -125,7 +126,7 @@ func InitServer(
 
 // setServerConfig - set configuration.
 func setServerConfig(
-	log logger.Logger,
+	log *slog.Logger,
 	tracer trace.TracerProvider,
 	monitor *prometheus.Registry,
 	flightRecorder *flight_trace.Recorder,
@@ -236,7 +237,9 @@ func (s *server) WithRecovery(prom *prometheus.Registry) {
 }
 
 // WithLogger - setup logger.
-func (s *server) WithLogger(log logger.Logger) {
+func (s *server) WithLogger(log *slog.Logger) {
+	log = orDiscard(log)
+
 	s.cfg.SetDefault("GRPC_SERVER_LOGGER_ENABLED", true) // Enable logging for gRPC server
 	isEnableLogger := s.cfg.GetBool("GRPC_SERVER_LOGGER_ENABLED")
 
@@ -351,7 +354,7 @@ func (s *server) WithPprofLabels() {
 }
 
 // WithFlightTrace - setup flight trace.
-func (s *server) WithFlightTrace(flightRecorder *flight_trace.Recorder, log logger.Logger) {
+func (s *server) WithFlightTrace(flightRecorder *flight_trace.Recorder, log *slog.Logger) {
 	s.interceptorUnaryServerList = append(
 		s.interceptorUnaryServerList,
 		flight_trace_interceptor.UnaryServerInterceptor(flightRecorder, log, s.cfg),

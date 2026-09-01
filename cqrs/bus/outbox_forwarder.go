@@ -11,7 +11,6 @@ import (
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/metric"
 
-	"github.com/shortlink-org/go-sdk/logger"
 	sdkwatermill "github.com/shortlink-org/go-sdk/watermill"
 )
 
@@ -179,16 +178,20 @@ func (s *forwarderState) ensureForwarder() (*forwarder.Forwarder, error) {
 }
 
 type forwarderMonitor struct {
-	log           logger.Logger
+	log           *slog.Logger
 	forwarderName string
 	success       metric.Int64Counter
 	failures      metric.Int64Counter
 	attrs         []attribute.KeyValue
 }
 
-func newForwarderMonitor(log logger.Logger, provider metric.MeterProvider, name string) *forwarderMonitor {
-	if log == nil || provider == nil {
+func newForwarderMonitor(log *slog.Logger, provider metric.MeterProvider, name string) *forwarderMonitor {
+	if provider == nil {
 		return nil
+	}
+
+	if log == nil {
+		log = slog.New(slog.DiscardHandler)
 	}
 
 	meter := provider.Meter("shortlink.cqrs.outbox")
@@ -259,7 +262,7 @@ func (m *forwarderMonitor) observeSuccess(ctx context.Context, msg *wmmessage.Me
 		m.success.Add(ctx, 1, metric.WithAttributes(m.attrs...))
 	}
 
-	m.log.DebugWithContext(ctx, "CQRS outbox forwarded message",
+	m.log.DebugContext(ctx, "CQRS outbox forwarded message",
 		slog.String("forwarder", m.forwarderName),
 		slog.String("message_uuid", msg.UUID),
 	)
@@ -274,7 +277,7 @@ func (m *forwarderMonitor) observeFailure(ctx context.Context, msg *wmmessage.Me
 		m.failures.Add(ctx, 1, metric.WithAttributes(m.attrs...))
 	}
 
-	m.log.ErrorWithContext(ctx, "CQRS outbox failed to forward message",
+	m.log.ErrorContext(ctx, "CQRS outbox failed to forward message",
 		slog.String("forwarder", m.forwarderName),
 		slog.String("message_uuid", msg.UUID),
 		slog.String("error", err.Error()),

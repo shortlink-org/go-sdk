@@ -17,14 +17,13 @@ import (
 	traceProvider "go.opentelemetry.io/otel/trace"
 
 	"github.com/shortlink-org/go-sdk/config"
-	"github.com/shortlink-org/go-sdk/logger"
 	"github.com/shortlink-org/go-sdk/observability/common"
 )
 
 // New returns a new instance of the TracerProvider.
 //
 //nolint:ireturn // It's make by specification
-func New(ctx context.Context, log logger.Logger, cfg *config.Config) (traceProvider.TracerProvider, func(), error) {
+func New(ctx context.Context, log *slog.Logger, cfg *config.Config) (traceProvider.TracerProvider, func(), error) {
 	cfg.SetDefault("TRACER_URI", "localhost:4317") // Tracing addr:host
 
 	config := Config{
@@ -46,7 +45,7 @@ func New(ctx context.Context, log logger.Logger, cfg *config.Config) (traceProvi
 }
 
 // Init returns an instance of Tracer Provider that samples 100% of traces and logs all spans to stdout.
-func Init(ctx context.Context, cnf Config, log logger.Logger, cfg *config.Config) (*trace.TracerProvider, func(), error) {
+func Init(ctx context.Context, cnf Config, log *slog.Logger, cfg *config.Config) (*trace.TracerProvider, func(), error) {
 	// Setup resource.
 	res, err := common.NewResource(ctx, cnf.ServiceName, cnf.ServiceVersion)
 	if err != nil {

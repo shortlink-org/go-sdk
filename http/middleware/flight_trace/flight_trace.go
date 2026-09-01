@@ -12,14 +12,13 @@ import (
 
 	"github.com/shortlink-org/go-sdk/config"
 	"github.com/shortlink-org/go-sdk/flight_trace"
-	"github.com/shortlink-org/go-sdk/logger"
 )
 
 // DebugTraceMiddleware triggers a Go Flight Recorder dump when:
 // - "X-Debug-Trace: true" header is present, OR
 // - request latency exceeds configured threshold (FLIGHT_TRACE_LATENCY_THRESHOLD).
 // The dump filename is attached to the current trace span.
-func DebugTraceMiddleware(recorder *flight_trace.Recorder, loggerInstance logger.Logger, cfg *config.Config) func(http.Handler) http.Handler {
+func DebugTraceMiddleware(recorder *flight_trace.Recorder, loggerInstance *slog.Logger, cfg *config.Config) func(http.Handler) http.Handler {
 	// Default threshold (can be overridden via ENV)
 	cfg.SetDefault("FLIGHT_TRACE_LATENCY_THRESHOLD", "1s")
 
@@ -77,7 +76,7 @@ func captureRequestMeta(request *http.Request) requestMeta {
 
 type dumpJob struct {
 	recorder *flight_trace.Recorder
-	logger   logger.Logger
+	logger   *slog.Logger
 	fileName string
 	latency  time.Duration
 	meta     requestMeta
@@ -85,7 +84,7 @@ type dumpJob struct {
 
 func (job *dumpJob) run(ctx context.Context) {
 	job.recorder.DumpToFileAsync(job.fileName)
-	job.logger.InfoWithContext(ctx, "flight recorder dump triggered",
+	job.logger.InfoContext(ctx, "flight recorder dump triggered",
 		slog.String("file", job.fileName),
 		slog.Duration("latency", job.latency),
 		slog.String("remote", job.meta.remoteAddr),
