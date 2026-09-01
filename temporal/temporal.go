@@ -15,11 +15,9 @@ import (
 	"go.temporal.io/sdk/client"
 	"go.temporal.io/sdk/contrib/opentelemetry"
 	"go.temporal.io/sdk/interceptor"
-	"go.temporal.io/sdk/log"
 
 	"github.com/shortlink-org/go-sdk/config"
 	sdkgrpc "github.com/shortlink-org/go-sdk/grpc"
-	"github.com/shortlink-org/go-sdk/logger"
 	"github.com/shortlink-org/go-sdk/observability/metrics"
 )
 
@@ -45,11 +43,13 @@ import (
 //
 // Reference: https://docs.temporal.io/develop/go/temporal-client
 func New(
-	l logger.Logger,
+	l *slog.Logger,
 	cfg *config.Config,
 	tracer trace.TracerProvider,
 	monitor *metrics.Monitoring,
 ) (client.Client, error) {
+	l = orDiscard(l)
+
 	// Set defaults
 	cfg.SetDefault("TEMPORAL_HOST", "temporal-frontend.temporal.svc.cluster.local:7233")
 	cfg.SetDefault("TEMPORAL_NAMESPACE", "default")
@@ -102,7 +102,7 @@ func New(
 	opts := client.Options{
 		HostPort:     host,
 		Namespace:    namespace,
-		Logger:       newLogAdapter(l),
+		Logger:       l,
 		Interceptors: interceptors,
 		ConnectionOptions: client.ConnectionOptions{
 			DialOptions: grpcClient.GetOptions(),
@@ -154,49 +154,4 @@ func CheckHealth(ctx context.Context, c client.Client) error {
 	}
 
 	return nil
-}
-
-// logAdapter adapts go-sdk logger to Temporal's log.Logger interface.
-// Reference: https://docs.temporal.io/develop/go/observability#log-from-a-workflow
-type logAdapter struct {
-	logger logger.Logger
-}
-
-func newLogAdapter(l logger.Logger) log.Logger {
-	return &logAdapter{logger: l}
-}
-
-func (l *logAdapter) Debug(msg string, keyvals ...any) {
-	l.logger.Debug(msg, toSlogAttrs(keyvals)...)
-}
-
-func (l *logAdapter) Info(msg string, keyvals ...any) {
-	l.logger.Info(msg, toSlogAttrs(keyvals)...)
-}
-
-func (l *logAdapter) Warn(msg string, keyvals ...any) {
-	l.logger.Warn(msg, toSlogAttrs(keyvals)...)
-}
-
-func (l *logAdapter) Error(msg string, keyvals ...any) {
-	l.logger.Error(msg, toSlogAttrs(keyvals)...)
-}
-
-// toSlogAttrs converts key-value pairs to slog attributes.
-func toSlogAttrs(keyvals []any) []slog.Attr {
-	if len(keyvals) == 0 {
-		return nil
-	}
-
-	attrs := make([]slog.Attr, 0, len(keyvals)/2)
-	for i := 0; i < len(keyvals)-1; i += 2 {
-		key, ok := keyvals[i].(string)
-		if !ok {
-			continue
-		}
-
-		attrs = append(attrs, slog.Any(key, keyvals[i+1]))
-	}
-
-	return attrs
 }

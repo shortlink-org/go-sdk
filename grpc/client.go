@@ -12,7 +12,6 @@ import (
 	"google.golang.org/grpc/credentials/insecure"
 
 	"github.com/shortlink-org/go-sdk/config"
-	"github.com/shortlink-org/go-sdk/logger"
 )
 
 // Client represents a gRPC client configuration.
@@ -35,7 +34,7 @@ func (c *Client) GetURI() string {
 // InitClient sets up a connection to the gRPC server.
 func InitClient(
 	_ context.Context,
-	log logger.Logger,
+	log *slog.Logger,
 	cfg *config.Config,
 	options ...Option,
 ) (*grpc.ClientConn, func(), error) {

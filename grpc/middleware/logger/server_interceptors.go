@@ -12,12 +12,10 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/proto"
-
-	"github.com/shortlink-org/go-sdk/logger"
 )
 
 // UnaryServerInterceptor returns a new unary server interceptors that adds zap.Logger to the context.
-func UnaryServerInterceptor(log logger.Logger) grpc.UnaryServerInterceptor {
+func UnaryServerInterceptor(log *slog.Logger) grpc.UnaryServerInterceptor {
 	return func(ctx context.Context, req any, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (any, error) {
 		startTime := time.Now()
 		resp, err := handler(ctx, req)
@@ -49,7 +47,7 @@ func UnaryServerInterceptor(log logger.Logger) grpc.UnaryServerInterceptor {
 }
 
 // StreamServerInterceptor returns a new streaming server interceptor that adds zap.Logger to the context.
-func StreamServerInterceptor(log logger.Logger) grpc.StreamServerInterceptor {
+func StreamServerInterceptor(log *slog.Logger) grpc.StreamServerInterceptor {
 	return func(srv any, stream grpc.ServerStream, info *grpc.StreamServerInfo, handler grpc.StreamHandler) error {
 		startTime := time.Now()
 		wrapped := grpc_middleware.WrapServerStream(stream)

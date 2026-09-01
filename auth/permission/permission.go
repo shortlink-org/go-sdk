@@ -2,19 +2,20 @@
 package permission
 
 import (
+	"log/slog"
+
 	"github.com/authzed/authzed-go/v1"
 	"go.opentelemetry.io/otel/trace"
 
 	"github.com/shortlink-org/go-sdk/auth"
 	"github.com/shortlink-org/go-sdk/config"
 	rpc "github.com/shortlink-org/go-sdk/grpc"
-	"github.com/shortlink-org/go-sdk/logger"
 	"github.com/shortlink-org/go-sdk/observability/metrics"
 )
 
 // New returns an Authzed client wired with metrics, tracing, logging, and timeouts.
 func New(
-	log logger.Logger,
+	log *slog.Logger,
 	tracer trace.TracerProvider,
 	monitor *metrics.Monitoring,
 	cfg *config.Config,

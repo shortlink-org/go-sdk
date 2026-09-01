@@ -12,13 +12,11 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/proto"
-
-	"github.com/shortlink-org/go-sdk/logger"
 )
 
 // UnaryClientInterceptor returns a new unary client interceptor that optionally
 // logs the execution of external gRPC calls.
-func UnaryClientInterceptor(log logger.Logger) grpc.UnaryClientInterceptor {
+func UnaryClientInterceptor(log *slog.Logger) grpc.UnaryClientInterceptor {
 	return func(
 		ctx context.Context,
 		method string,
@@ -58,7 +56,7 @@ func UnaryClientInterceptor(log logger.Logger) grpc.UnaryClientInterceptor {
 
 // StreamClientInterceptor returns a new streaming client interceptor that optionally
 // logs the execution of external gRPC calls.
-func StreamClientInterceptor(log logger.Logger) grpc.StreamClientInterceptor {
+func StreamClientInterceptor(log *slog.Logger) grpc.StreamClientInterceptor {
 	return func(
 		ctx context.Context,
 		desc *grpc.StreamDesc,

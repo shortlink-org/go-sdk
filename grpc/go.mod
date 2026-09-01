@@ -11,7 +11,6 @@ require (
 	github.com/prometheus/client_golang v1.24.1
 	github.com/shortlink-org/go-sdk/auth v0.0.0-20260424225420-a63676f29741
 	github.com/shortlink-org/go-sdk/flight_trace v0.0.0-20260424225420-a63676f29741
-	github.com/shortlink-org/go-sdk/logger v0.0.0-20260423005905-959e3e589a42
 	github.com/stretchr/testify v1.12.1
 	go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc v0.71.0
 	go.opentelemetry.io/otel v1.46.0
@@ -29,7 +28,6 @@ require (
 	github.com/spf13/viper v1.21.0 // indirect
 	github.com/stretchr/objx v0.5.3 // indirect
 	github.com/twmb/murmur3 v1.1.8 // indirect
-	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
 
 require (
@@ -65,5 +63,4 @@ replace (
 	github.com/shortlink-org/go-sdk/auth => ../auth //lint:ignore gomodd
 	github.com/shortlink-org/go-sdk/config => ../config
 	github.com/shortlink-org/go-sdk/flight_trace => ../flight_trace //lint:ignore gomoddirectives local development dependency
-	github.com/shortlink-org/go-sdk/logger => ../logger //lint:ignore gomoddirectives local development dependency
 )

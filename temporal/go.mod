@@ -5,7 +5,6 @@ go 1.26.2
 require (
 	github.com/shortlink-org/go-sdk/config v0.0.0-20260419222854-fd069f4d5106
 	github.com/shortlink-org/go-sdk/grpc v0.0.0-20260417231502-a845b14b1f44
-	github.com/shortlink-org/go-sdk/logger v0.0.0-20260423005905-959e3e589a42
 	github.com/shortlink-org/go-sdk/observability v0.0.0-20260415234714-8c7f9b03b6b3
 	go.opentelemetry.io/otel v1.46.0
 	go.opentelemetry.io/otel/trace v1.46.0
@@ -29,7 +28,7 @@ require (
 	github.com/golang/mock v1.6.0 // indirect
 	github.com/google/uuid v1.6.0 // indirect
 	github.com/grpc-ecosystem/go-grpc-middleware/providers/prometheus v1.1.0 // indirect
-	github.com/grpc-ecosystem/go-grpc-middleware/v2 v2.3.3 // indirect
+	github.com/grpc-ecosystem/go-grpc-middleware/v2 v2.3.4 // indirect
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.30.0 // indirect
 	github.com/hashicorp/golang-lru/v2 v2.0.7 // indirect
 	github.com/heptiolabs/healthcheck v0.0.0-20211123025425-613501dd5deb // indirect
@@ -74,12 +73,10 @@ require (
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20260825221802-da73d73af1c5 // indirect
 	google.golang.org/grpc v1.83.2 // indirect
 	google.golang.org/protobuf v1.36.12 // indirect
-	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
 
 replace (
 	github.com/shortlink-org/go-sdk/config => ../config
 	github.com/shortlink-org/go-sdk/grpc => ../grpc
-	github.com/shortlink-org/go-sdk/logger => ../logger
 	github.com/shortlink-org/go-sdk/observability => ../observability
 )
