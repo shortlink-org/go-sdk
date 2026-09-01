@@ -1,6 +1,6 @@
 module github.com/shortlink-org/go-sdk/kratos
 
-go 1.26.2
+go 1.27.0
 
 require (
 	github.com/ory/client-go v1.22.66

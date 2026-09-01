@@ -1,6 +1,6 @@
 module github.com/shortlink-org/go-sdk/config
 
-go 1.26.2
+go 1.27.0
 
 require (
 	github.com/Unleash/unleash-go-sdk/v6 v6.5.1

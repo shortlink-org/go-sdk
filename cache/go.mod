@@ -1,6 +1,6 @@
 module github.com/shortlink-org/go-sdk/cache
 
-go 1.26.2
+go 1.27.0
 
 require (
 	github.com/go-redis/cache/v9 v9.0.0

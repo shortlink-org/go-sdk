@@ -1,6 +1,6 @@
 module github.com/shortlink-org/go-sdk/observability
 
-go 1.26.2
+go 1.27.0
 
 require (
 	github.com/felixge/fgprof v0.9.5

@@ -1,6 +1,6 @@
 module github.com/shortlink-org/go-sdk/cqrs/examples
 
-go 1.26.2
+go 1.27.0
 
 replace github.com/shortlink-org/go-sdk/cqrs => ../
 

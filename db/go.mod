@@ -1,6 +1,6 @@
 module github.com/shortlink-org/go-sdk/db
 
-go 1.26.2
+go 1.27.0
 
 require (
 	github.com/XSAM/otelsql v0.43.0
