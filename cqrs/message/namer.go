@@ -112,6 +112,24 @@ func NameOf(v any) string {
 	return comps.String()
 }
 
+// LocalName drops the leading service segment from a canonical message name.
+//
+// Canonical names are "<service>.<kind>.<name>.<version>". A TypeRegistry is
+// process-local and every message it sees comes from a single marshaler, so the
+// service segment distinguishes nothing there — it only lets a type registered
+// under one service name miss a lookup made under another. Names that are not
+// fully qualified are returned unchanged.
+func LocalName(name string) string {
+	const qualifiedSegments = 4
+
+	parts := strings.Split(strings.TrimSpace(name), ".")
+	if len(parts) < qualifiedSegments {
+		return name
+	}
+
+	return strings.Join(parts[1:], ".")
+}
+
 // TopicForEvent maps canonical name to Kafka topic.
 func TopicForEvent(name string) string {
 	return sanitizeTopic(name)

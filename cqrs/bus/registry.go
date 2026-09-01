@@ -40,7 +40,7 @@ func (r *TypeRegistry) RegisterCommand(cmd any) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
-	name := cqrsmessage.NameOf(cmd)
+	name := cqrsmessage.LocalName(cqrsmessage.NameOf(cmd))
 	r.commands[name] = normalizeType(cmd)
 
 	return nil
@@ -56,28 +56,32 @@ func (r *TypeRegistry) RegisterEvent(evt any) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
-	name := cqrsmessage.NameOf(evt)
+	name := cqrsmessage.LocalName(cqrsmessage.NameOf(evt))
 	r.events[name] = normalizeType(evt)
 
 	return nil
 }
 
-// ResolveCommand returns command type by canonical name.
+// ResolveCommand returns command type by canonical name. The name may be fully
+// qualified or already service-free: the registry keys on the service-free form,
+// so a lookup made with the marshaler's name resolves regardless of which
+// service name that marshaler was built with.
 func (r *TypeRegistry) ResolveCommand(name string) (reflect.Type, bool) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 
-	cmdType, ok := r.commands[name]
+	cmdType, ok := r.commands[cqrsmessage.LocalName(name)]
 
 	return cmdType, ok
 }
 
-// ResolveEvent returns event type by canonical name.
+// ResolveEvent returns event type by canonical name. See ResolveCommand for how
+// the name is normalized.
 func (r *TypeRegistry) ResolveEvent(name string) (reflect.Type, bool) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 
-	evtType, ok := r.events[name]
+	evtType, ok := r.events[cqrsmessage.LocalName(name)]
 
 	return evtType, ok
 }
