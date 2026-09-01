@@ -15,7 +15,7 @@ import (
 
 type Link struct {
 	// Field mask
-	fieldmask fieldmaskpb.FieldMask
+	fieldmask *fieldmaskpb.FieldMask
 	// URL
 	url url.URL
 	// Hash by URL + salt
@@ -29,7 +29,7 @@ type Link struct {
 }
 
 // GetFieldMask returns the value of the fieldmask field.
-func (m *Link) GetFieldMask() fieldmaskpb.FieldMask {
+func (m *Link) GetFieldMask() *fieldmaskpb.FieldMask {
 	return m.fieldmask
 }
 

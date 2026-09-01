@@ -5,6 +5,7 @@ package outbox_test
 import (
 	"context"
 	"io"
+	"log/slog"
 	"testing"
 	"time"
 
@@ -19,7 +20,6 @@ import (
 
 	"github.com/shortlink-org/go-sdk/config"
 	"github.com/shortlink-org/go-sdk/db/drivers/postgres/migrate"
-	"github.com/shortlink-org/go-sdk/logger"
 	"github.com/shortlink-org/go-sdk/outbox"
 	"github.com/shortlink-org/go-sdk/uow"
 	sdkwm "github.com/shortlink-org/go-sdk/watermill"
@@ -73,17 +73,12 @@ func setupPostgres(t *testing.T) *pgxpool.Pool {
 	return pool
 }
 
-func newTestLogger(t *testing.T) *logger.SlogLogger {
+func newTestLogger(t *testing.T) *slog.Logger {
 	t.Helper()
 
-	log, err := logger.New(logger.Configuration{
-		Writer:     io.Discard,
-		TimeFormat: time.RFC3339Nano,
-		Level:      logger.ERROR_LEVEL,
-	})
-	require.NoError(t, err)
-
-	return log
+	return slog.New(slog.NewTextHandler(io.Discard, &slog.HandlerOptions{
+		Level: slog.LevelError,
+	}))
 }
 
 // memoryBackend is the in-process Backend watermill.New requires. The relay

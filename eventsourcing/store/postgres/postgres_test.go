@@ -41,9 +41,12 @@ func TestPostgres(t *testing.T) {
 
 	c, err := testcontainers.Run(ctx, "ghcr.io/dbsystel/postgresql-partman:16",
 		testcontainers.WithEnv(map[string]string{
-			"POSTGRESQL_USERNAME": "postgres",
-			"POSTGRESQL_PASSWORD": "shortlink",
-			"POSTGRESQL_DATABASE": "eventsourcing",
+			// postgresql-partman builds on the official postgres image, which
+			// reads POSTGRES_*; the Bitnami-style POSTGRESQL_* names are ignored
+			// and the container exits demanding a superuser password.
+			"POSTGRES_USER":     "postgres",
+			"POSTGRES_PASSWORD": "shortlink",
+			"POSTGRES_DB":       "eventsourcing",
 		}),
 		testcontainers.WithExposedPorts("5432/tcp"),
 		testcontainers.WithWaitStrategy(

@@ -10,6 +10,8 @@ import (
 )
 
 func TestMongoORMGeneration(t *testing.T) {
+	requireProtoc(t)
+
 	// Path to the proto file
 	protoPath := "fixtures/link.proto"
 

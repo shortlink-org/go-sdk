@@ -13,6 +13,8 @@ import (
 
 // TestGenerateRichModel tests the generateRichModel function of the plugin
 func TestGenerateRichModel(t *testing.T) {
+	requireProtoc(t)
+
 	// Define the base directory for fixtures
 	baseFixturesDir := "fixtures"
 

@@ -11,8 +11,6 @@ import (
 	"github.com/ThreeDotsLabs/watermill/message"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
-
-	"github.com/shortlink-org/go-sdk/logger"
 )
 
 // claimSQL takes the oldest undelivered rows of one topic and locks them for
@@ -43,7 +41,7 @@ var markDeliveredSQL = fmt.Sprintf(
 // read loop of its own per topic, and the loops share nothing but the pool.
 type subscriber struct {
 	pool *pgxpool.Pool
-	log  logger.Logger
+	log  *slog.Logger
 	opts Options
 
 	closing   chan struct{}
@@ -51,7 +49,7 @@ type subscriber struct {
 	loops     sync.WaitGroup
 }
 
-func newSubscriber(pool *pgxpool.Pool, log logger.Logger, opts Options) *subscriber { //nolint:gocritic // Options is public API
+func newSubscriber(pool *pgxpool.Pool, log *slog.Logger, opts Options) *subscriber { //nolint:gocritic // Options is public API
 	return &subscriber{
 		pool:      pool,
 		log:       log,

@@ -3,12 +3,12 @@ package outbox
 import (
 	"context"
 	"errors"
+	"log/slog"
 
 	"github.com/ThreeDotsLabs/watermill/message"
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/shortlink-org/go-sdk/db"
-	"github.com/shortlink-org/go-sdk/logger"
 )
 
 // Handler processes one message from the outbox. Returning an error nacks the
@@ -26,7 +26,7 @@ type Handler func(ctx context.Context, msg *message.Message) error
 // both.
 type Relay struct {
 	pool   *pgxpool.Pool
-	log    logger.Logger
+	log    *slog.Logger
 	router *message.Router
 	sub    *subscriber
 	opts   Options
@@ -35,7 +35,7 @@ type Relay struct {
 }
 
 // NewRelay returns a relay reading store and delivering through router.
-func NewRelay(store db.DB, log logger.Logger, router *message.Router, opts ...Option) (*Relay, error) {
+func NewRelay(store db.DB, log *slog.Logger, router *message.Router, opts ...Option) (*Relay, error) {
 	if store == nil {
 		return nil, ErrNilStore
 	}

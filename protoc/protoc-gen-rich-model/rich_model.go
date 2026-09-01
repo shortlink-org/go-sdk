@@ -217,7 +217,7 @@ func protobufToGoTypeSingle(field *protogen.Field) (string, map[string]bool) {
 				return "*timestamppb.Timestamp", imports
 			case "FieldMask":
 				imports["google.golang.org/protobuf/types/known/fieldmaskpb"] = true
-				return "fieldmaskpb.FieldMask", imports
+				return "*fieldmaskpb.FieldMask", imports
 			}
 		}
 
