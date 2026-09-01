@@ -10,11 +10,10 @@ import (
 	"github.com/shortlink-org/go-sdk/config"
 	"github.com/shortlink-org/go-sdk/db"
 	es_postgres "github.com/shortlink-org/go-sdk/eventsourcing/store/postgres"
-	"github.com/shortlink-org/go-sdk/logger"
 )
 
 // New - create new EventStore
-func New(ctx context.Context, log logger.Logger, store db.DB, cfg *config.Config) (EventSourcing, error) {
+func New(ctx context.Context, log *slog.Logger, store db.DB, cfg *config.Config) (EventSourcing, error) {
 	var err error
 
 	// Initialize EventStore
