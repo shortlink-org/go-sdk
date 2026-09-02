@@ -6,7 +6,7 @@ require (
 	github.com/XSAM/otelsql v0.43.0
 	github.com/aerospike/aerospike-client-go v4.5.2+incompatible
 	github.com/apache/cassandra-gocql-driver/v2 v2.1.2
-	github.com/couchbase/gocb/v2 v2.12.4
+	github.com/couchbase/gocb/v2 v2.12.5
 	github.com/dgraph-io/badger/v4 v4.9.6
 	github.com/dgraph-io/dgo/v250 v250.0.0
 	github.com/exaring/otelpgx v0.11.1
@@ -66,7 +66,7 @@ require (
 	github.com/containerd/platforms v0.2.1 // indirect
 	github.com/coreos/go-semver v0.3.1 // indirect
 	github.com/coreos/go-systemd/v22 v22.7.0 // indirect
-	github.com/couchbase/gocbcore/v10 v10.9.3 // indirect
+	github.com/couchbase/gocbcore/v10 v10.9.4 // indirect
 	github.com/couchbase/gocbcoreps v0.1.5-0.20260107140814-1c3a03f888f8 // indirect
 	github.com/couchbase/goprotostellar v1.0.6-0.20260407143512-d7af25156dcc // indirect
 	github.com/couchbaselabs/gocbconnstr/v2 v2.0.0 // indirect
