@@ -11,7 +11,7 @@ require (
 	github.com/dgraph-io/dgo/v250 v250.0.0
 	github.com/exaring/otelpgx v0.11.1
 	github.com/geldata/gel-go v1.4.3
-	github.com/go-sql-driver/mysql v1.10.0
+	github.com/go-sql-driver/mysql v1.10.1
 	github.com/golang-migrate/migrate/v4 v4.19.1
 	github.com/jackc/pgerrcode v0.0.0-20250907135507-afb5586c32a6
 	github.com/jackc/pgx/v5 v5.10.0
