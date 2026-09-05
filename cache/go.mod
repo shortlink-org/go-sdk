@@ -4,8 +4,8 @@ go 1.27.0
 
 require (
 	github.com/redis/rueidis v1.0.77
-	github.com/shortlink-org/go-sdk/config v0.0.0-20260901121657-d7eab0200634
-	github.com/shortlink-org/go-sdk/db v0.0.0-20260424225420-a63676f29741
+	github.com/shortlink-org/go-sdk/config v0.0.0-20260901155230-945620b3fa49
+	github.com/shortlink-org/go-sdk/db v0.0.0-20260901155230-945620b3fa49
 	github.com/stretchr/testify v1.12.1
 	github.com/testcontainers/testcontainers-go v0.44.0
 	github.com/testcontainers/testcontainers-go/modules/redis v0.44.0
@@ -45,7 +45,7 @@ require (
 	github.com/mdelapenya/tlscert v0.2.0 // indirect
 	github.com/moby/docker-image-spec v1.3.1 // indirect
 	github.com/moby/go-archive v0.3.0 // indirect
-	github.com/moby/moby/api v1.55.0 // indirect
+	github.com/moby/moby/api v1.56.0 // indirect
 	github.com/moby/moby/client v0.5.0 // indirect
 	github.com/moby/patternmatcher v0.6.1 // indirect
 	github.com/moby/sys/sequential v0.7.0 // indirect
