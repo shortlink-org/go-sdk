@@ -166,6 +166,8 @@ github.com/shortlink-org/go-sdk/logger v0.0.0-20260901121657-d7eab0200634 h1:eP5
 github.com/shortlink-org/go-sdk/logger v0.0.0-20260901121657-d7eab0200634/go.mod h1:EzoeRsJNPqAdkcYGB87zb4+/QkEPddgKkdw6DZK8V8o=
 github.com/shortlink-org/go-sdk/logger v0.0.0-20260901155230-945620b3fa49 h1:+9T7oGTbIfmhFYq53g1nP0dYBfc7lfPUvNHil2krZy0=
 github.com/shortlink-org/go-sdk/logger v0.0.0-20260901155230-945620b3fa49/go.mod h1:9bxLhPz3WcxTVtGM1Ozxs7yiypbJeKkz0OGLXVwAWbs=
+github.com/shortlink-org/go-sdk/logger v0.0.0-20260905165109-0ed956cfd288 h1:u1FFLbqlslVapy8Ky7zHPNOvJUYB6oMDeAb3kesXxtw=
+github.com/shortlink-org/go-sdk/logger v0.0.0-20260905165109-0ed956cfd288/go.mod h1:9bxLhPz3WcxTVtGM1Ozxs7yiypbJeKkz0OGLXVwAWbs=
 github.com/sirupsen/logrus v1.9.4 h1:TsZE7l11zFCLZnZ+teH4Umoq5BhEIfIzfRDZ1Uzql2w=
 github.com/sirupsen/logrus v1.9.4/go.mod h1:ftWc9WdOfJ0a92nsE2jF5u5ZwH8Bv2zdeOC42RjbV2g=
 github.com/sony/gobreaker v1.0.0 h1:feX5fGGXSl3dYd4aHZItw+FpHLvvoaqkawKjVNiFMNQ=

@@ -3,7 +3,7 @@ module github.com/shortlink-org/go-sdk/raft
 go 1.27.0
 
 require (
-	github.com/shortlink-org/go-sdk/config v0.0.0-20260901155230-945620b3fa49
+	github.com/shortlink-org/go-sdk/config v0.0.0-20260905165109-0ed956cfd288
 	github.com/shortlink-org/go-sdk/grpc v0.0.0-20260905165109-0ed956cfd288
 	github.com/stretchr/testify v1.12.1
 	google.golang.org/grpc v1.83.2

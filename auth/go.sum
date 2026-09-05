@@ -95,8 +95,12 @@ github.com/sagikazarmark/locafero v0.12.0 h1:/NQhBAkUb4+fH1jivKHWusDYFjMOOKU88ee
 github.com/sagikazarmark/locafero v0.12.0/go.mod h1:sZh36u/YSZ918v0Io+U9ogLYQJ9tLLBmM4eneO6WwsI=
 github.com/shortlink-org/go-sdk/flight_trace v0.0.0-20260901121657-d7eab0200634 h1:cX7TKmokPcsN13L8eB5BMKPhooG2wv5sSGIYPeU1KpY=
 github.com/shortlink-org/go-sdk/flight_trace v0.0.0-20260901121657-d7eab0200634/go.mod h1:m6FTQ3SZKvZ06wCi2jIy5Iyc+syi/woOdiasbgafzLg=
+github.com/shortlink-org/go-sdk/flight_trace v0.0.0-20260905165109-0ed956cfd288 h1:0vfwjaq3Da2x9WlGhjUvLIWbYWXyqH3nDtSPqroqkZQ=
+github.com/shortlink-org/go-sdk/flight_trace v0.0.0-20260905165109-0ed956cfd288/go.mod h1:Q0CJyC6chs7tAyuQaEJ4BH78+GCtBsSyFPPSackT/uQ=
 github.com/shortlink-org/go-sdk/http v0.0.0-20260901121657-d7eab0200634 h1:4qAQfzHrHNGhkXAvPTe/UDpmmcji7Sg+rGz/yCUyETM=
 github.com/shortlink-org/go-sdk/http v0.0.0-20260901121657-d7eab0200634/go.mod h1:5633qlu/4k6F4PKnIXTMt6I0uapC0ZgajXv5hdOXhZ4=
+github.com/shortlink-org/go-sdk/http v0.0.0-20260901155230-945620b3fa49 h1:Zvrsx2o6yHx/bzcMMr8Eaajym2joeOUBboS+AYGnrSY=
+github.com/shortlink-org/go-sdk/http v0.0.0-20260901155230-945620b3fa49/go.mod h1:ulmVovl2g6Z4b2vVsfJ3wKJnDHqXfRLrLyK+ESxY9b8=
 github.com/spf13/afero v1.15.0 h1:b/YBCLWAJdFWJTN9cLhiXXcD7mzKn9Dm86dNnfyQw1I=
 github.com/spf13/afero v1.15.0/go.mod h1:NC2ByUVxtQs4b3sIUphxK0NioZnmxgyCrfzeuq8lxMg=
 github.com/spf13/cast v1.10.0 h1:h2x0u2shc1QuLHfxi+cTJvs30+ZAHOGRic8uyGTDWxY=

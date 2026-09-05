@@ -5,8 +5,8 @@ go 1.27.0
 require (
 	github.com/Masterminds/squirrel v1.5.4
 	github.com/jackc/pgx/v5 v5.10.0
-	github.com/shortlink-org/go-sdk/config v0.0.0-20260901155230-945620b3fa49
-	github.com/shortlink-org/go-sdk/db v0.0.0-20260901155230-945620b3fa49
+	github.com/shortlink-org/go-sdk/config v0.0.0-20260905165109-0ed956cfd288
+	github.com/shortlink-org/go-sdk/db v0.0.0-20260905165109-0ed956cfd288
 	github.com/stretchr/testify v1.12.1
 	github.com/testcontainers/testcontainers-go v0.44.0
 	go.opentelemetry.io/otel v1.46.0
