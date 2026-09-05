@@ -97,6 +97,8 @@ github.com/shortlink-org/go-sdk/http v0.0.0-20260901121657-d7eab0200634 h1:4qAQf
 github.com/shortlink-org/go-sdk/http v0.0.0-20260901121657-d7eab0200634/go.mod h1:5633qlu/4k6F4PKnIXTMt6I0uapC0ZgajXv5hdOXhZ4=
 github.com/shortlink-org/go-sdk/http v0.0.0-20260901155230-945620b3fa49 h1:Zvrsx2o6yHx/bzcMMr8Eaajym2joeOUBboS+AYGnrSY=
 github.com/shortlink-org/go-sdk/http v0.0.0-20260901155230-945620b3fa49/go.mod h1:ulmVovl2g6Z4b2vVsfJ3wKJnDHqXfRLrLyK+ESxY9b8=
+github.com/shortlink-org/go-sdk/http v0.0.0-20260905165109-0ed956cfd288 h1:3Cdd1tNig5Jz8Cezu7wEa+UlA325I3NP3W6TXLXPqr0=
+github.com/shortlink-org/go-sdk/http v0.0.0-20260905165109-0ed956cfd288/go.mod h1:ulmVovl2g6Z4b2vVsfJ3wKJnDHqXfRLrLyK+ESxY9b8=
 github.com/spf13/afero v1.15.0 h1:b/YBCLWAJdFWJTN9cLhiXXcD7mzKn9Dm86dNnfyQw1I=
 github.com/spf13/afero v1.15.0/go.mod h1:NC2ByUVxtQs4b3sIUphxK0NioZnmxgyCrfzeuq8lxMg=
 github.com/spf13/cast v1.10.0 h1:h2x0u2shc1QuLHfxi+cTJvs30+ZAHOGRic8uyGTDWxY=

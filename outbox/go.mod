@@ -12,7 +12,7 @@ replace (
 require (
 	github.com/ThreeDotsLabs/watermill v1.5.3
 	github.com/jackc/pgx/v5 v5.10.0
-	github.com/shortlink-org/go-sdk/config v0.0.0-20260901155230-945620b3fa49
+	github.com/shortlink-org/go-sdk/config v0.0.0-20260905165109-0ed956cfd288
 	github.com/shortlink-org/go-sdk/db v0.0.0-00010101000000-000000000000
 	github.com/shortlink-org/go-sdk/uow v0.0.0-00010101000000-000000000000
 	github.com/shortlink-org/go-sdk/watermill v0.0.0-00010101000000-000000000000

@@ -22,7 +22,7 @@ require (
 	github.com/neo4j/neo4j-go-driver/v6 v6.2.0
 	github.com/redis/rueidis v1.0.77
 	github.com/redis/rueidis/rueidisotel v1.0.77
-	github.com/shortlink-org/go-sdk/config v0.0.0-20260901155230-945620b3fa49
+	github.com/shortlink-org/go-sdk/config v0.0.0-20260905165109-0ed956cfd288
 	github.com/stretchr/testify v1.12.1
 	github.com/syndtr/goleveldb v1.0.1-0.20220721030215-126854af5e6d
 	github.com/testcontainers/testcontainers-go v0.44.0

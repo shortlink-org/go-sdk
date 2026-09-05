@@ -4,9 +4,9 @@ go 1.27.0
 
 require (
 	github.com/authzed/authzed-go v1.10.0
-	github.com/shortlink-org/go-sdk/config v0.0.0-20260901155230-945620b3fa49
+	github.com/shortlink-org/go-sdk/config v0.0.0-20260905165109-0ed956cfd288
 	github.com/shortlink-org/go-sdk/grpc v0.0.0-20260905165109-0ed956cfd288
-	github.com/shortlink-org/go-sdk/observability v0.0.0-20260901155230-945620b3fa49
+	github.com/shortlink-org/go-sdk/observability v0.0.0-20260905165109-0ed956cfd288
 	go.opentelemetry.io/otel/trace v1.46.0
 	google.golang.org/grpc v1.83.2
 )
@@ -43,8 +43,8 @@ require (
 	github.com/prometheus/otlptranslator v1.0.0 // indirect
 	github.com/prometheus/procfs v0.22.0 // indirect
 	github.com/sagikazarmark/locafero v0.12.0 // indirect
-	github.com/shortlink-org/go-sdk/flight_trace v0.0.0-20260901121657-d7eab0200634 // indirect
-	github.com/shortlink-org/go-sdk/http v0.0.0-20260901121657-d7eab0200634 // indirect
+	github.com/shortlink-org/go-sdk/flight_trace v0.0.0-20260905165109-0ed956cfd288 // indirect
+	github.com/shortlink-org/go-sdk/http v0.0.0-20260901155230-945620b3fa49 // indirect
 	github.com/spf13/afero v1.15.0 // indirect
 	github.com/spf13/cast v1.10.0 // indirect
 	github.com/spf13/pflag v1.0.10 // indirect
