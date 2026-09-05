@@ -17,7 +17,7 @@ require (
 	github.com/jackc/pgx/v5 v5.10.0
 	github.com/johejo/golang-migrate-extra v0.0.0-20211005021153-c17dd75f8b4a
 	github.com/lib/pq v1.12.3
-	github.com/mattn/go-sqlite3 v1.14.50
+	github.com/mattn/go-sqlite3 v1.14.52
 	github.com/moby/moby/api v1.56.0
 	github.com/neo4j/neo4j-go-driver/v6 v6.2.0
 	github.com/redis/rueidis v1.0.77
