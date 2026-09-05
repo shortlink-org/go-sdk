@@ -1,11 +1,10 @@
-/*
-Tracing wrapping
-*/
+// Package tracing wraps the OpenTelemetry tracer provider.
 package tracing
 
 import (
 	"context"
 	"log/slog"
+	"sync"
 
 	otelpyroscope "github.com/grafana/otel-profiling-go"
 	"go.opentelemetry.io/contrib/propagators/b3"
@@ -22,17 +21,21 @@ import (
 
 // New returns a new instance of the TracerProvider.
 //
+// Tracing is optional and is switched on by TRACER_URI. When the variable is
+// empty, New installs no global provider, leaves the propagators alone and
+// returns a nil provider with a no-op cleanup. Off costs nothing: no exporter
+// is built, so there are no retries against a collector and nothing reaches
+// the otel error handler.
+//
 //nolint:ireturn // It's make by specification
 func New(ctx context.Context, log *slog.Logger, cfg *config.Config) (traceProvider.TracerProvider, func(), error) {
-	cfg.SetDefault("TRACER_URI", "localhost:4317") // Tracing addr:host
-
-	config := Config{
+	tracingConfig := Config{
 		ServiceName:    cfg.GetString("SERVICE_NAME"),
 		ServiceVersion: cfg.GetString("SERVICE_VERSION"),
-		URI:            cfg.GetString("TRACER_URI"),
+		URI:            cfg.GetString("TRACER_URI"), // Tracing addr:host; empty means "do not trace"
 	}
 
-	tracer, tracerClose, err := Init(ctx, config, log, cfg)
+	tracer, tracerClose, err := Init(ctx, tracingConfig, log, cfg)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -44,8 +47,17 @@ func New(ctx context.Context, log *slog.Logger, cfg *config.Config) (traceProvid
 	return tracer, tracerClose, nil
 }
 
-// Init returns an instance of Tracer Provider that samples 100% of traces and logs all spans to stdout.
+// Init returns an instance of Tracer Provider that samples 100% of traces and exports
+// them over OTLP/gRPC to cnf.URI. An empty cnf.URI turns tracing off: Init returns
+// a nil provider, a no-op cleanup and no error.
+//
+// The returned cleanup flushes pending spans and shuts the exporter down. It is
+// bounded by TRACING_SHUTDOWN_TIMEOUT and is safe to call more than once.
 func Init(ctx context.Context, cnf Config, log *slog.Logger, cfg *config.Config) (*trace.TracerProvider, func(), error) {
+	if cnf.URI == "" {
+		return nil, func() {}, nil
+	}
+
 	// Setup resource.
 	res, err := common.NewResource(ctx, cnf.ServiceName, cnf.ServiceVersion)
 	if err != nil {
@@ -53,39 +65,44 @@ func Init(ctx context.Context, cnf Config, log *slog.Logger, cfg *config.Config)
 	}
 
 	// Setup trace provider.
-	tp, err := newTraceProvider(ctx, res, cnf.URI, cfg)
+	provider, err := newTraceProvider(ctx, res, cnf.URI, cfg)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	cleanup := func() {
-		errShutdown := tp.Shutdown(ctx)
-		if errShutdown != nil {
-			log.Error(`Tracing disable`,
-				slog.String("uri", cnf.URI),
-				slog.Any("err", errShutdown),
-			)
-		}
+	// The shutdown budget is deliberately separate from TRACING_MAX_ELAPSED_TIME.
+	// That one bounds how long a single export may keep retrying while the service
+	// is running and can reasonably be a minute. A service told to stop should stop:
+	// it flushes what it can within this timeout and drops the rest rather than
+	// hanging on an unreachable collector.
+	cfg.SetDefault("TRACING_SHUTDOWN_TIMEOUT", "10s")
+	shutdownTimeout := cfg.GetDuration("TRACING_SHUTDOWN_TIMEOUT")
+
+	var once sync.Once
+
+	cleanup := func() { //nolint:contextcheck // the startup ctx is usually canceled by now; shutdown needs its own bounded one
+		once.Do(func() {
+			// The ctx Init was started with is usually already canceled by the time
+			// the service stops, and Shutdown with a canceled ctx aborts instead of
+			// flushing. Use a fresh, bounded one.
+			shutdownCtx, cancel := context.WithTimeout(context.Background(), shutdownTimeout)
+			defer cancel()
+
+			errShutdown := provider.Shutdown(shutdownCtx)
+			if errShutdown != nil {
+				log.Error(`Tracing disable`,
+					slog.String("uri", cnf.URI),
+					slog.Any("err", errShutdown),
+				)
+			}
+		})
 	}
 
 	log.Info(`Tracing enable`,
 		slog.String("uri", cnf.URI),
 	)
 
-	// Gracefully shutdown the trace provider on exit
-	go func() {
-		<-ctx.Done()
-
-		// Shutdown will flush any remaining spans and shut down the exporter.
-		errShutdown := tp.Shutdown(ctx)
-		if errShutdown != nil {
-			log.Error("error shutting down trace provider",
-				slog.String("err", errShutdown.Error()),
-			)
-		}
-	}()
-
-	return tp, cleanup, nil
+	return provider, cleanup, nil
 }
 
 func newTraceProvider(ctx context.Context, res *resource.Resource, uri string, cfg *config.Config) (*trace.TracerProvider, error) {
