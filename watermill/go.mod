@@ -9,8 +9,8 @@ require (
 	github.com/dnwe/otelsarama v0.0.0-20240308230250-9388d9d40bc0
 	github.com/hashicorp/go-multierror v1.1.1
 	github.com/pkg/errors v0.9.1
-	github.com/shortlink-org/go-sdk/config v0.0.0-20260419222854-fd069f4d5106
-	github.com/shortlink-org/go-sdk/logger v0.0.0-20260901121657-d7eab0200634
+	github.com/shortlink-org/go-sdk/config v0.0.0-20260901155230-945620b3fa49
+	github.com/shortlink-org/go-sdk/logger v0.0.0-20260901155230-945620b3fa49
 	github.com/sony/gobreaker v1.0.0
 	github.com/stretchr/testify v1.12.1
 	github.com/testcontainers/testcontainers-go/modules/kafka v0.44.0
