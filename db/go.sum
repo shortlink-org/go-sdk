@@ -54,6 +54,8 @@ github.com/Unleash/unleash-go-sdk/v6 v6.5.1 h1:v2Evol8i/nRVHt+lshqQ3Irg6WB4DXsJi
 github.com/Unleash/unleash-go-sdk/v6 v6.5.1/go.mod h1:OdIeoL88hMnQ4tQDKB1Bv9PIPibnTua4/THRgkLrfi0=
 github.com/XSAM/otelsql v0.43.0 h1:ZIhXqRoMhILXQwBQoq/Dl6Taap/KEFQXZrWjYV1L8X8=
 github.com/XSAM/otelsql v0.43.0/go.mod h1:DJBGBvbtwf1OCBYRTjpRFxOqi6ONpdfb+htr4ncRWuw=
+github.com/XSAM/otelsql v0.44.0 h1:KxCiv26Fh4okTPlgROE2BWk+lgi20pdgMGxuSwgbRls=
+github.com/XSAM/otelsql v0.44.0/go.mod h1:FySZIr4R4WWMqvIjf2Iah7C0LAlpKvs9XRkaX7rE608=
 github.com/aerospike/aerospike-client-go v4.5.2+incompatible h1:G7cGT9bbOEJwPR8sKrXNP/PotN25Y5pfd8QrLbg3eTY=
 github.com/aerospike/aerospike-client-go v4.5.2+incompatible/go.mod h1:zj8LBEnWBDOVEIJt8LvaRvDG5ARAoa5dBeHaB472NRc=
 github.com/aerospike/aerospike-client-go/v8 v8.7.0 h1:ihcad2ekboqRsP5Rd6wvVRjBz4i+bOFXksAgMZarbAo=
