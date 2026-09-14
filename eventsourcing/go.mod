@@ -4,9 +4,9 @@ go 1.27.0
 
 require (
 	github.com/Masterminds/squirrel v1.5.4
-	github.com/jackc/pgx/v5 v5.10.0
-	github.com/shortlink-org/go-sdk/config v0.0.0-20260901155230-945620b3fa49
-	github.com/shortlink-org/go-sdk/db v0.0.0-20260901155230-945620b3fa49
+	github.com/jackc/pgx/v5 v5.11.0
+	github.com/shortlink-org/go-sdk/config v0.0.0-20260905203440-c7a4f3ba3610
+	github.com/shortlink-org/go-sdk/db v0.0.0-20260905203440-c7a4f3ba3610
 	github.com/stretchr/testify v1.12.1
 	github.com/testcontainers/testcontainers-go v0.44.0
 	go.opentelemetry.io/otel v1.46.0
@@ -40,7 +40,7 @@ require (
 	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/go-ole/go-ole v1.3.0 // indirect
 	github.com/go-viper/mapstructure/v2 v2.5.0 // indirect
-	github.com/golang-migrate/migrate/v4 v4.19.1 // indirect
+	github.com/golang-migrate/migrate/v4 v4.20.1 // indirect
 	github.com/google/uuid v1.6.0 // indirect
 	github.com/hashicorp/golang-lru/v2 v2.0.7 // indirect
 	github.com/jackc/pgerrcode v0.0.0-20250907135507-afb5586c32a6 // indirect
@@ -87,7 +87,7 @@ require (
 	go.opentelemetry.io/otel/sdk v1.46.0 // indirect
 	go.yaml.in/yaml/v3 v3.0.5 // indirect
 	golang.org/x/crypto v0.55.0 // indirect
-	golang.org/x/sync v0.22.0 // indirect
+	golang.org/x/sync v0.23.0 // indirect
 	golang.org/x/sys v0.47.0 // indirect
 	golang.org/x/text v0.41.0 // indirect
 )

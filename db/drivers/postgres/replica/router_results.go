@@ -3,6 +3,7 @@ package replica
 import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 // Query, QueryRow and SendBatch have nowhere to put a routing error: the first
@@ -33,6 +34,7 @@ func (r errRows) Scan(...any) error                            { return r.err }
 func (r errRows) Values() ([]any, error)                       { return nil, r.err }
 func (r errRows) RawValues() [][]byte                          { return nil }
 func (r errRows) Conn() *pgx.Conn                              { return nil }
+func (r errRows) TypeMap() *pgtype.Map                         { return nil }
 
 // errRow is a pgx.Row that reports err from Scan, which is the only place the
 // caller can see it.

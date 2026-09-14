@@ -10,7 +10,7 @@ replace (
 require (
 	github.com/ThreeDotsLabs/watermill v1.5.3
 	github.com/ThreeDotsLabs/watermill-sql/v4 v4.1.5
-	github.com/jackc/pgx/v5 v5.10.0
+	github.com/jackc/pgx/v5 v5.11.0
 	github.com/shortlink-org/go-sdk/uow v0.0.0-00010101000000-000000000000
 	github.com/shortlink-org/go-sdk/watermill v0.0.0-00010101000000-000000000000
 	github.com/sony/gobreaker v1.0.0
@@ -78,7 +78,7 @@ require (
 	github.com/power-devops/perfstat v0.0.0-20240221224432-82ca36839d55 // indirect
 	github.com/sagikazarmark/locafero v0.12.0 // indirect
 	github.com/shirou/gopsutil/v4 v4.26.6 // indirect
-	github.com/shortlink-org/go-sdk/config v0.0.0-20260901121657-d7eab0200634 // indirect
+	github.com/shortlink-org/go-sdk/config v0.0.0-20260905203440-c7a4f3ba3610 // indirect
 	github.com/sirupsen/logrus v1.9.4 // indirect
 	github.com/spf13/afero v1.15.0 // indirect
 	github.com/spf13/cast v1.10.0 // indirect
@@ -94,7 +94,7 @@ require (
 	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.71.0 // indirect
 	go.yaml.in/yaml/v3 v3.0.5 // indirect
 	golang.org/x/crypto v0.55.0 // indirect
-	golang.org/x/sync v0.22.0 // indirect
+	golang.org/x/sync v0.23.0 // indirect
 	golang.org/x/sys v0.47.0 // indirect
 	golang.org/x/text v0.41.0 // indirect
 )
