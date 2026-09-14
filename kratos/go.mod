@@ -4,7 +4,7 @@ go 1.27.0
 
 require (
 	github.com/ory/client-go v1.22.66
-	github.com/shortlink-org/go-sdk/config v0.0.0-20260905203440-c7a4f3ba3610
+	github.com/shortlink-org/go-sdk/config v0.0.0-20260914110947-2237285eb582
 	github.com/spf13/viper v1.21.0
 )
 

@@ -95,6 +95,8 @@ github.com/sagikazarmark/locafero v0.12.0 h1:/NQhBAkUb4+fH1jivKHWusDYFjMOOKU88ee
 github.com/sagikazarmark/locafero v0.12.0/go.mod h1:sZh36u/YSZ918v0Io+U9ogLYQJ9tLLBmM4eneO6WwsI=
 github.com/shortlink-org/go-sdk/http v0.0.0-20260905203440-c7a4f3ba3610 h1:6CswJ1e+g5Ff1o+qDKCPpayizXGThFfyh8rMylGcCws=
 github.com/shortlink-org/go-sdk/http v0.0.0-20260905203440-c7a4f3ba3610/go.mod h1:j0dEfkPbMM02rh7iPi3xmyce+ikUw3cMuzU8MIZaP/s=
+github.com/shortlink-org/go-sdk/http v0.0.0-20260914110947-2237285eb582 h1:NohqqjR7F7JwDslVYneQthuvcOftBCYijzDWJfGvISw=
+github.com/shortlink-org/go-sdk/http v0.0.0-20260914110947-2237285eb582/go.mod h1:uzwDWYQkXA4ZzT0czTZxxCJEJ1INA/hAEfgFVy9aolA=
 github.com/spf13/afero v1.15.0 h1:b/YBCLWAJdFWJTN9cLhiXXcD7mzKn9Dm86dNnfyQw1I=
 github.com/spf13/afero v1.15.0/go.mod h1:NC2ByUVxtQs4b3sIUphxK0NioZnmxgyCrfzeuq8lxMg=
 github.com/spf13/cast v1.10.0 h1:h2x0u2shc1QuLHfxi+cTJvs30+ZAHOGRic8uyGTDWxY=

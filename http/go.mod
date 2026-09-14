@@ -8,10 +8,10 @@ require (
 	github.com/golang-jwt/jwt/v5 v5.3.1
 	github.com/prometheus/client_golang v1.24.1
 	github.com/prometheus/client_model v0.6.3
-	github.com/shortlink-org/go-sdk/auth v0.0.0-20260905203440-c7a4f3ba3610
-	github.com/shortlink-org/go-sdk/config v0.0.0-20260905203440-c7a4f3ba3610
-	github.com/shortlink-org/go-sdk/flight_trace v0.0.0-20260905203440-c7a4f3ba3610
-	github.com/shortlink-org/go-sdk/grpc v0.0.0-20260905203440-c7a4f3ba3610
+	github.com/shortlink-org/go-sdk/auth v0.0.0-20260914110947-2237285eb582
+	github.com/shortlink-org/go-sdk/config v0.0.0-20260914110947-2237285eb582
+	github.com/shortlink-org/go-sdk/flight_trace v0.0.0-20260914110947-2237285eb582
+	github.com/shortlink-org/go-sdk/grpc v0.0.0-20260914110947-2237285eb582
 	github.com/stretchr/testify v1.12.1
 	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.71.0
 	go.opentelemetry.io/otel v1.46.0

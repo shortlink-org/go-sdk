@@ -3,8 +3,8 @@ module github.com/shortlink-org/go-sdk/raft
 go 1.27.0
 
 require (
-	github.com/shortlink-org/go-sdk/config v0.0.0-20260905203440-c7a4f3ba3610
-	github.com/shortlink-org/go-sdk/grpc v0.0.0-20260905203440-c7a4f3ba3610
+	github.com/shortlink-org/go-sdk/config v0.0.0-20260914110947-2237285eb582
+	github.com/shortlink-org/go-sdk/grpc v0.0.0-20260914110947-2237285eb582
 	github.com/stretchr/testify v1.12.1
 	google.golang.org/grpc v1.83.2
 	google.golang.org/protobuf v1.36.12
@@ -33,8 +33,8 @@ require (
 	github.com/prometheus/common v0.70.1 // indirect
 	github.com/prometheus/procfs v0.22.0 // indirect
 	github.com/sagikazarmark/locafero v0.12.0 // indirect
-	github.com/shortlink-org/go-sdk/auth v0.0.0-20260905203440-c7a4f3ba3610 // indirect
-	github.com/shortlink-org/go-sdk/flight_trace v0.0.0-20260905203440-c7a4f3ba3610 // indirect
+	github.com/shortlink-org/go-sdk/auth v0.0.0-20260914110947-2237285eb582 // indirect
+	github.com/shortlink-org/go-sdk/flight_trace v0.0.0-20260914110947-2237285eb582 // indirect
 	github.com/spf13/afero v1.15.0 // indirect
 	github.com/spf13/cast v1.10.0 // indirect
 	github.com/spf13/pflag v1.0.10 // indirect

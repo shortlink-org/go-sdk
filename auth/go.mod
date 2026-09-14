@@ -4,9 +4,9 @@ go 1.27.0
 
 require (
 	github.com/authzed/authzed-go v1.10.0
-	github.com/shortlink-org/go-sdk/config v0.0.0-20260905203440-c7a4f3ba3610
-	github.com/shortlink-org/go-sdk/grpc v0.0.0-20260905203440-c7a4f3ba3610
-	github.com/shortlink-org/go-sdk/observability v0.0.0-20260905203440-c7a4f3ba3610
+	github.com/shortlink-org/go-sdk/config v0.0.0-20260914110947-2237285eb582
+	github.com/shortlink-org/go-sdk/grpc v0.0.0-20260914110947-2237285eb582
+	github.com/shortlink-org/go-sdk/observability v0.0.0-20260914110947-2237285eb582
 	go.opentelemetry.io/otel/trace v1.46.0
 	google.golang.org/grpc v1.83.2
 )
