@@ -8,7 +8,7 @@ require (
 	github.com/shortlink-org/go-sdk/grpc v0.0.0-20260905203440-c7a4f3ba3610
 	github.com/shortlink-org/go-sdk/observability v0.0.0-20260905203440-c7a4f3ba3610
 	go.opentelemetry.io/otel/trace v1.46.0
-	google.golang.org/grpc v1.83.2
+	google.golang.org/grpc v1.84.0
 )
 
 require (

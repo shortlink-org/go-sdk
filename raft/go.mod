@@ -6,7 +6,7 @@ require (
 	github.com/shortlink-org/go-sdk/config v0.0.0-20260905203440-c7a4f3ba3610
 	github.com/shortlink-org/go-sdk/grpc v0.0.0-20260905203440-c7a4f3ba3610
 	github.com/stretchr/testify v1.12.1
-	google.golang.org/grpc v1.83.2
+	google.golang.org/grpc v1.84.0
 	google.golang.org/protobuf v1.36.12
 )
 
