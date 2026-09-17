@@ -4,7 +4,7 @@ go 1.27.0
 
 require (
 	github.com/stretchr/testify v1.12.1
-	go.uber.org/atomic v1.11.0
+	go.uber.org/atomic v1.12.0
 	go.uber.org/goleak v1.3.0
 )
 
