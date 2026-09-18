@@ -20,7 +20,7 @@ require (
 	github.com/mattn/go-sqlite3 v1.14.52
 	github.com/moby/moby/api v1.56.0
 	github.com/neo4j/neo4j-go-driver/v6 v6.2.0
-	github.com/redis/rueidis v1.0.77
+	github.com/redis/rueidis v1.0.78
 	github.com/redis/rueidis/rueidisotel v1.0.77
 	github.com/shortlink-org/go-sdk/config v0.0.0-20260905203440-c7a4f3ba3610
 	github.com/stretchr/testify v1.12.1
