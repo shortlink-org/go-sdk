@@ -7,8 +7,8 @@ independent modules (one `go.mod` per top-level directory, listed in `go.work`).
 
 - **Never run tests for the whole workspace in one go** (`go test ./...` from the
   root, or a loop over every module). `db`, `outbox` and `s3` start Docker
-  containers via testcontainers, and `-race` multiplies CPU load. A full run
-  heats a laptop to the point of being unusable.
+  containers via testcontainers, and 32 modules back to back heat a laptop to
+  the point of being unusable.
 - Run tests only for the module you changed:
 
   ```bash
@@ -28,8 +28,9 @@ independent modules (one `go.mod` per top-level directory, listed in `go.work`).
   make test MODULE=db TAGS=unit,database
   ```
 
-- Do not pass `-race` locally unless asked. CI runs it per module in parallel
-  jobs; a laptop cannot.
+- `make test` runs with `-race` and `-p 1` by default. Keep it: one module at a
+  time is affordable, and the race detector is the only way to find data races.
+  `RACE=0` is for quick iteration only, never for the final check.
 - `make test-all` exists for a deliberate full pass. It is sequential and
   CPU-capped, still slow, and never the default.
 

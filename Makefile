@@ -1,15 +1,17 @@
 # go-sdk is a multi-module workspace. Each target works on ONE module at a time.
 #
-#   make test MODULE=cqrs                 # unit tests of one module
+#   make test MODULE=cqrs                 # unit tests of one module, with -race
 #   make test MODULE=db TAGS=unit,database # with extra build tags (spins up containers)
+#   make test MODULE=cqrs RACE=0          # skip the race detector (quick iteration only)
 #   make lint MODULE=cqrs
 #   make tidy MODULE=cqrs
 #   make modules                          # list module names
 #
 # Never run tests for every module at once on a laptop: db/outbox/s3 start
-# testcontainers, and `-race` multiplies the load. `make test-all` is
-# sequential and limited to GOMAXPROCS=2 and still takes a long time; prefer
-# `make test MODULE=<name>` for the module you actually changed.
+# testcontainers and the whole pass takes a long time. `make test-all` is
+# sequential and limited to GOMAXPROCS=2; prefer `make test MODULE=<name>`
+# for the module you actually changed. The race detector stays on: one module
+# with `-p 1` is fine, and it is the only way to catch data races.
 
 SHELL := /bin/bash
 .DEFAULT_GOAL := help
@@ -19,15 +21,18 @@ MODULES := $(shell awk '/^\t\.\//{sub(/^\t\.\//,""); print}' go.work)
 
 MODULE ?=
 TAGS   ?= unit
+RACE   ?= 1
+RACEFLAG = $(if $(filter 1,$(RACE)),-race,)
 
 # Same resolution as CI: no workspace, every module resolves through its own go.mod.
 export GOWORK := off
 export GOFLAGS := -count=1
+export CGO_ENABLED := 1
 
 .PHONY: help modules test test-all lint tidy
 
 help:
-	@sed -n '2,13p' $(MAKEFILE_LIST)
+	@sed -n '2,14p' $(MAKEFILE_LIST)
 
 modules:
 	@printf '%s\n' $(MODULES)
@@ -40,7 +45,7 @@ endef
 test:
 	$(require_module)
 	@if find "$(MODULE)" -name '*_test.go' -type f | grep -q .; then \
-		cd "$(MODULE)" && go test -p 1 -tags="$(TAGS)" -shuffle=on ./... ; \
+		cd "$(MODULE)" && go test -p 1 $(RACEFLAG) -tags="$(TAGS)" -shuffle=on ./... ; \
 	else \
 		echo "$(MODULE): no test files"; \
 	fi
@@ -49,7 +54,7 @@ test:
 test-all:
 	@for m in $(MODULES); do \
 		echo "==> $$m"; \
-		GOMAXPROCS=2 $(MAKE) --no-print-directory test MODULE=$$m TAGS="$(TAGS)" || exit 1; \
+		GOMAXPROCS=2 $(MAKE) --no-print-directory test MODULE=$$m TAGS="$(TAGS)" RACE="$(RACE)" || exit 1; \
 	done
 
 lint:
