@@ -13,6 +13,7 @@ import (
 	"github.com/shortlink-org/go-sdk/http/client/middleware/otelwait"
 	"github.com/shortlink-org/go-sdk/http/client/middleware/serverlimit"
 	"github.com/shortlink-org/go-sdk/http/client/middleware/tokenbucket"
+	"github.com/shortlink-org/go-sdk/http/internal/semconvhttp"
 )
 
 // New constructs an HTTP client with optional rate limiting, hedging, and middleware.
@@ -49,6 +50,10 @@ func New(opts ...Option) (*http.Client, error) {
 	otelTransport := otelhttp.NewTransport(
 		base,
 		otelhttp.WithPropagators(nil), // uses global by default
+		// otelhttp names a client span "HTTP GET"; the conventions name it
+		// "{method}", or "{method} {url.template}" when the template is
+		// known, and never from the URL, which is unbounded.
+		otelhttp.WithSpanNameFormatter(spanName),
 	)
 
 	// Build middleware chain
@@ -82,4 +87,11 @@ func New(opts ...Option) (*http.Client, error) {
 	client.Timeout = 0 * time.Second // timeout should be per-request via ctx
 
 	return client, nil
+}
+
+// spanName is the otelhttp span name formatter: the request method alone, or
+// "HTTP" for a method the conventions do not know. The operation otelhttp
+// passes is its own default and is ignored.
+func spanName(_ string, request *http.Request) string {
+	return semconvhttp.SpanMethod(request.Method)
 }

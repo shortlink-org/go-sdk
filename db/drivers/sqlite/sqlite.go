@@ -42,7 +42,9 @@ func (s *Store) Init(ctx context.Context) error {
 
 	options := []otelsql.Option{
 		otelsql.WithAttributes(semconv.DBSystemNameSQLite),
-		otelsql.WithDBName("SQLite"),
+		// db.namespace is the database itself, which for SQLite is the file;
+		// db.system.name already says it is SQLite.
+		otelsql.WithDBName(s.config.Path),
 	}
 
 	if s.metrics != nil {

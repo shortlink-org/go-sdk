@@ -1,33 +1,12 @@
 package postgres
 
 import (
-	"context"
-
-	"github.com/jackc/pgx/v5"
-	semconv "go.opentelemetry.io/otel/semconv/v1.43.0"
 	"go.opentelemetry.io/otel/trace"
 )
 
+// Tracer is the tracer provider the store hands to otelpgx, which emits the
+// query spans and their database attributes. A nil provider leaves the pool
+// uninstrumented.
 type Tracer struct {
 	trace.TracerProvider
-}
-
-func (*Tracer) TraceQueryStart(ctx context.Context, _ *pgx.Conn, _ pgx.TraceQueryStartData) context.Context {
-	span := trace.SpanFromContext(ctx)
-
-	span.SetAttributes(
-		semconv.DBSystemNamePostgreSQL,
-	)
-
-	return ctx
-}
-
-func (*Tracer) TraceQueryEnd(ctx context.Context, _ *pgx.Conn, data pgx.TraceQueryEndData) {
-	span := trace.SpanFromContext(ctx)
-
-	if data.Err != nil {
-		span.RecordError(data.Err)
-	}
-
-	span.End()
 }

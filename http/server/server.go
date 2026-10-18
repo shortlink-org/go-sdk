@@ -60,7 +60,8 @@ func New(
 // request that runs out of time is still reported as one span, carrying the 503
 // the timeout handler wrote. Span names follow the otelhttp default, which is
 // the request method: the route pattern is resolved by the router further in,
-// where this wrapper can no longer see it.
+// where this wrapper can no longer see it. The span middleware, mounted on the
+// router, renames the span after the match and adds http.route and error.type.
 //
 //nolint:ireturn // http.Handler is the type the caller asked for
 func withTracing(handler http.Handler, tracer trace.TracerProvider) http.Handler {
