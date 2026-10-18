@@ -1,0 +1,177 @@
+# Telemetry of the watermill module (github.com/shortlink-org/go-sdk/watermill).
+#
+# Metric names are the Prometheus-style names the module has always exported.
+# They are the public contract of the module: dashboards and alerts key on them,
+# so a rename here is a breaking change and must show up in `weaver registry diff`.
+groups:
+  - id: registry.watermill
+    type: attribute_group
+    display_name: Watermill Attributes
+    brief: Attributes recorded on the metrics of the watermill module.
+    attributes:
+      - id: topic
+        type: string
+        stability: development
+        brief: The Watermill topic the message was published to or consumed from.
+        examples: ["orders", "payments.DLQ"]
+      - id: stage
+        type:
+          members:
+            - id: publish
+              value: "publish"
+              stability: development
+              brief: The failure happened while publishing.
+            - id: consume
+              value: "consume"
+              stability: development
+              brief: The failure happened in a message handler.
+        stability: development
+        brief: Which side of the message flow the failed operation belongs to.
+      - id: error
+        type: string
+        stability: development
+        brief: The error message of the failed operation, truncated to 128 characters.
+        note: >
+          Free text with unbounded cardinality. Kept for compatibility with the
+          existing dashboards; prefer `stage` and the span's recorded error.
+        examples: ["context deadline exceeded"]
+      - id: trace_id
+        type: string
+        stability: development
+        brief: The trace id of the span active when the measurement was taken.
+        note: >
+          Recorded only when the context carries a valid span. Exemplars carry
+          the same information without widening the time series; this attribute
+          stays for the dashboards that already query it.
+        examples: ["4bf92f3577b34da6a3ce929d0e0e4736"]
+      - id: span_id
+        type: string
+        stability: development
+        brief: The span id of the span active when the measurement was taken.
+        note: Recorded only when the context carries a valid span. See `trace_id`.
+        examples: ["00f067aa0ba902b7"]
+      - id: outcome
+        type: string
+        stability: development
+        brief: How a consistency step ended. The set of values is listed on each metric that records it.
+        examples: ["stamped", "ready"]
+
+  - id: metric.watermill.messages.published
+    type: metric
+    metric_name: watermill_messages_published_total
+    stability: development
+    brief: Messages published to topics.
+    instrument: counter
+    unit: "1"
+    attributes:
+      - ref: topic
+        requirement_level: required
+      - ref: trace_id
+        requirement_level:
+          conditionally_required: If the context carries a valid span.
+      - ref: span_id
+        requirement_level:
+          conditionally_required: If the context carries a valid span.
+
+  - id: metric.watermill.messages.consumed
+    type: metric
+    metric_name: watermill_messages_consumed_total
+    stability: development
+    brief: Messages consumed from topics whose handler returned no error.
+    instrument: counter
+    unit: "1"
+    attributes:
+      - ref: topic
+        requirement_level: required
+      - ref: trace_id
+        requirement_level:
+          conditionally_required: If the context carries a valid span.
+      - ref: span_id
+        requirement_level:
+          conditionally_required: If the context carries a valid span.
+
+  - id: metric.watermill.messages.failed
+    type: metric
+    metric_name: watermill_messages_failed_total
+    stability: development
+    brief: Message operations, publish or consume, that returned an error.
+    instrument: counter
+    unit: "1"
+    attributes:
+      - ref: topic
+        requirement_level: required
+      - ref: stage
+        requirement_level: required
+      - ref: error
+        requirement_level:
+          conditionally_required: If the operation returned a non-nil error.
+      - ref: trace_id
+        requirement_level:
+          conditionally_required: If the context carries a valid span.
+      - ref: span_id
+        requirement_level:
+          conditionally_required: If the context carries a valid span.
+
+  - id: metric.watermill.publish.latency
+    type: metric
+    metric_name: watermill_publish_latency_seconds
+    stability: development
+    brief: Duration of one publish call, including the wrapped publisher.
+    instrument: histogram
+    unit: "s"
+    attributes:
+      - ref: topic
+        requirement_level: required
+      - ref: trace_id
+        requirement_level:
+          conditionally_required: If the context carries a valid span.
+      - ref: span_id
+        requirement_level:
+          conditionally_required: If the context carries a valid span.
+
+  - id: metric.watermill.consume.latency
+    type: metric
+    metric_name: watermill_consume_latency_seconds
+    stability: development
+    brief: Duration of one successful handler invocation.
+    instrument: histogram
+    unit: "s"
+    attributes:
+      - ref: topic
+        requirement_level: required
+      - ref: trace_id
+        requirement_level:
+          conditionally_required: If the context carries a valid span.
+      - ref: span_id
+        requirement_level:
+          conditionally_required: If the context carries a valid span.
+
+  - id: metric.watermill.consistency.stamps
+    type: metric
+    metric_name: watermill_consistency_stamps_total
+    stability: development
+    brief: Messages stamped with a database watermark by the consistency publisher.
+    note: >
+      `outcome` is one of `stamped` (a watermark was written), `nothing_written`
+      (the handler made no writes), `unresolved` (a write happened but its
+      position could not be captured) or `error` (the watermarker failed).
+    instrument: counter
+    unit: "1"
+    attributes:
+      - ref: outcome
+        requirement_level: required
+
+  - id: metric.watermill.consistency.gate_results
+    type: metric
+    metric_name: watermill_consistency_gate_results_total
+    stability: development
+    brief: Outcomes of waiting for a read replica to replay a message's watermark.
+    note: >
+      `outcome` is one of `ready` (the replica caught up), `not_caught_up` (the
+      wait expired and the message is retried), `gate_error` (the gate failed)
+      or `no_watermark` (the message carried none).
+    instrument: counter
+    unit: "1"
+    attributes:
+      - ref: outcome
+        requirement_level: required

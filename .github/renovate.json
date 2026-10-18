@@ -5,9 +5,25 @@
   ],
   "packageRules": [
     {
-      "matchPackageNames": ["github.com/shortlink-org/go-sdk/**"],
+      "matchPackageNames": [
+        "github.com/shortlink-org/go-sdk/**"
+      ],
       "groupName": "internal go-sdk modules",
       "automerge": true
+    }
+  ],
+  "customManagers": [
+    {
+      "customType": "regex",
+      "description": "OpenTelemetry Weaver image pinned by tag and digest in semconv/Makefile",
+      "managerFilePatterns": [
+        "/^semconv/Makefile$/"
+      ],
+      "matchStrings": [
+        "WEAVER_VERSION\\s*\\?=\\s*(?<currentValue>v[0-9.]+)\\s*\\nWEAVER_IMAGE\\s*\\?=\\s*otel/weaver:\\$\\(WEAVER_VERSION\\)@(?<currentDigest>sha256:[a-f0-9]+)"
+      ],
+      "depNameTemplate": "otel/weaver",
+      "datasourceTemplate": "docker"
     }
   ]
 }

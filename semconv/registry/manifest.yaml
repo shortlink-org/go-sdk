@@ -1,0 +1,18 @@
+# Registry manifest for the go-sdk semantic conventions.
+#
+# The schema_url only identifies this registry and its version; nothing is
+# served there. Bump the version segment when a signal is renamed or removed,
+# and let `weaver registry diff` explain what changed.
+#
+# No dependency on the OpenTelemetry registry yet: nothing here uses `ref` to an
+# upstream attribute. When the first one is needed, add
+#
+#   dependencies:
+#     - schema_url: https://opentelemetry.io/schemas/1.43.0
+#       registry_path: https://github.com/open-telemetry/semantic-conventions/archive/refs/tags/v1.43.0.zip[model]
+#
+# and keep the version in step with the go.opentelemetry.io/otel/semconv import.
+file_format: definition_manifest/2.0
+name: shortlink-go-sdk
+description: Telemetry emitted by the shortlink-org/go-sdk modules.
+schema_url: https://github.com/shortlink-org/go-sdk/schemas/0.1.0

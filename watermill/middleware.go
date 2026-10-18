@@ -11,6 +11,8 @@ import (
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/metric"
 	"go.opentelemetry.io/otel/trace"
+
+	"github.com/shortlink-org/go-sdk/watermill/semconv"
 )
 
 // ----------- BASE MIDDLEWARE (panic, correlation, retry) ------------
@@ -94,15 +96,17 @@ func configureBaseMiddlewares(router *message.Router, log *slog.Logger, wmLogger
 
 // -------------------- METRICS MIDDLEWARE ---------------------------
 
+// MetricsMiddleware records the watermill metrics declared in
+// semconv/registry/watermill.yaml through the instruments generated from it.
 type MetricsMiddleware struct {
 	meter metric.Meter
 
-	published metric.Int64Counter
-	consumed  metric.Int64Counter
-	errors    metric.Int64Counter
+	published semconv.MessagesPublishedTotal
+	consumed  semconv.MessagesConsumedTotal
+	errors    semconv.MessagesFailedTotal
 
-	pubLatency metric.Float64Histogram
-	conLatency metric.Float64Histogram
+	pubLatency semconv.PublishLatencySeconds
+	conLatency semconv.ConsumeLatencySeconds
 }
 
 // NewMetricsMiddleware creates metrics middleware with explicit meter provider.
@@ -111,51 +115,31 @@ func NewMetricsMiddleware(log *slog.Logger, provider metric.MeterProvider) (*Met
 
 	meter := provider.Meter("watermill")
 
-	pub, err := meter.Int64Counter(
-		"watermill_messages_published_total",
-		metric.WithDescription("Total number of messages published to topics"),
-		metric.WithUnit("1"),
-	)
+	pub, err := semconv.NewMessagesPublishedTotal(meter)
 	if err != nil {
 		log.Error("Failed to create published counter metric", slog.String("error", err.Error()))
 		return nil, err
 	}
 
-	cons, err := meter.Int64Counter(
-		"watermill_messages_consumed_total",
-		metric.WithDescription("Total number of messages consumed from topics"),
-		metric.WithUnit("1"),
-	)
+	cons, err := semconv.NewMessagesConsumedTotal(meter)
 	if err != nil {
 		log.Error("Failed to create consumed counter metric", slog.String("error", err.Error()))
 		return nil, err
 	}
 
-	errc, err := meter.Int64Counter(
-		"watermill_messages_failed_total",
-		metric.WithDescription("Total number of failed message operations (publish or consume)"),
-		metric.WithUnit("1"),
-	)
+	errc, err := semconv.NewMessagesFailedTotal(meter)
 	if err != nil {
 		log.Error("Failed to create errors counter metric", slog.String("error", err.Error()))
 		return nil, err
 	}
 
-	pubLat, err := meter.Float64Histogram(
-		"watermill_publish_latency_seconds",
-		metric.WithDescription("Latency of message publishing operations in seconds"),
-		metric.WithUnit("s"),
-	)
+	pubLat, err := semconv.NewPublishLatencySeconds(meter)
 	if err != nil {
 		log.Error("Failed to create publish latency histogram metric", slog.String("error", err.Error()))
 		return nil, err
 	}
 
-	conLat, err := meter.Float64Histogram(
-		"watermill_consume_latency_seconds",
-		metric.WithDescription("Latency of message consumption operations in seconds"),
-		metric.WithUnit("s"),
-	)
+	conLat, err := semconv.NewConsumeLatencySeconds(meter)
 	if err != nil {
 		log.Error("Failed to create consume latency histogram metric", slog.String("error", err.Error()))
 		return nil, err
@@ -184,18 +168,18 @@ func (m *MetricsMiddleware) HandlerMiddleware() message.HandlerMiddleware {
 				ctx = context.Background()
 			}
 
-			attrs := metric.WithAttributes(m.topicAttributes(ctx, topic)...)
+			attrs := spanAttributes(ctx)
 
 			msgs, err := next(msg)
 			lat := time.Since(start).Seconds()
 
 			if err != nil {
-				m.errors.Add(ctx, 1, metric.WithAttributes(m.errorAttributes(ctx, topic, "consume", err)...))
+				m.errors.Add(ctx, 1, semconv.StageConsume, topic, errorAttributes(attrs, err)...)
 				return msgs, err
 			}
 
-			m.consumed.Add(ctx, 1, attrs)
-			m.conLatency.Record(ctx, lat, attrs)
+			m.consumed.Add(ctx, 1, topic, attrs...)
+			m.conLatency.Record(ctx, lat, topic, attrs...)
 
 			return msgs, nil
 		}
@@ -239,7 +223,7 @@ func (pw *publisherWrapper) publishWithMetrics(topic string, msgs ...*message.Me
 	var span trace.Span
 	if pw.otel != nil {
 		ctx, span = pw.otel.tracer.Start(ctx, "watermill.publish", trace.WithAttributes(
-			attribute.String("topic", topic),
+			semconv.Topic(topic),
 		))
 		defer span.End()
 	}
@@ -253,20 +237,20 @@ func (pw *publisherWrapper) publishWithMetrics(topic string, msgs ...*message.Me
 	err := pw.pub.Publish(topic, msgs...)
 	lat := time.Since(start).Seconds()
 
-	attrs := metric.WithAttributes(pw.metrics.topicAttributes(ctx, topic)...)
+	attrs := spanAttributes(ctx)
 
 	if err != nil {
 		if span != nil {
 			span.RecordError(err)
 		}
 
-		pw.metrics.errors.Add(ctx, 1, metric.WithAttributes(pw.metrics.errorAttributes(ctx, topic, "publish", err)...))
+		pw.metrics.errors.Add(ctx, 1, semconv.StagePublish, topic, errorAttributes(attrs, err)...)
 
 		return err
 	}
 
-	pw.metrics.published.Add(ctx, int64(len(msgs)), attrs)
-	pw.metrics.pubLatency.Record(ctx, lat, attrs)
+	pw.metrics.published.Add(ctx, int64(len(msgs)), topic, attrs...)
+	pw.metrics.pubLatency.Record(ctx, lat, topic, attrs...)
 
 	return nil
 }
@@ -292,23 +276,23 @@ func SpanID(ctx context.Context) string {
 
 const metricErrorMaxLen = 128
 
-func (m *MetricsMiddleware) topicAttributes(ctx context.Context, topic string) []attribute.KeyValue {
-	attrs := []attribute.KeyValue{attribute.String("topic", topic)}
-	if traceID := TraceID(ctx); traceID != "" {
-		attrs = append(attrs, attribute.String("trace_id", traceID))
+// spanAttributes returns the trace_id and span_id attributes for the span in
+// ctx, or nothing when ctx carries no valid span.
+func spanAttributes(ctx context.Context) []attribute.KeyValue {
+	spanCtx := trace.SpanContextFromContext(ctx)
+	if !spanCtx.IsValid() {
+		return nil
 	}
 
-	if spanID := SpanID(ctx); spanID != "" {
-		attrs = append(attrs, attribute.String("span_id", spanID))
+	return []attribute.KeyValue{
+		semconv.TraceID(spanCtx.TraceID().String()),
+		semconv.SpanID(spanCtx.SpanID().String()),
 	}
-
-	return attrs
 }
 
-func (m *MetricsMiddleware) errorAttributes(ctx context.Context, topic, stage string, err error) []attribute.KeyValue {
-	attrs := m.topicAttributes(ctx, topic)
-
-	attrs = append(attrs, attribute.String("stage", stage))
+// errorAttributes appends the truncated error message to attrs. It returns
+// attrs unchanged for a nil err.
+func errorAttributes(attrs []attribute.KeyValue, err error) []attribute.KeyValue {
 	if err == nil {
 		return attrs
 	}
@@ -318,7 +302,5 @@ func (m *MetricsMiddleware) errorAttributes(ctx context.Context, topic, stage st
 		errStr = errStr[:metricErrorMaxLen]
 	}
 
-	attrs = append(attrs, attribute.String("error", errStr))
-
-	return attrs
+	return append(attrs, semconv.Error(errStr))
 }

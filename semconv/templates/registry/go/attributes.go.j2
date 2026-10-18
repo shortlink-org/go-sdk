@@ -1,0 +1,45 @@
+{% import 'helpers.j2' as h -%}
+{%- set pkg = params.package -%}
+// Code generated from the go-sdk semantic convention registry. DO NOT EDIT.
+//
+// Source: semconv/registry/{{ pkg }}.yaml. Regenerate with `make -C semconv generate`.
+
+// Package semconv holds the attribute keys and metric instruments of the
+// {{ pkg }} module as declared in the go-sdk semantic convention registry.
+package semconv
+
+import "go.opentelemetry.io/otel/attribute"
+
+const (
+{%- for attr in ctx %}
+{%- set name = h.to_go_name(attr.name, pkg) %}
+{{ [name ~ "Key is the \"" ~ attr.name ~ "\" attribute key. " ~ h.sentence(attr.brief), "", "Type: " ~ (attr is enum and "Enum" or attr.type), "Stability: " ~ (attr.stability | title), (attr.note and ("Note: " ~ attr.note) or "")] | comment(format="go_1tab") }}
+	{{ name }}Key = attribute.Key("{{ attr.name }}")
+{% endfor -%}
+)
+{%- for attr in ctx if not attr is enum %}
+{%- set name = h.to_go_name(attr.name, pkg) %}
+
+{{ [name ~ " returns a \"" ~ attr.name ~ "\" attribute. " ~ h.sentence(attr.brief)] | comment }}
+func {{ name }}(val {{ attr.type | map_text("attribute_type_value") }}) attribute.KeyValue {
+	return {{ name }}Key.{{ attr.type | map_text("attribute_type_method") }}(val)
+}
+{%- endfor %}
+{%- for attr in ctx if attr is enum %}
+{%- set name = h.to_go_name(attr.name, pkg) %}
+
+{{ [name ~ "Attr is a value of the \"" ~ attr.name ~ "\" attribute."] | comment }}
+type {{ name }}Attr {{ h.member_type(attr.type.members[0]) }}
+
+const (
+{%- for m in attr.type.members if not m.deprecated %}
+{{ [(m.brief or m.id) | trim(".") ~ ".", "Stability: " ~ (m.stability | title)] | comment(format="go_1tab") }}
+	{{ name }}{{ h.to_go_name(m.id) }} {{ name }}Attr = {{ m.value | print_member_value }}
+{%- endfor %}
+)
+
+{{ [name ~ " returns a \"" ~ attr.name ~ "\" attribute."] | comment }}
+func {{ name }}(val {{ name }}Attr) attribute.KeyValue {
+	return {{ name }}Key.{{ h.attr_type(attr) | map_text("attribute_type_method") }}({{ h.attr_type(attr) }}(val))
+}
+{%- endfor %}

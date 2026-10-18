@@ -7,8 +7,9 @@ import (
 	"time"
 
 	"github.com/ThreeDotsLabs/watermill/message"
-	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/metric"
+
+	"github.com/shortlink-org/go-sdk/watermill/semconv"
 )
 
 // MetaWALWatermark carries the database watermark a handler must observe
@@ -88,7 +89,7 @@ func NewConsistencyPublisher(
 		Publisher:   publisher,
 		watermarker: watermarker,
 		log:         orDiscard(log),
-		stamps:      consistencyCounter(provider, "watermill_consistency_stamps_total", "Messages stamped with a database watermark."),
+		stamps:      newConsistencyStamps(provider),
 	}
 }
 
@@ -97,7 +98,7 @@ type consistencyPublisher struct {
 
 	watermarker Watermarker
 	log         *slog.Logger
-	stamps      metric.Int64Counter
+	stamps      semconv.ConsistencyStampsTotal
 }
 
 type publicationWatermarkState uint8
@@ -187,11 +188,7 @@ func (p *consistencyPublisher) stamp(messages []*message.Message) {
 }
 
 func (p *consistencyPublisher) count(ctx context.Context, outcome string) {
-	if p.stamps == nil {
-		return
-	}
-
-	p.stamps.Add(ctx, 1, metric.WithAttributes(attribute.String("outcome", outcome)))
+	p.stamps.Add(ctx, 1, outcome)
 }
 
 // ConsistencyOptions configure the read-your-writes gate for handlers.
@@ -226,8 +223,7 @@ func NewConsistencyMiddleware(gate ReplicaGate, opts ConsistencyOptions, provide
 		opts.MaxWait = defaultGateMaxWait
 	}
 
-	results := consistencyCounter(provider, "watermill_consistency_gate_results_total",
-		"Outcomes of waiting for a read replica to replay a message's watermark.")
+	results := newConsistencyGateResults(provider)
 
 	return func(next message.HandlerFunc) message.HandlerFunc {
 		return func(msg *message.Message) ([]*message.Message, error) {
@@ -282,28 +278,36 @@ func IsConsistencyError(err error) bool {
 	return errors.Is(err, ErrReplicaNotCaughtUp)
 }
 
-//nolint:ireturn // metric.Int64Counter is the otel API's own type
-func consistencyCounter(provider metric.MeterProvider, name, description string) metric.Int64Counter {
-	if provider == nil {
-		return nil
-	}
-
-	counter, err := provider.Meter("watermill").Int64Counter(
-		name,
-		metric.WithDescription(description),
-		metric.WithUnit("1"),
-	)
-	if err != nil {
-		return nil
-	}
+// newConsistencyStamps builds the stamps counter, or a no-op one when provider
+// is nil or refuses the instrument: a consistency optimization must never fail
+// a publish over its own bookkeeping.
+func newConsistencyStamps(provider metric.MeterProvider) semconv.ConsistencyStampsTotal {
+	// The constructor returns a no-op instrument together with the error, and a
+	// consistency optimization must never fail a publish over its bookkeeping.
+	counter, _ := semconv.NewConsistencyStampsTotal(consistencyMeter(provider)) //nolint:errcheck // see above
 
 	return counter
 }
 
-func count(ctx context.Context, counter metric.Int64Counter, outcome string) {
-	if counter == nil {
-		return
+// newConsistencyGateResults is newConsistencyStamps for the gate counter.
+func newConsistencyGateResults(provider metric.MeterProvider) semconv.ConsistencyGateResultsTotal {
+	counter, _ := semconv.NewConsistencyGateResultsTotal(consistencyMeter(provider)) //nolint:errcheck // same as newConsistencyStamps
+
+	return counter
+}
+
+// consistencyMeter returns the module meter, or a nil meter for a nil provider
+// so that the generated constructors hand back their no-op instruments.
+//
+//nolint:ireturn // metric.Meter is the otel API's own type
+func consistencyMeter(provider metric.MeterProvider) metric.Meter {
+	if provider == nil {
+		return nil
 	}
 
-	counter.Add(ensureContext(ctx), 1, metric.WithAttributes(attribute.String("outcome", outcome)))
+	return provider.Meter("watermill")
+}
+
+func count(ctx context.Context, counter semconv.ConsistencyGateResultsTotal, outcome string) {
+	counter.Add(ensureContext(ctx), 1, outcome)
 }

@@ -1,0 +1,74 @@
+# Weaver Forge configuration for the Go code generated from the go-sdk registry.
+#
+# Invoked as `weaver registry generate go <output>` from semconv/Makefile. The
+# templates are derived from the ones opentelemetry-go uses for its semconv
+# packages (Apache-2.0), trimmed to what a single-module package needs.
+params:
+  # Go package the files are generated into. The metric and attribute names
+  # that start with this prefix lose it in the Go identifiers:
+  # watermill_messages_published_total -> MessagesPublishedTotal.
+  package: watermill
+
+templates:
+  - pattern: attributes.go.j2
+    filter: >
+      semconv_attributes({"exclude_deprecated": true})
+    application_mode: single
+    file_name: attributes.go
+  - pattern: metrics.go.j2
+    filter: >
+      semconv_metrics({"exclude_deprecated": true})
+    application_mode: single
+    file_name: metrics.go
+
+comment_formats:
+  go:
+    format: markdown
+    prefix: "// "
+    indent_first_level_list_items: true
+    shortcut_reference_link: true
+    trim: true
+    word_wrap:
+      line_length: 80
+  go_1tab:
+    format: markdown
+    prefix: "\t// "
+    indent_first_level_list_items: true
+    shortcut_reference_link: true
+    trim: true
+    word_wrap:
+      line_length: 80
+default_comment_format: go
+
+# Jinja whitespace: keep the newline that ends each template so gofmt is happy.
+whitespace_control:
+  trim_blocks: false
+  lstrip_blocks: false
+  keep_trailing_newline: true
+
+# Words the `acronym` filter upper-cases in Go identifiers: span_id -> SpanID.
+acronyms: ["ID", "URL", "HTTP", "GRPC", "DLQ", "WAL"]
+
+text_maps:
+  # Semantic convention attribute type -> attribute.Key method.
+  attribute_type_method:
+    string: String
+    string[]: StringSlice
+    int: Int
+    int64: Int64
+    int[]: IntSlice
+    double: Float64
+    double[]: FloatSlice
+    boolean: Bool
+    boolean[]: BoolSlice
+  # Semantic convention attribute type -> Go value type.
+  attribute_type_value:
+    string: string
+    string[]: "[]string"
+    int: int
+    int64: int64
+    int[]: "[]int"
+    double: float64
+    double[]: "[]float64"
+    boolean: bool
+    boolean[]: "[]bool"

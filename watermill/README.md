@@ -202,13 +202,19 @@ Every original metadata key is copied into the DLQ message metadata using the `o
 
 ## Observability
 
-- **Metrics** — published via the provided `metric.MeterProvider`. Names:
-  - `watermill_messages_published_total`
-  - `watermill_messages_consumed_total`
-  - `watermill_messages_failed_total`
-  - `watermill_publish_latency_seconds`
-  - `watermill_consume_latency_seconds`
-  All metrics have `topic`, `trace_id`, `span_id` attributes. Errors are additionally tagged with `stage=publish|consume` and `error` (truncated to 128 characters).
+- **Metrics** — published via the provided `metric.MeterProvider`. The
+  instruments are declared in [`semconv/registry/watermill.yaml`](../semconv/registry/watermill.yaml)
+  and the Go code in [`semconv`](./semconv) is generated from it with
+  OpenTelemetry Weaver (`make -C semconv generate`). Names:
+  - `watermill_messages_published_total{topic}`
+  - `watermill_messages_consumed_total{topic}`
+  - `watermill_messages_failed_total{topic, stage, error}`
+  - `watermill_publish_latency_seconds{topic}`
+  - `watermill_consume_latency_seconds{topic}`
+  All of them also carry `trace_id` and `span_id` when the context has a valid span.
+  `stage` is `publish` or `consume`; `error` is the message truncated to 128 characters.
+  The registry is the contract: a rename there is a breaking change and shows up in
+  `weaver registry diff` in CI.
 
 - **Tracing** — requires `trace.TracerProvider`. Middleware automatically extracts/injects context in Watermill metadata (`otel_trace_id`, `otel_span_id`).
 

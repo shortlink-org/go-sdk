@@ -1,0 +1,112 @@
+{% import 'helpers.j2' as h -%}
+{%- set pkg = params.package -%}
+// Code generated from the go-sdk semantic convention registry. DO NOT EDIT.
+//
+// Source: semconv/registry/{{ pkg }}.yaml. Regenerate with `make -C semconv generate`.
+
+package semconv
+
+import (
+	"context"
+
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/metric"
+	"go.opentelemetry.io/otel/metric/noop"
+)
+{%- for metric in ctx %}
+{%- set name = h.to_go_name(metric.metric_name, pkg) %}
+{%- set value_type = (metric.unit in ["s", "ms"]) and "Float64" or "Int64" %}
+{%- set kind = {"counter": "Counter", "updowncounter": "UpDownCounter", "gauge": "Gauge", "histogram": "Histogram"}[metric.instrument] %}
+{%- set inst = value_type ~ kind %}
+{%- set go_value = value_type | lower %}
+{%- set method = (metric.instrument == "histogram" or metric.instrument == "gauge") and "Record" or "Add" %}
+{%- set arg = (method == "Record") and "val" or "incr" %}
+{%- set required = metric.attributes | required | attribute_sort %}
+{%- set optional = metric.attributes | not_required | attribute_sort %}
+
+{{ [name ~ " is the \"" ~ metric.metric_name ~ "\" instrument. " ~ h.sentence(metric.brief), (metric.note and ("\n" ~ metric.note) or "")] | comment }}
+type {{ name }} struct {
+	metric.{{ inst }}
+}
+
+var new{{ name }}Opts = []metric.{{ inst }}Option{
+	metric.WithDescription("{{ metric.brief | replace('\n', ' ') | trim }}"),
+	metric.WithUnit("{{ metric.unit }}"),
+}
+
+{{ ["New" ~ name ~ " returns a new " ~ name ~ " instrument created on m. A nil m yields a no-op instrument, which is what callers without observability get."] | comment }}
+func New{{ name }}(m metric.Meter, opt ...metric.{{ inst }}Option) ({{ name }}, error) {
+	if m == nil {
+		return {{ name }}{noop.{{ inst }}{}}, nil
+	}
+
+	if len(opt) == 0 {
+		opt = new{{ name }}Opts
+	} else {
+		opt = append(opt, new{{ name }}Opts...)
+	}
+
+	i, err := m.{{ inst }}("{{ metric.metric_name }}", opt...)
+	if err != nil {
+		return {{ name }}{noop.{{ inst }}{}}, err
+	}
+
+	return {{ name }}{i}, nil
+}
+
+// Name returns the semantic convention name of the instrument.
+func ({{ name }}) Name() string {
+	return "{{ metric.metric_name }}"
+}
+
+// Unit returns the semantic convention unit of the instrument.
+func ({{ name }}) Unit() string {
+	return "{{ metric.unit }}"
+}
+
+// Description returns the semantic convention description of the instrument.
+func ({{ name }}) Description() string {
+	return "{{ metric.brief | replace('\n', ' ') | trim }}"
+}
+
+{{ [method ~ " " ~ ((method == "Record") and "records val to the current distribution" or "adds incr to the existing count") ~ " for the given attributes. Required attributes are positional; attrs carries the optional ones."] | comment }}
+{%- if required | length > 0 %}
+//
+{%- for attr in required %}
+{{ [h.param_name(attr.name) ~ ": " ~ h.sentence(attr.brief)] | comment }}
+{%- endfor %}
+{%- endif %}
+{%- if optional | length > 0 %}
+//
+{{ ["Optional attributes: " ~ (optional | map(attribute="name") | join(", ")) ~ "."] | comment }}
+{%- endif %}
+func (m {{ name }}) {{ method }}(
+	ctx context.Context,
+	{{ arg }} {{ go_value }},
+{%- for attr in required %}
+	{{ h.param_name(attr.name) }} {% if attr.type is mapping %}{{ h.to_go_name(attr.name, pkg) }}Attr{% else %}{{ attr.type | map_text("attribute_type_value") }}{% endif %},
+{%- endfor %}
+	attrs ...attribute.KeyValue,
+) {
+	if !m.{{ inst }}.Enabled(ctx) {
+		return
+	}
+{% if required | length > 0 %}
+	all := make([]attribute.KeyValue, 0, len(attrs)+{{ required | length }})
+	all = append(all,
+{%- for attr in required %}
+{%- if attr.type is mapping %}
+		{{ h.to_go_name(attr.name, pkg) }}({{ h.param_name(attr.name) }}),
+{%- else %}
+		{{ h.to_go_name(attr.name, pkg) }}({{ h.param_name(attr.name) }}),
+{%- endif %}
+{%- endfor %}
+	)
+	all = append(all, attrs...)
+
+	m.{{ inst }}.{{ method }}(ctx, {{ arg }}, metric.WithAttributes(all...))
+{%- else %}
+	m.{{ inst }}.{{ method }}(ctx, {{ arg }}, metric.WithAttributes(attrs...))
+{%- endif %}
+}
+{%- endfor %}

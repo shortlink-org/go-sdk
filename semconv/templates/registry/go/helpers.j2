@@ -1,0 +1,74 @@
+{#- Helpers shared by the Go templates. Adapted from opentelemetry-go
+    semconv/templates/registry/go/helpers.j2 (Apache-2.0). -#}
+
+{#- Strips the package prefix and turns the rest into a Go identifier:
+    "watermill_messages_published_total" -> "MessagesPublishedTotal",
+    "topic" -> "Topic", "stage.publish" -> "StagePublish". -#}
+{%- macro to_go_name(fqn, pkg="") -%}
+{%- set name = fqn -%}
+{%- if pkg != "" and fqn != pkg -%}
+{%- set n = pkg | length -%}
+{%- if pkg == fqn[:n] and fqn[n] in [".", "_"] -%}
+{%- set name = fqn[n+1:] -%}
+{%- endif -%}
+{%- endif -%}
+{{ name | replace(".", "_") | split("_") | map("acronym") | map("capitalize_first") | join("") }}
+{%- endmacro -%}
+
+{%- macro lower_first(line) -%}
+{%- if line is string and line | length > 1 -%}
+{%- if line[0] is upper and line[1] is upper -%}
+{{ line }}
+{%- else -%}
+{{ line[0] | lower }}{{ line[1:] }}
+{%- endif -%}
+{%- elif line is not none -%}
+{{ line }}
+{%- endif -%}
+{%- endmacro -%}
+
+{#- The brief as a sentence of its own, ending with a period. -#}
+{%- macro sentence(brief) -%}
+{{ brief | trim | trim(".") }}.
+{%- endmacro -%}
+
+{%- macro requirement_level(attr) -%}
+{%- if attr.requirement_level is mapping -%}
+{%- for level, condition in attr.requirement_level | items -%}
+{{ level | title }}: {{ condition }}
+{%- endfor -%}
+{%- else -%}
+{{ attr.requirement_level | title }}
+{%- endif -%}
+{%- endmacro -%}
+
+{%- macro member_type(member) -%}
+{%- if member.value is string %}string
+{%- elif member.value is boolean %}bool
+{%- elif member.value is int %}int64
+{%- elif member.value is float %}float64
+{%- endif -%}
+{%- endmacro -%}
+
+{%- macro attr_type(attr) -%}
+{%- if attr.type is mapping -%}
+{{- member_type(attr.type.members[0]) }}
+{%- else -%}
+{{- attr.type | trim }}
+{%- endif -%}
+{%- endmacro -%}
+
+{#- Go parameter name for a required attribute, dodging Go keywords. -#}
+{%- macro param_name(attr_name, pkg="") -%}
+{%- set reserved = [
+	"type", "break", "default", "func", "interface", "select", "case", "defer",
+	"go", "map", "struct", "chan", "else", "goto", "const", "fallthrough", "if",
+	"range", "continue", "for", "import", "return", "var", "error", "string", "int",
+] -%}
+{%- set name = attr_name | replace(".", "_") | camel_case -%}
+{%- if name in reserved -%}
+{{ name }}Attr
+{%- else -%}
+{{ name }}
+{%- endif -%}
+{%- endmacro -%}
