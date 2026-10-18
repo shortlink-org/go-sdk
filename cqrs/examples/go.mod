@@ -1,6 +1,6 @@
 module github.com/shortlink-org/go-sdk/cqrs/examples
 
-go 1.27.0
+go 1.27.2
 
 replace github.com/shortlink-org/go-sdk/cqrs => ../
 
@@ -38,7 +38,7 @@ require (
 	github.com/pelletier/go-toml/v2 v2.4.3 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/sagikazarmark/locafero v0.12.0 // indirect
-	github.com/shortlink-org/go-sdk/config v0.0.0-20260905203440-c7a4f3ba3610 // indirect
+	github.com/shortlink-org/go-sdk/config v0.0.0-20260914110947-2237285eb582 // indirect
 	github.com/shortlink-org/go-sdk/uow v0.0.0-00010101000000-000000000000 // indirect
 	github.com/shortlink-org/go-sdk/watermill v0.0.0-00010101000000-000000000000 // indirect
 	github.com/sony/gobreaker v1.0.0 // indirect
@@ -51,12 +51,13 @@ require (
 	github.com/subosito/gotenv v1.6.0 // indirect
 	github.com/twmb/murmur3 v1.1.8 // indirect
 	go.opentelemetry.io/auto/sdk v1.2.1 // indirect
-	go.opentelemetry.io/otel v1.46.0 // indirect
-	go.opentelemetry.io/otel/metric v1.46.0 // indirect
-	go.opentelemetry.io/otel/trace v1.46.0 // indirect
+	go.opentelemetry.io/otel v1.47.0 // indirect
+	go.opentelemetry.io/otel/log v1.47.0 // indirect
+	go.opentelemetry.io/otel/metric v1.47.0 // indirect
+	go.opentelemetry.io/otel/trace v1.47.0 // indirect
 	go.yaml.in/yaml/v3 v3.0.5 // indirect
-	golang.org/x/sync v0.23.0 // indirect
-	golang.org/x/sys v0.47.0 // indirect
-	golang.org/x/text v0.41.0 // indirect
+	golang.org/x/sync v0.24.0 // indirect
+	golang.org/x/sys v0.48.0 // indirect
+	golang.org/x/text v0.42.0 // indirect
 	google.golang.org/protobuf v1.36.12 // indirect
 )

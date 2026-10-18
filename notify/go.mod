@@ -1,10 +1,10 @@
 module github.com/shortlink-org/go-sdk/notify
 
-go 1.27.0
+go 1.27.2
 
 require (
 	github.com/stretchr/testify v1.12.1
-	go.uber.org/atomic v1.11.0
+	go.uber.org/atomic v1.12.0
 	go.uber.org/goleak v1.3.0
 )
 

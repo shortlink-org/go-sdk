@@ -37,11 +37,11 @@ func New(ctx context.Context, limit int64, interval time.Duration) (*RateLimiter
 	go rateLimiter.refill()
 
 	// Graceful shutdown: when the context is canceled, signal via the done channel.
+	// The limiter channel is closed by refill, its only sender, so a close never
+	// races with an in-flight send.
 	go func() {
 		<-ctx.Done()
 		close(done)
-		ticker.Stop()
-		close(rateLimiter.limiter)
 	}()
 
 	return rateLimiter, nil
@@ -74,6 +74,7 @@ func (r *RateLimiter) refill() {
 			}
 		case <-r.done:
 			r.ticker.Stop()
+			close(r.limiter)
 
 			return
 		}

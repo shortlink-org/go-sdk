@@ -1,15 +1,15 @@
 module github.com/shortlink-org/go-sdk/db
 
-go 1.27.0
+go 1.27.2
 
 require (
 	github.com/XSAM/otelsql v0.44.0
 	github.com/aerospike/aerospike-client-go v4.5.2+incompatible
 	github.com/apache/cassandra-gocql-driver/v2 v2.1.2
-	github.com/couchbase/gocb/v2 v2.12.5
+	github.com/couchbase/gocb/v2 v2.13.0
 	github.com/dgraph-io/badger/v4 v4.9.6
 	github.com/dgraph-io/dgo/v250 v250.0.0
-	github.com/exaring/otelpgx v0.11.1
+	github.com/exaring/otelpgx v0.13.0
 	github.com/geldata/gel-go v1.4.3
 	github.com/go-sql-driver/mysql v1.10.1
 	github.com/golang-migrate/migrate/v4 v4.20.1
@@ -18,11 +18,11 @@ require (
 	github.com/johejo/golang-migrate-extra v0.0.0-20211005021153-c17dd75f8b4a
 	github.com/lib/pq v1.12.3
 	github.com/mattn/go-sqlite3 v1.14.52
-	github.com/moby/moby/api v1.56.0
-	github.com/neo4j/neo4j-go-driver/v6 v6.2.0
-	github.com/redis/rueidis v1.0.77
-	github.com/redis/rueidis/rueidisotel v1.0.77
-	github.com/shortlink-org/go-sdk/config v0.0.0-20260905203440-c7a4f3ba3610
+	github.com/moby/moby/api v1.56.1
+	github.com/neo4j/neo4j-go-driver/v6 v6.3.0
+	github.com/redis/rueidis v1.0.79
+	github.com/redis/rueidis/rueidisotel v1.0.79
+	github.com/shortlink-org/go-sdk/config v0.0.0-20260914110947-2237285eb582
 	github.com/stretchr/testify v1.12.1
 	github.com/syndtr/goleveldb v1.0.1-0.20220721030215-126854af5e6d
 	github.com/testcontainers/testcontainers-go v0.44.0
@@ -36,17 +36,17 @@ require (
 	github.com/uptrace/go-clickhouse v0.3.1
 	github.com/uptrace/go-clickhouse/chdebug v0.3.1
 	github.com/uptrace/go-clickhouse/chotel v0.3.1
-	github.com/uptrace/opentelemetry-go-extra/otelsql v0.3.2
-	go.etcd.io/etcd/client/v3 v3.7.1
-	go.mongodb.org/mongo-driver/v2 v2.9.1
-	go.opentelemetry.io/contrib/instrumentation/go.mongodb.org/mongo-driver/v2/mongo/otelmongo v0.0.0-20260912081237-1395f632c54d
-	go.opentelemetry.io/otel v1.46.0
-	go.opentelemetry.io/otel/metric v1.46.0
-	go.opentelemetry.io/otel/sdk v1.46.0
-	go.opentelemetry.io/otel/sdk/metric v1.46.0
-	go.opentelemetry.io/otel/trace v1.46.0
+	github.com/uptrace/opentelemetry-go-extra/otelsql v0.4.0
+	go.etcd.io/etcd/client/v3 v3.7.2
+	go.mongodb.org/mongo-driver/v2 v2.9.2
+	go.opentelemetry.io/contrib/instrumentation/go.mongodb.org/mongo-driver/v2/mongo/otelmongo v0.0.0-20261016162345-d68bf0d1c4d3
+	go.opentelemetry.io/otel v1.47.0
+	go.opentelemetry.io/otel/metric v1.47.0
+	go.opentelemetry.io/otel/sdk v1.47.0
+	go.opentelemetry.io/otel/sdk/metric v1.47.0
+	go.opentelemetry.io/otel/trace v1.47.0
 	go.uber.org/goleak v1.3.0
-	google.golang.org/grpc v1.83.2
+	google.golang.org/grpc v1.84.0
 )
 
 require (
@@ -66,9 +66,9 @@ require (
 	github.com/containerd/platforms v0.2.1 // indirect
 	github.com/coreos/go-semver v0.3.1 // indirect
 	github.com/coreos/go-systemd/v22 v22.7.0 // indirect
-	github.com/couchbase/gocbcore/v10 v10.9.4 // indirect
-	github.com/couchbase/gocbcoreps v0.1.5-0.20260107140814-1c3a03f888f8 // indirect
-	github.com/couchbase/goprotostellar v1.0.6-0.20260407143512-d7af25156dcc // indirect
+	github.com/couchbase/gocbcore/v10 v10.10.0 // indirect
+	github.com/couchbase/gocbcoreps v0.1.5-0.20261005161736-7de374b343fa // indirect
+	github.com/couchbase/goprotostellar v1.0.6-0.20261005130525-13bdd85cd6ce // indirect
 	github.com/couchbaselabs/gocbconnstr/v2 v2.0.0 // indirect
 	github.com/cpuguy83/dockercfg v0.3.2 // indirect
 	github.com/dgraph-io/ristretto/v2 v2.4.2 // indirect
@@ -97,7 +97,7 @@ require (
 	github.com/jackc/pgservicefile v0.0.0-20240606120523-5a60cdf6a761 // indirect
 	github.com/jackc/puddle/v2 v2.2.2 // indirect
 	github.com/jinzhu/inflection v1.0.0 // indirect
-	github.com/klauspost/compress v1.20.0 // indirect
+	github.com/klauspost/compress v1.20.3 // indirect
 	github.com/launchdarkly/eventsource v1.14.0 // indirect
 	github.com/lufia/plan9stats v0.0.0-20260330125221-c963978e514e // indirect
 	github.com/magiconair/properties v1.8.10 // indirect
@@ -140,23 +140,24 @@ require (
 	github.com/youmark/pkcs8 v0.0.0-20240726163527-a2c0da244d78 // indirect
 	github.com/yuin/gopher-lua v1.1.2 // indirect
 	github.com/yusufpapurcu/wmi v1.2.4 // indirect
-	go.etcd.io/etcd/api/v3 v3.7.1 // indirect
-	go.etcd.io/etcd/client/pkg/v3 v3.7.1 // indirect
+	go.etcd.io/etcd/api/v3 v3.7.2 // indirect
+	go.etcd.io/etcd/client/pkg/v3 v3.7.2 // indirect
 	go.mongodb.org/mongo-driver v1.17.9 // indirect
 	go.opentelemetry.io/auto/sdk v1.2.1 // indirect
-	go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc v0.71.0 // indirect
-	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.71.0 // indirect
+	go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc v0.72.0 // indirect
+	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.72.0 // indirect
+	go.opentelemetry.io/otel/log v1.47.0 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
 	go.uber.org/zap v1.28.0 // indirect
 	go.yaml.in/yaml/v3 v3.0.5 // indirect
-	golang.org/x/crypto v0.57.0 // indirect
+	golang.org/x/crypto v0.58.0 // indirect
 	golang.org/x/exp v0.0.0-20260824195058-e88cd73687aa // indirect
-	golang.org/x/net v0.58.0 // indirect
-	golang.org/x/sync v0.23.0 // indirect
-	golang.org/x/sys v0.48.0 // indirect
-	golang.org/x/text v0.42.0 // indirect
+	golang.org/x/net v0.60.0 // indirect
+	golang.org/x/sync v0.24.0 // indirect
+	golang.org/x/sys v0.49.0 // indirect
+	golang.org/x/text v0.43.0 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20260831171406-18b4a7587f8a // indirect
-	google.golang.org/genproto/googleapis/rpc v0.0.0-20260831171406-18b4a7587f8a // indirect
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20260928230214-8a89bd6388cc // indirect
 	google.golang.org/protobuf v1.36.12 // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect
 )

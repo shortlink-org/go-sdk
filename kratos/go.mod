@@ -1,10 +1,10 @@
 module github.com/shortlink-org/go-sdk/kratos
 
-go 1.27.0
+go 1.27.2
 
 require (
-	github.com/ory/client-go v1.22.66
-	github.com/shortlink-org/go-sdk/config v0.0.0-20260905203440-c7a4f3ba3610
+	github.com/ory/client-go v1.22.83
+	github.com/shortlink-org/go-sdk/config v0.0.0-20260914110947-2237285eb582
 	github.com/spf13/viper v1.21.0
 )
 
@@ -25,7 +25,7 @@ require (
 	github.com/subosito/gotenv v1.6.0 // indirect
 	github.com/twmb/murmur3 v1.1.8 // indirect
 	go.yaml.in/yaml/v3 v3.0.5 // indirect
-	golang.org/x/oauth2 v0.36.0 // indirect
+	golang.org/x/oauth2 v0.37.0 // indirect
 	golang.org/x/sys v0.47.0 // indirect
 	golang.org/x/text v0.41.0 // indirect
 )
