@@ -4,22 +4,30 @@
 # templates are derived from the ones opentelemetry-go uses for its semconv
 # packages (Apache-2.0), trimmed to what a single-module package needs.
 params:
-  # Go package the files are generated into. The metric and attribute names
-  # that start with this prefix lose it in the Go identifiers:
-  # watermill_messages_published_total -> MessagesPublishedTotal.
-  package: watermill
+  # Which module to generate: the metrics are the `metric.<module>.*` groups
+  # of the registry, the attributes are the ones those metrics reference.
+  # Passed per module from semconv/Makefile with -D module=... -D prefix=...
+  module: watermill
+  # Metric and attribute names that start with this prefix lose it in the Go
+  # identifiers: watermill_messages_published_total -> MessagesPublishedTotal.
+  prefix: watermill
 
 templates:
-  - pattern: attributes.go.j2
-    filter: >
-      semconv_attributes({"exclude_deprecated": true})
-    application_mode: single
-    file_name: attributes.go
   - pattern: metrics.go.j2
     filter: >
       semconv_metrics({"exclude_deprecated": true})
+      | map(select(.id | startswith("metric." + $module + ".")))
     application_mode: single
     file_name: metrics.go
+  - pattern: attributes.go.j2
+    filter: >
+      semconv_metrics({"exclude_deprecated": true})
+      | map(select(.id | startswith("metric." + $module + ".")))
+      | map(.attributes // []) | add // []
+      | map(select(.deprecated | not))
+      | unique_by(.name) | sort_by(.name)
+    application_mode: single
+    file_name: attributes.go
 
 comment_formats:
   go:
@@ -50,6 +58,12 @@ whitespace_control:
 acronyms: ["ID", "URL", "HTTP", "GRPC", "DLQ", "WAL"]
 
 text_maps:
+  # Instrument overrides by metric name. The default is derived from the
+  # registry's instrument and unit; list here the metrics that are observed
+  # from a callback rather than recorded synchronously.
+  instrument:
+    postgres_replica_lag_bytes: Int64ObservableGauge
+    postgres_replica_up: Int64ObservableGauge
   # Semantic convention attribute type -> attribute.Key method.
   attribute_type_method:
     string: String

@@ -1,0 +1,34 @@
+# Telemetry of the cqrs module (github.com/shortlink-org/go-sdk/cqrs).
+groups:
+  - id: registry.cqrs
+    type: attribute_group
+    display_name: CQRS Attributes
+    brief: Attributes recorded on the metrics of the cqrs module.
+    attributes:
+      - id: forwarder_name
+        type: string
+        stability: development
+        brief: The name the outbox forwarder was registered under.
+        examples: ["orders_outbox_forwarder"]
+
+  - id: metric.cqrs.outbox.forwarded
+    type: metric
+    metric_name: shortlink_cqrs_outbox_forwarded_total
+    stability: development
+    brief: Outbox messages the forwarder delivered to the real publisher.
+    instrument: counter
+    unit: ""
+    attributes:
+      - ref: forwarder_name
+        requirement_level: required
+
+  - id: metric.cqrs.outbox.failed
+    type: metric
+    metric_name: shortlink_cqrs_outbox_failed_total
+    stability: development
+    brief: Outbox messages the forwarder failed to deliver.
+    instrument: counter
+    unit: ""
+    attributes:
+      - ref: forwarder_name
+        requirement_level: required

@@ -8,9 +8,9 @@ import (
 	"github.com/ThreeDotsLabs/watermill"
 	"github.com/ThreeDotsLabs/watermill/components/forwarder"
 	wmmessage "github.com/ThreeDotsLabs/watermill/message"
-	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/metric"
 
+	"github.com/shortlink-org/go-sdk/cqrs/semconv"
 	sdkwatermill "github.com/shortlink-org/go-sdk/watermill"
 )
 
@@ -180,12 +180,13 @@ func (s *forwarderState) ensureForwarder() (*forwarder.Forwarder, error) {
 	return s.fwd, s.err
 }
 
+// forwarderMonitor records the outbox metrics declared in
+// semconv/registry/cqrs.yaml through the instruments generated from it.
 type forwarderMonitor struct {
 	log           *slog.Logger
 	forwarderName string
-	success       metric.Int64Counter
-	failures      metric.Int64Counter
-	attrs         []attribute.KeyValue
+	success       semconv.OutboxForwardedTotal
+	failures      semconv.OutboxFailedTotal
 }
 
 func newForwarderMonitor(log *slog.Logger, provider metric.MeterProvider, name string) *forwarderMonitor {
@@ -199,24 +200,14 @@ func newForwarderMonitor(log *slog.Logger, provider metric.MeterProvider, name s
 
 	meter := provider.Meter("shortlink.cqrs.outbox")
 
-	var (
-		success metric.Int64Counter
-		fail    metric.Int64Counter
-		err     error
-	)
-
-	success, err = meter.Int64Counter(
-		"shortlink_cqrs_outbox_forwarded_total",
-		metric.WithDescription("Total number of successfully forwarded messages"),
-	)
+	// The constructors hand back a no-op instrument together with the error,
+	// so a refused instrument costs the metric, not the forwarder.
+	success, err := semconv.NewOutboxForwardedTotal(meter)
 	if err != nil {
 		log.Warn("Failed to create CQRS outbox success counter", slog.String("error", err.Error()))
 	}
 
-	fail, err = meter.Int64Counter(
-		"shortlink_cqrs_outbox_failed_total",
-		metric.WithDescription("Total number of failed forwarder deliveries"),
-	)
+	fail, err := semconv.NewOutboxFailedTotal(meter)
 	if err != nil {
 		log.Warn("Failed to create CQRS outbox failure counter", slog.String("error", err.Error()))
 	}
@@ -226,9 +217,6 @@ func newForwarderMonitor(log *slog.Logger, provider metric.MeterProvider, name s
 		forwarderName: name,
 		success:       success,
 		failures:      fail,
-		attrs: []attribute.KeyValue{
-			attribute.String("forwarder_name", name),
-		},
 	}
 }
 
@@ -263,9 +251,7 @@ func (m *forwarderMonitor) observeSuccess(ctx context.Context, msg *wmmessage.Me
 		return
 	}
 
-	if m.success != nil {
-		m.success.Add(ctx, 1, metric.WithAttributes(m.attrs...))
-	}
+	m.success.Add(ctx, 1, m.forwarderName)
 
 	m.log.DebugContext(ctx, "CQRS outbox forwarded message",
 		slog.String("forwarder", m.forwarderName),
@@ -278,9 +264,7 @@ func (m *forwarderMonitor) observeFailure(ctx context.Context, msg *wmmessage.Me
 		return
 	}
 
-	if m.failures != nil {
-		m.failures.Add(ctx, 1, metric.WithAttributes(m.attrs...))
-	}
+	m.failures.Add(ctx, 1, m.forwarderName)
 
 	m.log.ErrorContext(ctx, "CQRS outbox failed to forward message",
 		slog.String("forwarder", m.forwarderName),

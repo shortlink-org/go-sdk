@@ -1,0 +1,14 @@
+# Attributes shared by more than one module. An attribute may be defined only
+# once per registry, so anything two modules both record lives here and is
+# `ref`erenced from their metrics.
+groups:
+  - id: registry.shortlink
+    type: attribute_group
+    display_name: Shared go-sdk Attributes
+    brief: Attributes recorded by more than one go-sdk module.
+    attributes:
+      - id: outcome
+        type: string
+        stability: development
+        brief: How the operation ended. The set of values is listed on each metric that records it.
+        examples: ["ok", "error", "stamped", "ready"]

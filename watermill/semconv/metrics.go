@@ -68,8 +68,8 @@ func (ConsistencyGateResultsTotal) Description() string {
 // Add adds incr to the existing count for the given attributes. Required
 // attributes are positional; attrs carries the optional ones.
 //
-// outcome: How a consistency step ended. The set of values is listed on each
-// metric that records it.
+// outcome: How the operation ended. The set of values is listed on each metric
+// that records it.
 func (m ConsistencyGateResultsTotal) Add(
 	ctx context.Context,
 	incr int64,
@@ -144,8 +144,8 @@ func (ConsistencyStampsTotal) Description() string {
 // Add adds incr to the existing count for the given attributes. Required
 // attributes are positional; attrs carries the optional ones.
 //
-// outcome: How a consistency step ended. The set of values is listed on each
-// metric that records it.
+// outcome: How the operation ended. The set of values is listed on each metric
+// that records it.
 func (m ConsistencyStampsTotal) Add(
 	ctx context.Context,
 	incr int64,

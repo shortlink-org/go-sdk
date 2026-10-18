@@ -1,11 +1,12 @@
 {% import 'helpers.j2' as h -%}
-{%- set pkg = params.package -%}
+{%- set module = params.module -%}
+{%- set pkg = params.prefix -%}
 // Code generated from the go-sdk semantic convention registry. DO NOT EDIT.
 //
-// Source: semconv/registry/{{ pkg }}.yaml. Regenerate with `make -C semconv generate`.
+// Source: semconv/registry/{{ module }}.yaml. Regenerate with `make -C semconv generate`.
 
 // Package semconv holds the attribute keys and metric instruments of the
-// {{ pkg }} module as declared in the go-sdk semantic convention registry.
+// {{ module }} module as declared in the go-sdk semantic convention registry.
 package semconv
 
 import "go.opentelemetry.io/otel/attribute"

@@ -1,4 +1,5 @@
 # Telemetry of the watermill module (github.com/shortlink-org/go-sdk/watermill).
+# `outcome` comes from common.yaml.
 #
 # Metric names are the Prometheus-style names the module has always exported.
 # They are the public contract of the module: dashboards and alerts key on them,
@@ -50,11 +51,6 @@ groups:
         brief: The span id of the span active when the measurement was taken.
         note: Recorded only when the context carries a valid span. See `trace_id`.
         examples: ["00f067aa0ba902b7"]
-      - id: outcome
-        type: string
-        stability: development
-        brief: How a consistency step ended. The set of values is listed on each metric that records it.
-        examples: ["stamped", "ready"]
 
   - id: metric.watermill.messages.published
     type: metric

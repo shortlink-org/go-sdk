@@ -10,8 +10,11 @@ and the source the Go code is generated from with
 ```
 semconv/
   registry/
-    manifest.yaml        registry name and schema URL (version)
+    manifest.yaml        registry name, schema URL (version), OTel dependency
+    common.yaml          attributes shared by more than one module
     watermill.yaml       attributes and metrics of the watermill module
+    postgres.yaml        attributes and metrics of the read-replica router
+    cqrs.yaml            attributes and metrics of the cqrs outbox forwarder
   templates/registry/go/ Weaver templates that render the registry as Go
   Makefile               check / generate / diff, all through the Weaver image
 ```
@@ -19,9 +22,14 @@ semconv/
 Generated code is committed next to the module that emits the signals, so a
 consumer of the SDK never needs Weaver:
 
-| Registry file              | Generated package                              |
-|----------------------------|------------------------------------------------|
-| `registry/watermill.yaml`  | [`watermill/semconv`](../watermill/semconv)     |
+| Registry file             | Generated package                                                              |
+|---------------------------|--------------------------------------------------------------------------------|
+| `registry/watermill.yaml` | [`watermill/semconv`](../watermill/semconv)                                     |
+| `registry/postgres.yaml`  | [`db/drivers/postgres/replica/semconv`](../db/drivers/postgres/replica/semconv) |
+| `registry/cqrs.yaml`      | [`cqrs/semconv`](../cqrs/semconv)                                               |
+
+The module list is `MODULES` in the Makefile: module name, the prefix stripped
+from the Go identifiers, and the output directory.
 
 ## Workflow
 
@@ -47,10 +55,17 @@ summary so that a renamed or removed signal is visible in the pull request.
 - `stability: development` until a signal has been queried in production for a
   release cycle. Deprecate with `deprecated:` instead of deleting, and keep
   the deprecated group until the next schema version.
-- Prefer an existing OpenTelemetry attribute over a new one. The first `ref`
-  to the upstream registry needs the dependency described in
-  `registry/manifest.yaml`; keep its version equal to the
-  `go.opentelemetry.io/otel/semconv` import used by the modules.
+- Prefer an existing OpenTelemetry attribute over a new one: `ref` it, as
+  `postgres.yaml` does with `server.address` and `error.type`. The upstream
+  registry is a dependency in `registry/manifest.yaml`; keep its version equal
+  to the `go.opentelemetry.io/otel/semconv` import used by the modules. Only
+  referenced upstream attributes reach the generated code.
+- An attribute is defined once per registry. One that two modules record goes
+  to `common.yaml` and is `ref`erenced from both.
+- An empty `unit: ""` creates the instrument without a unit. It is deliberate
+  where the Prometheus translation would otherwise append a suffix nobody
+  expects: `postgres_replica_up` with unit `1` would become
+  `postgres_replica_up_ratio`.
 
 ## Generated API
 

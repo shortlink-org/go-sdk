@@ -18,8 +18,8 @@ const (
 	// existing dashboards; prefer `stage` and the span's recorded error.
 	ErrorKey = attribute.Key("error")
 
-	// OutcomeKey is the "outcome" attribute key. How a consistency step ended. The
-	// set of values is listed on each metric that records it.
+	// OutcomeKey is the "outcome" attribute key. How the operation ended. The set
+	// of values is listed on each metric that records it.
 	//
 	// Type: string
 	// Stability: Development
@@ -64,8 +64,8 @@ func Error(val string) attribute.KeyValue {
 	return ErrorKey.String(val)
 }
 
-// Outcome returns a "outcome" attribute. How a consistency step ended. The set
-// of values is listed on each metric that records it.
+// Outcome returns a "outcome" attribute. How the operation ended. The set of
+// values is listed on each metric that records it.
 func Outcome(val string) attribute.KeyValue {
 	return OutcomeKey.String(val)
 }

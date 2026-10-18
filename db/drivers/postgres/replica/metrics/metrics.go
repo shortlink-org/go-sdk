@@ -3,9 +3,11 @@
 //
 // It deliberately knows nothing about routing: every call takes strings and
 // numbers rather than the router's own types. That is what keeps the
-// dependency one-way — the router reaches for metrics, never the reverse — and
-// it also means the attribute vocabulary is defined in one place, next to the
-// instruments it constrains.
+// dependency one-way — the router reaches for metrics, never the reverse.
+//
+// The instruments and the attribute vocabulary are declared in
+// semconv/registry/postgres.yaml; the semconv package next to this one is
+// generated from it. This package is the routing-facing facade over it.
 package metrics
 
 import (
@@ -14,10 +16,11 @@ import (
 	"fmt"
 	"time"
 
-	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/metric"
 	"go.opentelemetry.io/otel/metric/noop"
 	sdkmetric "go.opentelemetry.io/otel/sdk/metric"
+
+	"github.com/shortlink-org/go-sdk/db/drivers/postgres/replica/semconv"
 )
 
 // meterName is the instrumentation scope. Unlike the bare "watermill" scope in
@@ -28,53 +31,40 @@ const meterName = "github.com/shortlink-org/go-sdk/db/drivers/postgres"
 // instrumentCount is how many instruments New builds.
 const instrumentCount = 7
 
-// Attribute keys, of which only the server address follows the OpenTelemetry
-// semantic conventions; the rest are specific to routing.
-//
 // Two values are deliberately absent from every attribute set. A WAL position
 // rises forever, so using one as an attribute is an unbounded-cardinality
 // incident waiting to happen — and it does not fit a float64 gauge on a
 // long-lived cluster anyway. The actor key is personal data. Both belong on a
 // span, where they cost nothing and are what you actually want while
 // debugging.
-const (
-	attrTarget      = attribute.Key("target")
-	attrReason      = attribute.Key("reason")
-	attrClass       = attribute.Key("class")
-	attrStrategy    = attribute.Key("strategy")
-	attrServer      = attribute.Key("server.address")
-	attrErrorType   = attribute.Key("error.type")
-	attrOutcome     = attribute.Key("outcome")
-	attrCaptureKind = attribute.Key("method")
-)
 
 // Routing targets, as metric attribute values.
 const (
-	TargetPrimary = "primary"
-	TargetReplica = "replica"
+	TargetPrimary = string(semconv.TargetPrimary)
+	TargetReplica = string(semconv.TargetReplica)
 )
 
 // Reasons a routing decision came out the way it did. The set is closed on
 // purpose: an open-ended reason string is how a metrics backend falls over.
 const (
-	ReasonWrite            = "write"
-	ReasonUnknown          = "unknown"
-	ReasonTainted          = "tainted"
-	ReasonBehind           = "behind"
-	ReasonCaughtUp         = "caught_up"
-	ReasonWithinLag        = "within_lag"
-	ReasonNoTracker        = "no_tracker"
-	ReasonExplicit         = "explicit"
-	ReasonNoHealthyReplica = "no_healthy_replica"
-	ReasonInTransaction    = "in_transaction"
-	ReasonRouterDisabled   = "router_disabled"
-	ReasonSafeToRetry      = "safe_to_retry"
+	ReasonWrite            = string(semconv.ReasonWrite)
+	ReasonUnknown          = string(semconv.ReasonUnknown)
+	ReasonTainted          = string(semconv.ReasonTainted)
+	ReasonBehind           = string(semconv.ReasonBehind)
+	ReasonCaughtUp         = string(semconv.ReasonCaughtUp)
+	ReasonWithinLag        = string(semconv.ReasonWithinLag)
+	ReasonNoTracker        = string(semconv.ReasonNoTracker)
+	ReasonExplicit         = string(semconv.ReasonExplicit)
+	ReasonNoHealthyReplica = string(semconv.ReasonNoHealthyReplica)
+	ReasonInTransaction    = string(semconv.ReasonInTransaction)
+	ReasonRouterDisabled   = string(semconv.ReasonRouterDisabled)
+	ReasonSafeToRetry      = string(semconv.ReasonSafeToRetry)
 )
 
 // Capture methods, for the watermark histogram.
 const (
-	CaptureStandalone = "standalone"
-	CaptureBatched    = "batched_commit"
+	CaptureStandalone = string(semconv.MethodStandalone)
+	CaptureBatched    = string(semconv.MethodBatchedCommit)
 )
 
 // ErrInstruments reports a failure to build the instruments.
@@ -103,13 +93,13 @@ type Health struct {
 // Metrics holds the instruments. Every field is non-nil after New returns, so
 // call sites never branch on nil.
 type Metrics struct {
-	decisions      metric.Int64Counter
-	fallbacks      metric.Int64Counter
-	probeFailures  metric.Int64Counter
-	promotions     metric.Int64Counter
-	probeDuration  metric.Float64Histogram
-	captureLatency metric.Float64Histogram
-	gateWait       metric.Float64Histogram
+	decisions      semconv.RouteDecisionsTotal
+	fallbacks      semconv.RouteFallbacksTotal
+	probeFailures  semconv.ReplicaProbeFailuresTotal
+	promotions     semconv.ReplicaPromotionsTotal
+	probeDuration  semconv.ReplicaProbeDurationSeconds
+	captureLatency semconv.WatermarkCaptureDurationSeconds
+	gateWait       semconv.ConsistencyGateWaitSeconds
 
 	// registration is the observable-gauge callback. It must be unregistered
 	// on Close or the meter provider keeps the snapshot closure alive.
@@ -128,53 +118,25 @@ func New(provider *sdkmetric.MeterProvider) (*Metrics, error) {
 
 	errs := make([]error, 0, instrumentCount)
 
-	built.decisions, err = meter.Int64Counter(
-		"postgres_route_decisions_total",
-		metric.WithDescription("Statements routed, by target and reason."),
-		metric.WithUnit("1"),
-	)
+	built.decisions, err = semconv.NewRouteDecisionsTotal(meter)
 	errs = append(errs, err)
 
-	built.fallbacks, err = meter.Int64Counter(
-		"postgres_route_fallbacks_total",
-		metric.WithDescription("Reads that wanted a replica and got the primary."),
-		metric.WithUnit("1"),
-	)
+	built.fallbacks, err = semconv.NewRouteFallbacksTotal(meter)
 	errs = append(errs, err)
 
-	built.probeFailures, err = meter.Int64Counter(
-		"postgres_replica_probe_failures_total",
-		metric.WithDescription("Replica health probes that failed."),
-		metric.WithUnit("1"),
-	)
+	built.probeFailures, err = semconv.NewReplicaProbeFailuresTotal(meter)
 	errs = append(errs, err)
 
-	built.promotions, err = meter.Int64Counter(
-		"postgres_replica_promotions_total",
-		metric.WithDescription("Replicas observed leaving recovery, i.e. promoted and quarantined."),
-		metric.WithUnit("1"),
-	)
+	built.promotions, err = semconv.NewReplicaPromotionsTotal(meter)
 	errs = append(errs, err)
 
-	built.probeDuration, err = meter.Float64Histogram(
-		"postgres_replica_probe_duration_seconds",
-		metric.WithDescription("Duration of one replica health probe."),
-		metric.WithUnit("s"),
-	)
+	built.probeDuration, err = semconv.NewReplicaProbeDurationSeconds(meter)
 	errs = append(errs, err)
 
-	built.captureLatency, err = meter.Float64Histogram(
-		"postgres_watermark_capture_duration_seconds",
-		metric.WithDescription("Duration of capturing the primary's WAL position."),
-		metric.WithUnit("s"),
-	)
+	built.captureLatency, err = semconv.NewWatermarkCaptureDurationSeconds(meter)
 	errs = append(errs, err)
 
-	built.gateWait, err = meter.Float64Histogram(
-		"postgres_consistency_gate_wait_seconds",
-		metric.WithDescription("Time spent waiting for a replica to replay a required WAL position."),
-		metric.WithUnit("s"),
-	)
+	built.gateWait, err = semconv.NewConsistencyGateWaitSeconds(meter)
 	errs = append(errs, err)
 
 	joined := errors.Join(errs...)
@@ -206,22 +168,12 @@ func (m *Metrics) Observe(provider *sdkmetric.MeterProvider, snapshot func() []H
 
 	meter := provider.Meter(meterName)
 
-	lag, err := meter.Int64ObservableGauge(
-		"postgres_replica_lag_bytes",
-		metric.WithDescription("WAL bytes by which a replica trails the primary."),
-		metric.WithUnit("By"),
-	)
+	lag, err := semconv.NewReplicaLagBytes(meter)
 	if err != nil {
 		return fmt.Errorf("%w: replica lag gauge: %w", ErrInstruments, err)
 	}
 
-	// No unit on purpose. The OpenTelemetry-to-Prometheus naming rules append
-	// _ratio to a gauge whose unit is "1", which would export this state flag
-	// as postgres_replica_up_ratio — a name nobody would go looking for.
-	eligible, err := meter.Int64ObservableGauge(
-		"postgres_replica_up",
-		metric.WithDescription("Whether a replica is currently eligible for reads (0 or 1)."),
-	)
+	eligible, err := semconv.NewReplicaUp(meter)
 	if err != nil {
 		return fmt.Errorf("%w: replica up gauge: %w", ErrInstruments, err)
 	}
@@ -229,7 +181,7 @@ func (m *Metrics) Observe(provider *sdkmetric.MeterProvider, snapshot func() []H
 	m.registration, err = meter.RegisterCallback(
 		func(_ context.Context, observer metric.Observer) error {
 			for _, health := range snapshot() {
-				attrs := metric.WithAttributes(attrServer.String(health.Host))
+				attrs := metric.WithAttributes(semconv.ServerAddress(health.Host))
 
 				observer.ObserveInt64(lag, health.LagBytes, attrs)
 				observer.ObserveInt64(eligible, boolToInt64(health.Up), attrs)
@@ -262,12 +214,12 @@ func (m *Metrics) Close() {
 
 // RecordDecision counts one routing decision.
 func (m *Metrics) RecordDecision(ctx context.Context, decision Decision) {
-	m.decisions.Add(ctx, 1, metric.WithAttributes(
-		attrTarget.String(decision.Target),
-		attrReason.String(decision.Reason),
-		attrClass.String(decision.Class),
-		attrStrategy.String(decision.Strategy),
-	))
+	m.decisions.Add(ctx, 1,
+		semconv.ClassAttr(decision.Class),
+		semconv.ReasonAttr(decision.Reason),
+		semconv.StrategyAttr(decision.Strategy),
+		semconv.TargetAttr(decision.Target),
+	)
 
 	if decision.Fallback {
 		m.Fallback(ctx, decision.Reason)
@@ -276,33 +228,27 @@ func (m *Metrics) RecordDecision(ctx context.Context, decision Decision) {
 
 // Fallback counts a read that wanted a replica and got the primary.
 func (m *Metrics) Fallback(ctx context.Context, reason string) {
-	m.fallbacks.Add(ctx, 1, metric.WithAttributes(attrReason.String(reason)))
+	m.fallbacks.Add(ctx, 1, semconv.ReasonAttr(reason))
 }
 
 // ProbeFailed counts a failed replica health probe.
 func (m *Metrics) ProbeFailed(ctx context.Context, host string, err error) {
-	m.probeFailures.Add(ctx, 1, metric.WithAttributes(
-		attrServer.String(host),
-		attrErrorType.String(errorType(err)),
-	))
+	m.probeFailures.Add(ctx, 1, semconv.ErrorTypeAttr(errorType(err)), host)
 }
 
 // ProbeDuration records how long one health probe took.
 func (m *Metrics) ProbeDuration(ctx context.Context, host string, elapsed time.Duration) {
-	m.probeDuration.Record(ctx, elapsed.Seconds(), metric.WithAttributes(attrServer.String(host)))
+	m.probeDuration.Record(ctx, elapsed.Seconds(), host)
 }
 
 // Promotion counts a replica observed leaving recovery.
 func (m *Metrics) Promotion(ctx context.Context, host string) {
-	m.promotions.Add(ctx, 1, metric.WithAttributes(attrServer.String(host)))
+	m.promotions.Add(ctx, 1, host)
 }
 
 // CaptureDuration records how long it took to read the primary's WAL position.
 func (m *Metrics) CaptureDuration(ctx context.Context, method string, elapsed time.Duration, err error) {
-	m.captureLatency.Record(ctx, elapsed.Seconds(), metric.WithAttributes(
-		attrCaptureKind.String(method),
-		attrOutcome.String(outcome(err)),
-	))
+	m.captureLatency.Record(ctx, elapsed.Seconds(), semconv.MethodAttr(method), outcome(err))
 }
 
 // GateWait records time spent waiting for a replica to replay a position.

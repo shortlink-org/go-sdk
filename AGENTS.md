@@ -53,3 +53,22 @@ independent modules (one `go.mod` per top-level directory, listed in `go.work`).
 - GitHub Actions in `.github/workflows` are pinned by commit SHA with a `# vN`
   comment.
 - Do not commit tool output (lint logs, coverage files, compiled binaries).
+
+## Telemetry is declared, not typed
+
+- Metric names and attribute keys are a module's public API. They are declared
+  in `semconv/registry/<module>.yaml` (OpenTelemetry semantic convention
+  format) and the `semconv` package next to the module is generated from it
+  with Weaver. Do not add an instrument or an attribute as a string literal;
+  add it to the registry, then run
+
+  ```bash
+  make -C semconv generate
+  ```
+
+  and commit the generated code with the change. CI regenerates and fails on
+  drift, and shows `weaver registry diff` against `main` for pull requests.
+- `make -C semconv check` validates the registry. Weaver runs from its Docker
+  image; no local install is needed. See `semconv/README.md` for the rules
+  (shared attributes, upstream `ref`s, units).
+

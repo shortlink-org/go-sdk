@@ -1,0 +1,254 @@
+# Telemetry of the read-replica router in the db module
+# (github.com/shortlink-org/go-sdk/db/drivers/postgres/replica).
+#
+# Two values are deliberately absent from every attribute set. A WAL position
+# rises forever, so using one as an attribute is an unbounded-cardinality
+# incident waiting to happen. The actor key is personal data. Both belong on a
+# span. `server.address` and `error.type` are the OpenTelemetry attributes;
+# `outcome` comes from common.yaml.
+groups:
+  - id: registry.postgres
+    type: attribute_group
+    display_name: Postgres Replica Routing Attributes
+    brief: Attributes recorded on the metrics of the read-replica router.
+    attributes:
+      - id: target
+        type:
+          members:
+            - id: primary
+              value: "primary"
+              stability: development
+              brief: The statement ran on the primary.
+            - id: replica
+              value: "replica"
+              stability: development
+              brief: The statement ran on a read replica.
+        stability: development
+        brief: Which pool the statement was routed to.
+      - id: reason
+        type:
+          members:
+            - id: write
+              value: "write"
+              stability: development
+              brief: The statement writes, so it must run on the primary.
+            - id: unknown
+              value: "unknown"
+              stability: development
+              brief: The statement could not be classified and was treated as a write.
+            - id: tainted
+              value: "tainted"
+              stability: development
+              brief: The context already wrote in this request, so reads stay on the primary.
+            - id: behind
+              value: "behind"
+              stability: development
+              brief: No replica had replayed the required position within the wait.
+            - id: caught_up
+              value: "caught_up"
+              stability: development
+              brief: A replica had replayed the required position.
+            - id: within_lag
+              value: "within_lag"
+              stability: development
+              brief: A replica was within the configured lag budget.
+            - id: no_tracker
+              value: "no_tracker"
+              stability: development
+              brief: The context carried no watermark tracker.
+            - id: explicit
+              value: "explicit"
+              stability: development
+              brief: The caller pinned the statement with a strategy.
+            - id: no_healthy_replica
+              value: "no_healthy_replica"
+              stability: development
+              brief: No replica was eligible for reads.
+            - id: in_transaction
+              value: "in_transaction"
+              stability: development
+              brief: The statement runs inside a transaction, which is pinned to one pool.
+            - id: router_disabled
+              value: "router_disabled"
+              stability: development
+              brief: Replica routing is switched off.
+            - id: safe_to_retry
+              value: "safe_to_retry"
+              stability: development
+              brief: The read may be retried on the primary after a replica failure.
+        stability: development
+        brief: Why the routing decision came out the way it did.
+        note: The set is closed on purpose; an open-ended reason is how a metrics backend falls over.
+      - id: class
+        type:
+          members:
+            - id: read
+              value: "read"
+              stability: development
+              brief: The statement may run on a standby.
+            - id: write
+              value: "write"
+              stability: development
+              brief: The statement must run on the primary.
+            - id: unknown
+              value: "unknown"
+              stability: development
+              brief: The statement could not be understood and is treated as a write.
+        stability: development
+        brief: How the SQL classifier read the statement.
+      - id: strategy
+        type:
+          members:
+            - id: unset
+              value: "unset"
+              stability: development
+              brief: The caller expressed no preference.
+            - id: read_after_write
+              value: "read_after_write"
+              stability: development
+              brief: Use a replica only once it has replayed the caller's writes.
+            - id: stale_read
+              value: "stale_read"
+              stability: development
+              brief: Any healthy replica within the configured lag budget.
+            - id: primary
+              value: "primary"
+              stability: development
+              brief: Every statement pinned to the primary.
+            - id: replica
+              value: "replica"
+              stability: development
+              brief: A replica is required; fail rather than fall back.
+        stability: development
+        brief: The routing strategy the caller asked for.
+      - id: method
+        type:
+          members:
+            - id: standalone
+              value: "standalone"
+              stability: development
+              brief: The WAL position was read with its own round trip.
+            - id: batched_commit
+              value: "batched_commit"
+              stability: development
+              brief: The WAL position was read in the same batch as the commit.
+        stability: development
+        brief: How the primary's WAL position was captured.
+
+  - id: metric.postgres.route.decisions
+    type: metric
+    metric_name: postgres_route_decisions_total
+    stability: development
+    brief: Statements routed, by target and reason.
+    instrument: counter
+    unit: "1"
+    attributes:
+      - ref: target
+        requirement_level: required
+      - ref: reason
+        requirement_level: required
+      - ref: class
+        requirement_level: required
+      - ref: strategy
+        requirement_level: required
+
+  - id: metric.postgres.route.fallbacks
+    type: metric
+    metric_name: postgres_route_fallbacks_total
+    stability: development
+    brief: Reads that wanted a replica and got the primary.
+    note: This is the signal that tells you whether replica routing is paying for itself.
+    instrument: counter
+    unit: "1"
+    attributes:
+      - ref: reason
+        requirement_level: required
+
+  - id: metric.postgres.replica.probe_failures
+    type: metric
+    metric_name: postgres_replica_probe_failures_total
+    stability: development
+    brief: Replica health probes that failed.
+    instrument: counter
+    unit: "1"
+    attributes:
+      - ref: server.address
+        requirement_level: required
+        brief: The replica host the probe went to.
+      - ref: error.type
+        requirement_level: required
+        note: The Go type name of the error, never its message.
+
+  - id: metric.postgres.replica.promotions
+    type: metric
+    metric_name: postgres_replica_promotions_total
+    stability: development
+    brief: Replicas observed leaving recovery, i.e. promoted and quarantined.
+    instrument: counter
+    unit: "1"
+    attributes:
+      - ref: server.address
+        requirement_level: required
+        brief: The replica host that was promoted.
+
+  - id: metric.postgres.replica.probe_duration
+    type: metric
+    metric_name: postgres_replica_probe_duration_seconds
+    stability: development
+    brief: Duration of one replica health probe.
+    instrument: histogram
+    unit: "s"
+    attributes:
+      - ref: server.address
+        requirement_level: required
+        brief: The replica host the probe went to.
+
+  - id: metric.postgres.watermark.capture_duration
+    type: metric
+    metric_name: postgres_watermark_capture_duration_seconds
+    stability: development
+    brief: Duration of capturing the primary's WAL position.
+    note: "`outcome` is `ok` or `error`."
+    instrument: histogram
+    unit: "s"
+    attributes:
+      - ref: method
+        requirement_level: required
+      - ref: outcome
+        requirement_level: required
+
+  - id: metric.postgres.consistency.gate_wait
+    type: metric
+    metric_name: postgres_consistency_gate_wait_seconds
+    stability: development
+    brief: Time spent waiting for a replica to replay a required WAL position.
+    instrument: histogram
+    unit: "s"
+
+  - id: metric.postgres.replica.lag_bytes
+    type: metric
+    metric_name: postgres_replica_lag_bytes
+    stability: development
+    brief: WAL bytes by which a replica trails the primary.
+    instrument: gauge
+    unit: "By"
+    attributes:
+      - ref: server.address
+        requirement_level: required
+        brief: The replica host.
+
+  - id: metric.postgres.replica.up
+    type: metric
+    metric_name: postgres_replica_up
+    stability: development
+    brief: Whether a replica is currently eligible for reads (0 or 1).
+    note: >
+      No unit on purpose. The OpenTelemetry-to-Prometheus naming rules append
+      `_ratio` to a gauge whose unit is `1`, which would export this state flag
+      as `postgres_replica_up_ratio`, a name nobody would go looking for.
+    instrument: gauge
+    unit: ""
+    attributes:
+      - ref: server.address
+        requirement_level: required
+        brief: The replica host.

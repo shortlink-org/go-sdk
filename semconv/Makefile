@@ -15,9 +15,13 @@ WEAVER_IMAGE   ?= otel/weaver:$(WEAVER_VERSION)@sha256:5857bb81d8cc7ed608cdcae37
 ROOT := $(abspath $(dir $(lastword $(MAKEFILE_LIST)))/..)
 BASE ?= origin/main
 
-# Every target in the registry and where its generated code lives.
-# <template target> -> <output directory relative to the repository root>
-TARGETS := go=watermill/semconv
+# Every module in the registry: <module>:<prefix>:<output directory>.
+# <module> selects the metric.<module>.* groups, <prefix> is stripped from the
+# Go identifiers, the output directory is relative to the repository root.
+MODULES := \
+	watermill:watermill:watermill/semconv \
+	postgres:postgres:db/drivers/postgres/replica/semconv \
+	cqrs:shortlink_cqrs:cqrs/semconv
 
 WEAVER = docker run --rm \
 	-u "$(shell id -u):$(shell id -g)" \
@@ -35,12 +39,13 @@ check: ## Validate the registry
 	$(WEAVER) registry check -r semconv/registry
 
 generate: ## Regenerate the Go code from the registry
-	@for t in $(TARGETS); do \
-		target=$${t%%=*}; out=$${t#*=}; \
-		echo "generate $$target -> $$out"; \
-		$(WEAVER) registry generate --quiet -r semconv/registry -t semconv/templates $$target $$out || exit 1; \
+	@for m in $(MODULES); do \
+		module=$${m%%:*}; rest=$${m#*:}; prefix=$${rest%%:*}; out=$${rest#*:}; \
+		echo "generate $$module -> $$out"; \
+		$(WEAVER) registry generate --quiet -r semconv/registry -t semconv/templates \
+			-D module=$$module -D prefix=$$prefix go $$out || exit 1; \
 	done
-	@cd $(ROOT) && gofmt -l $(foreach t,$(TARGETS),$(word 2,$(subst =, ,$(t))))
+	@cd $(ROOT) && gofmt -l $(foreach m,$(MODULES),$(lastword $(subst :, ,$(m))))
 
 diff: ## Show what changed in the registry since BASE (default origin/main)
 	@set -eu; \
