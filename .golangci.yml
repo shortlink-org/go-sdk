@@ -81,11 +81,10 @@ linters:
       report-no-exported: true
 
     exhaustive:
-      check: [switch, map]
+      check: [switch, mapliteral]
       default-signifies-exhaustive: true
       package-scope-only: true
-      explicit-exhaustive-switch: true
-      explicit-exhaustive-map: true
+      explicit-exhaustive: true
       default-case-required: true
 
     funlen:
