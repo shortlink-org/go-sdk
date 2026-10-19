@@ -95,9 +95,18 @@ func (s *Server) runTimer(ctx context.Context) {
 		select {
 		case <-electionResetTimer.C:
 			// check status
-			switch s.raft.GetStatus() {
+			status := s.raft.GetStatus()
+
+			switch status {
 			case v1.RaftStatus_RAFT_STATUS_UNSPECIFIED:
-				panic("raft status is unspecified")
+				// An unspecified status is a bug in the state machine, not a reason
+				// to kill the consuming process: report it and keep waiting for the
+				// context to end.
+				if s.logger != nil {
+					s.logger.ErrorContext(ctx, "election timer skipped tick",
+						slog.Any("error", ErrUnspecifiedStatus),
+					)
+				}
 			case v1.RaftStatus_RAFT_STATUS_FOLLOWER:
 				// if the node is a follower, change to a candidate
 				s.candidatePromotion(ctx)
@@ -105,7 +114,12 @@ func (s *Server) runTimer(ctx context.Context) {
 			case v1.RaftStatus_RAFT_STATUS_LEADER:
 				s.sendHeartbeat(ctx)
 			default:
-				// Unknown status: nothing to do until the next tick.
+				if s.logger != nil {
+					s.logger.ErrorContext(ctx, "election timer skipped tick",
+						slog.Any("error", ErrUnknownStatus),
+						slog.Int("status", int(status)),
+					)
+				}
 			}
 		case <-ctx.Done():
 			return
