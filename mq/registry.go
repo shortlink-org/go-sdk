@@ -30,8 +30,8 @@ var (
 	registryMu sync.RWMutex
 	registry   = map[string]Factory{}
 
-	// registerErrs collects what Register could not accept, for New to report.
-	registerErrs error
+	// Everything Register could not accept, for New to report.
+	errRegister error
 )
 
 // Register makes a driver available under name. Drivers call it from init, so
@@ -48,13 +48,13 @@ func Register(name string, factory Factory) {
 	defer registryMu.Unlock()
 
 	if factory == nil {
-		registerErrs = errors.Join(registerErrs, &RegisterError{Driver: name, Reason: "factory is nil"})
+		errRegister = errors.Join(errRegister, &RegisterError{Driver: name, Reason: "factory is nil"})
 
 		return
 	}
 
 	if _, dup := registry[name]; dup {
-		registerErrs = errors.Join(registerErrs, &RegisterError{Driver: name, Reason: "registered twice"})
+		errRegister = errors.Join(errRegister, &RegisterError{Driver: name, Reason: "registered twice"})
 
 		return
 	}
@@ -69,7 +69,7 @@ func RegistrationError() error {
 	registryMu.RLock()
 	defer registryMu.RUnlock()
 
-	return registerErrs
+	return errRegister
 }
 
 // Drivers returns the names of the registered drivers, sorted.

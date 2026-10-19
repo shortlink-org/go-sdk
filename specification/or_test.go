@@ -17,15 +17,15 @@ type OrSpecificationTestSuite struct {
 	users []*TestUser
 }
 
-func (suite *OrSpecificationTestSuite) SetupTest() {
-	suite.users = createTestUsers()
+func (s *OrSpecificationTestSuite) SetupTest() {
+	s.users = createTestUsers()
 }
 
 func TestOrSpecificationSuite(t *testing.T) {
 	suite.Run(t, new(OrSpecificationTestSuite))
 }
 
-func (suite *OrSpecificationTestSuite) TestNewOrSpecification() {
+func (s *OrSpecificationTestSuite) TestNewOrSpecification() {
 	// Arrange
 	spec1 := &UserAgeMinSpec{MinAge: 18}
 	spec2 := &UserActiveSpec{}
@@ -34,22 +34,22 @@ func (suite *OrSpecificationTestSuite) TestNewOrSpecification() {
 	orSpec := specification.NewOrSpecification[TestUser](spec1, spec2)
 
 	// Assert
-	suite.NotNil(orSpec)
-	suite.Len(orSpec.Specs, 2)
-	suite.Equal(spec1, orSpec.Specs[0])
-	suite.Equal(spec2, orSpec.Specs[1])
+	s.NotNil(orSpec)
+	s.Len(orSpec.Specs, 2)
+	s.Equal(spec1, orSpec.Specs[0])
+	s.Equal(spec2, orSpec.Specs[1])
 }
 
-func (suite *OrSpecificationTestSuite) TestNewOrSpecification_NoSpecs() {
+func (s *OrSpecificationTestSuite) TestNewOrSpecification_NoSpecs() {
 	// Act
 	orSpec := specification.NewOrSpecification[TestUser]()
 
 	// Assert
-	suite.NotNil(orSpec)
-	suite.Empty(orSpec.Specs)
+	s.NotNil(orSpec)
+	s.Empty(orSpec.Specs)
 }
 
-func (suite *OrSpecificationTestSuite) TestNewOrSpecification_SingleSpec() {
+func (s *OrSpecificationTestSuite) TestNewOrSpecification_SingleSpec() {
 	// Arrange
 	spec := &UserAgeMinSpec{MinAge: 18}
 
@@ -57,12 +57,12 @@ func (suite *OrSpecificationTestSuite) TestNewOrSpecification_SingleSpec() {
 	orSpec := specification.NewOrSpecification[TestUser](spec)
 
 	// Assert
-	suite.NotNil(orSpec)
-	suite.Len(orSpec.Specs, 1)
-	suite.Equal(spec, orSpec.Specs[0])
+	s.NotNil(orSpec)
+	s.Len(orSpec.Specs, 1)
+	s.Equal(spec, orSpec.Specs[0])
 }
 
-func (suite *OrSpecificationTestSuite) TestIsSatisfiedBy_FirstPasses() {
+func (s *OrSpecificationTestSuite) TestIsSatisfiedBy_FirstPasses() {
 	// Arrange - Alice is active (first spec passes)
 	user := &TestUser{ID: 1, Name: "Alice", Age: 25, Email: "alice@example.com", IsActive: true}
 	orSpec := specification.NewOrSpecification[TestUser](
@@ -74,10 +74,10 @@ func (suite *OrSpecificationTestSuite) TestIsSatisfiedBy_FirstPasses() {
 	err := orSpec.IsSatisfiedBy(user)
 
 	// Assert
-	suite.NoError(err)
+	s.NoError(err)
 }
 
-func (suite *OrSpecificationTestSuite) TestIsSatisfiedBy_SecondPasses() {
+func (s *OrSpecificationTestSuite) TestIsSatisfiedBy_SecondPasses() {
 	// Arrange - Charlie is inactive but meets age requirement
 	user := &TestUser{ID: 3, Name: "Charlie", Age: 30, Email: "charlie@example.com", IsActive: false}
 	orSpec := specification.NewOrSpecification[TestUser](
@@ -89,10 +89,10 @@ func (suite *OrSpecificationTestSuite) TestIsSatisfiedBy_SecondPasses() {
 	err := orSpec.IsSatisfiedBy(user)
 
 	// Assert
-	suite.NoError(err)
+	s.NoError(err)
 }
 
-func (suite *OrSpecificationTestSuite) TestIsSatisfiedBy_LastPasses() {
+func (s *OrSpecificationTestSuite) TestIsSatisfiedBy_LastPasses() {
 	// Arrange - Test with multiple Specs where only the last one passes
 	user := &TestUser{ID: 1, Name: "Alice", Age: 25, Email: "alice@example.com", IsActive: true}
 	orSpec := specification.NewOrSpecification[TestUser](
@@ -105,10 +105,10 @@ func (suite *OrSpecificationTestSuite) TestIsSatisfiedBy_LastPasses() {
 	err := orSpec.IsSatisfiedBy(user)
 
 	// Assert
-	suite.NoError(err)
+	s.NoError(err)
 }
 
-func (suite *OrSpecificationTestSuite) TestIsSatisfiedBy_AllFail() {
+func (s *OrSpecificationTestSuite) TestIsSatisfiedBy_AllFail() {
 	// Arrange - Bob (17, active) fails both age requirements
 	user := &TestUser{ID: 2, Name: "Bob", Age: 17, Email: "bob@example.com", IsActive: true}
 	orSpec := specification.NewOrSpecification[TestUser](
@@ -120,12 +120,12 @@ func (suite *OrSpecificationTestSuite) TestIsSatisfiedBy_AllFail() {
 	err := orSpec.IsSatisfiedBy(user)
 
 	// Assert
-	suite.Require().Error(err)
-	suite.Require().Contains(err.Error(), "user age 17 is below minimum 18")
-	suite.Require().Contains(err.Error(), "user age 17 is above maximum 15")
+	s.Require().Error(err)
+	s.Require().Contains(err.Error(), "user age 17 is below minimum 18")
+	s.Require().Contains(err.Error(), "user age 17 is above maximum 15")
 }
 
-func (suite *OrSpecificationTestSuite) TestIsSatisfiedBy_EmptySpecs() {
+func (s *OrSpecificationTestSuite) TestIsSatisfiedBy_EmptySpecs() {
 	// Arrange
 	user := &TestUser{ID: 1, Name: "Alice", Age: 25, IsActive: true}
 	orSpec := specification.NewOrSpecification[TestUser]()
@@ -134,10 +134,10 @@ func (suite *OrSpecificationTestSuite) TestIsSatisfiedBy_EmptySpecs() {
 	err := orSpec.IsSatisfiedBy(user)
 
 	// Assert
-	suite.NoError(err) // No Specs to fail
+	s.NoError(err) // No Specs to fail
 }
 
-func (suite *OrSpecificationTestSuite) TestIsSatisfiedBy_MultiplePassing() {
+func (s *OrSpecificationTestSuite) TestIsSatisfiedBy_MultiplePassing() {
 	// Arrange - User that meets multiple criteria
 	user := &TestUser{ID: 1, Name: "Alice", Age: 25, Email: "alice@example.com", IsActive: true}
 	orSpec := specification.NewOrSpecification[TestUser](
@@ -150,10 +150,10 @@ func (suite *OrSpecificationTestSuite) TestIsSatisfiedBy_MultiplePassing() {
 	err := orSpec.IsSatisfiedBy(user)
 
 	// Assert
-	suite.NoError(err) // Should return on first success
+	s.NoError(err) // Should return on first success
 }
 
-func (suite *OrSpecificationTestSuite) TestIsSatisfiedBy_NestedOrSpecifications() {
+func (s *OrSpecificationTestSuite) TestIsSatisfiedBy_NestedOrSpecifications() {
 	// Arrange
 	innerOr1 := specification.NewOrSpecification[TestUser](
 		&UserAgeMinSpec{MinAge: 100}, // Fail
@@ -171,10 +171,10 @@ func (suite *OrSpecificationTestSuite) TestIsSatisfiedBy_NestedOrSpecifications(
 	err := outerOr.IsSatisfiedBy(user)
 
 	// Assert
-	suite.NoError(err) // innerOr1 passes because user is active
+	s.NoError(err) // innerOr1 passes because user is active
 }
 
-func (suite *OrSpecificationTestSuite) TestIsSatisfiedBy_NestedOrSpecifications_AllFail() {
+func (s *OrSpecificationTestSuite) TestIsSatisfiedBy_NestedOrSpecifications_AllFail() {
 	// Arrange
 	innerOr1 := specification.NewOrSpecification[TestUser](
 		&UserAgeMinSpec{MinAge: 100}, // Fail
@@ -193,10 +193,10 @@ func (suite *OrSpecificationTestSuite) TestIsSatisfiedBy_NestedOrSpecifications_
 	err := outerOr.IsSatisfiedBy(user)
 
 	// Assert
-	suite.Error(err)
+	s.Error(err)
 }
 
-func (suite *OrSpecificationTestSuite) TestWithFilter_InclusiveScenario() {
+func (s *OrSpecificationTestSuite) TestWithFilter_InclusiveScenario() {
 	// Arrange - find users who are either under 20 OR over 30
 	orSpec := specification.NewOrSpecification[TestUser](
 		&UserAgeMaxSpec{MaxAge: 19}, // Include young users
@@ -204,17 +204,17 @@ func (suite *OrSpecificationTestSuite) TestWithFilter_InclusiveScenario() {
 	)
 
 	// Act
-	result, err := specification.Filter(suite.users, orSpec)
+	result, err := specification.Filter(s.users, orSpec)
 
 	// Assert
-	suite.Require().Error(err) // Some users will be in the 20-30 range and fail both
-	suite.Require().NotEmpty(result)
+	s.Require().Error(err) // Some users will be in the 20-30 range and fail both
+	s.Require().NotEmpty(result)
 
 	// Verify all returned users meet at least one criteria
 	for _, user := range result {
 		satisfiesYoung := user.Age <= 19
 		satisfiesOld := user.Age >= 31
-		suite.Require().True(satisfiesYoung || satisfiesOld,
+		s.Require().True(satisfiesYoung || satisfiesOld,
 			"User %s (age %d) should be either ≤19 or ≥31", user.Name, user.Age)
 	}
 
@@ -235,15 +235,17 @@ func (suite *OrSpecificationTestSuite) TestWithFilter_InclusiveScenario() {
 			eveIncluded = true
 		case "Alice":
 			aliceIncluded = true
+		default:
+			// other users are not asserted
 		}
 	}
 
-	suite.True(bobIncluded, "Bob (17) should be included")
-	suite.True(eveIncluded, "Eve (35) should be included")
-	suite.False(aliceIncluded, "Alice (25) should not be included")
+	s.True(bobIncluded, "Bob (17) should be included")
+	s.True(eveIncluded, "Eve (35) should be included")
+	s.False(aliceIncluded, "Alice (25) should not be included")
 }
 
-func (suite *OrSpecificationTestSuite) TestIsSatisfiedBy_ShortCircuit() {
+func (s *OrSpecificationTestSuite) TestIsSatisfiedBy_ShortCircuit() {
 	// This test verifies that OR specification returns immediately on first success
 	// We can't easily test short-circuiting directly, but we can test the behavior
 	// Arrange
@@ -260,7 +262,7 @@ func (suite *OrSpecificationTestSuite) TestIsSatisfiedBy_ShortCircuit() {
 	err := orSpec.IsSatisfiedBy(user)
 
 	// Assert
-	suite.NoError(err)
+	s.NoError(err)
 }
 
 // Standalone tests for additional scenarios.
@@ -322,7 +324,8 @@ func TestOrSpecification_NilUser(t *testing.T) {
 
 	// Act & Assert
 	assert.Panics(t, func() {
-		_ = orSpec.IsSatisfiedBy(nil)
+		err := orSpec.IsSatisfiedBy(nil)
+		assert.Error(t, err)
 	})
 }
 

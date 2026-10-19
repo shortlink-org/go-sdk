@@ -17,15 +17,15 @@ type NotSpecificationTestSuite struct {
 	users []*TestUser
 }
 
-func (suite *NotSpecificationTestSuite) SetupTest() {
-	suite.users = createTestUsers()
+func (s *NotSpecificationTestSuite) SetupTest() {
+	s.users = createTestUsers()
 }
 
 func TestNotSpecificationSuite(t *testing.T) {
 	suite.Run(t, new(NotSpecificationTestSuite))
 }
 
-func (suite *NotSpecificationTestSuite) TestNewNotSpecification() {
+func (s *NotSpecificationTestSuite) TestNewNotSpecification() {
 	// Arrange
 	spec := &UserActiveSpec{}
 
@@ -33,11 +33,11 @@ func (suite *NotSpecificationTestSuite) TestNewNotSpecification() {
 	notSpec := specification.NewNotSpecification[TestUser](spec)
 
 	// Assert
-	suite.NotNil(notSpec)
-	suite.Equal(spec, notSpec.Spec)
+	s.NotNil(notSpec)
+	s.Equal(spec, notSpec.Spec)
 }
 
-func (suite *NotSpecificationTestSuite) TestIsSatisfiedBy_InnerSpecPasses() {
+func (s *NotSpecificationTestSuite) TestIsSatisfiedBy_InnerSpecPasses() {
 	// Arrange - Alice is active, so NOT active should fail
 	user := &TestUser{ID: 1, Name: "Alice", Age: 25, Email: "alice@example.com", IsActive: true}
 	notSpec := specification.NewNotSpecification[TestUser](&UserActiveSpec{})
@@ -46,12 +46,12 @@ func (suite *NotSpecificationTestSuite) TestIsSatisfiedBy_InnerSpecPasses() {
 	err := notSpec.IsSatisfiedBy(user)
 
 	// Assert
-	suite.Require().Error(err)
-	suite.Require().ErrorIs(err, specification.ErrNotSatisfied)
-	suite.Require().Equal("specification not satisfied", err.Error())
+	s.Require().Error(err)
+	s.Require().ErrorIs(err, specification.ErrNotSatisfied)
+	s.Require().Equal("specification not satisfied", err.Error())
 }
 
-func (suite *NotSpecificationTestSuite) TestIsSatisfiedBy_InnerSpecFails() {
+func (s *NotSpecificationTestSuite) TestIsSatisfiedBy_InnerSpecFails() {
 	// Arrange - Charlie is inactive, so NOT active should pass
 	user := &TestUser{ID: 3, Name: "Charlie", Age: 30, IsActive: false}
 	notSpec := specification.NewNotSpecification[TestUser](&UserActiveSpec{})
@@ -60,10 +60,10 @@ func (suite *NotSpecificationTestSuite) TestIsSatisfiedBy_InnerSpecFails() {
 	err := notSpec.IsSatisfiedBy(user)
 
 	// Assert
-	suite.Require().NoError(err)
+	s.Require().NoError(err)
 }
 
-func (suite *NotSpecificationTestSuite) TestIsSatisfiedBy_WithAlwaysPass() {
+func (s *NotSpecificationTestSuite) TestIsSatisfiedBy_WithAlwaysPass() {
 	// Arrange
 	user := &TestUser{ID: 1, Name: "Alice", Age: 25, IsActive: true}
 	notSpec := specification.NewNotSpecification[TestUser](&AlwaysPassSpec[TestUser]{})
@@ -72,11 +72,11 @@ func (suite *NotSpecificationTestSuite) TestIsSatisfiedBy_WithAlwaysPass() {
 	err := notSpec.IsSatisfiedBy(user)
 
 	// Assert
-	suite.Require().Error(err)
-	suite.Require().ErrorIs(err, specification.ErrNotSatisfied)
+	s.Require().Error(err)
+	s.Require().ErrorIs(err, specification.ErrNotSatisfied)
 }
 
-func (suite *NotSpecificationTestSuite) TestIsSatisfiedBy_WithAlwaysFail() {
+func (s *NotSpecificationTestSuite) TestIsSatisfiedBy_WithAlwaysFail() {
 	// Arrange
 	user := &TestUser{ID: 1, Name: "Alice", Age: 25, IsActive: true}
 	notSpec := specification.NewNotSpecification[TestUser](&AlwaysFailSpec[TestUser]{Reason: "test failure"})
@@ -85,10 +85,10 @@ func (suite *NotSpecificationTestSuite) TestIsSatisfiedBy_WithAlwaysFail() {
 	err := notSpec.IsSatisfiedBy(user)
 
 	// Assert
-	suite.Require().NoError(err) // NOT(fail) = pass
+	s.Require().NoError(err) // negating a failing spec passes
 }
 
-func (suite *NotSpecificationTestSuite) TestIsSatisfiedBy_AgeSpecification() {
+func (s *NotSpecificationTestSuite) TestIsSatisfiedBy_AgeSpecification() {
 	// Test NOT age specification
 	// Arrange
 	youngUser := &TestUser{ID: 2, Name: "Bob", Age: 17, IsActive: true}
@@ -99,15 +99,15 @@ func (suite *NotSpecificationTestSuite) TestIsSatisfiedBy_AgeSpecification() {
 
 	// Act & Assert for young user (should pass NOT adult)
 	err := notAdultSpec.IsSatisfiedBy(youngUser)
-	suite.Require().NoError(err)
+	s.Require().NoError(err)
 
 	// Act & Assert for adult user (should fail NOT adult)
 	err = notAdultSpec.IsSatisfiedBy(oldUser)
-	suite.Require().Error(err)
-	suite.Require().ErrorIs(err, specification.ErrNotSatisfied)
+	s.Require().Error(err)
+	s.Require().ErrorIs(err, specification.ErrNotSatisfied)
 }
 
-func (suite *NotSpecificationTestSuite) TestIsSatisfiedBy_EmailSpecification() {
+func (s *NotSpecificationTestSuite) TestIsSatisfiedBy_EmailSpecification() {
 	// Test NOT email specification
 	// Arrange
 	userWithEmail := &TestUser{ID: 1, Name: "Alice", Age: 25, Email: "alice@example.com", IsActive: true}
@@ -118,15 +118,15 @@ func (suite *NotSpecificationTestSuite) TestIsSatisfiedBy_EmailSpecification() {
 
 	// Act & Assert for user with email (should fail NOT email)
 	err := notEmailSpec.IsSatisfiedBy(userWithEmail)
-	suite.Require().Error(err)
-	suite.Require().ErrorIs(err, specification.ErrNotSatisfied)
+	s.Require().Error(err)
+	s.Require().ErrorIs(err, specification.ErrNotSatisfied)
 
 	// Act & Assert for user without email (should pass NOT email)
 	err = notEmailSpec.IsSatisfiedBy(userWithoutEmail)
-	suite.Require().NoError(err)
+	s.Require().NoError(err)
 }
 
-func (suite *NotSpecificationTestSuite) TestIsSatisfiedBy_NestedNotSpecifications() {
+func (s *NotSpecificationTestSuite) TestIsSatisfiedBy_NestedNotSpecifications() {
 	// Test NOT(NOT(spec)) = spec
 	// Arrange
 	user := &TestUser{ID: 1, Name: "Alice", Age: 25, IsActive: true}
@@ -142,10 +142,10 @@ func (suite *NotSpecificationTestSuite) TestIsSatisfiedBy_NestedNotSpecification
 	// UserActiveSpec(Alice) = nil (pass)
 	// NOT(UserActiveSpec(Alice)) = ErrNotSatisfied (fail)
 	// NOT(NOT(UserActiveSpec(Alice))) = nil (pass)
-	suite.Require().NoError(err)
+	s.Require().NoError(err)
 }
 
-func (suite *NotSpecificationTestSuite) TestIsSatisfiedBy_NestedNotSpecifications_Inactive() {
+func (s *NotSpecificationTestSuite) TestIsSatisfiedBy_NestedNotSpecifications_Inactive() {
 	// Test NOT(NOT(spec)) = spec with inactive user
 	// Arrange
 	user := &TestUser{ID: 3, Name: "Charlie", Age: 30, IsActive: false}
@@ -161,29 +161,29 @@ func (suite *NotSpecificationTestSuite) TestIsSatisfiedBy_NestedNotSpecification
 	// UserActiveSpec(Charlie) = error (fail)
 	// NOT(UserActiveSpec(Charlie)) = nil (pass)
 	// NOT(NOT(UserActiveSpec(Charlie))) = ErrNotSatisfied (fail)
-	suite.Require().Error(err)
-	suite.Require().ErrorIs(err, specification.ErrNotSatisfied)
+	s.Require().Error(err)
+	s.Require().ErrorIs(err, specification.ErrNotSatisfied)
 }
 
-func (suite *NotSpecificationTestSuite) TestWithFilter_FindInactiveUsers() {
+func (s *NotSpecificationTestSuite) TestWithFilter_FindInactiveUsers() {
 	// Arrange - find users who are NOT active
 	notActiveSpec := specification.NewNotSpecification[TestUser](&UserActiveSpec{})
 
 	// Act
-	result, err := specification.Filter(suite.users, notActiveSpec)
+	result, err := specification.Filter(s.users, notActiveSpec)
 
 	// Assert
-	suite.Require().Error(err) // Active users will fail the NOT active spec
-	suite.NotEmpty(result)
+	s.Require().Error(err) // Active users will fail the NOT active spec
+	s.NotEmpty(result)
 
 	// Verify all returned users are inactive
 	for _, user := range result {
-		suite.False(user.IsActive, "User %s should be inactive", user.Name)
+		s.False(user.IsActive, "User %s should be inactive", user.Name)
 	}
 
 	// Check specific users - Charlie and Grace should be in results (they're inactive)
 	expectedInactiveUsers := []string{"Charlie", "Grace"}
-	suite.Len(result, len(expectedInactiveUsers))
+	s.Len(result, len(expectedInactiveUsers))
 
 	for _, expectedName := range expectedInactiveUsers {
 		found := false
@@ -196,30 +196,30 @@ func (suite *NotSpecificationTestSuite) TestWithFilter_FindInactiveUsers() {
 			}
 		}
 
-		suite.True(found, "Expected to find inactive user %s in results", expectedName)
+		s.True(found, "Expected to find inactive user %s in results", expectedName)
 	}
 }
 
-func (suite *NotSpecificationTestSuite) TestWithFilter_FindUsersWithoutValidEmail() {
+func (s *NotSpecificationTestSuite) TestWithFilter_FindUsersWithoutValidEmail() {
 	// Arrange - find users who do NOT have valid email
 	notValidEmailSpec := specification.NewNotSpecification[TestUser](&UserEmailValidSpec{})
 
 	// Act
-	result, err := specification.Filter(suite.users, notValidEmailSpec)
+	result, err := specification.Filter(s.users, notValidEmailSpec)
 
 	// Assert
-	suite.Require().Error(err) // Users with valid email will fail the NOT valid email spec
-	suite.NotEmpty(result)
+	s.Require().Error(err) // Users with valid email will fail the NOT valid email spec
+	s.NotEmpty(result)
 
 	// Verify all returned users don't have valid email
 	for _, user := range result {
 		emailSpec := &UserEmailValidSpec{}
 		emailErr := emailSpec.IsSatisfiedBy(user)
-		suite.Require().Error(emailErr, "User %s should not have valid email", user.Name)
+		s.Require().Error(emailErr, "User %s should not have valid email", user.Name)
 	}
 }
 
-func (suite *NotSpecificationTestSuite) TestWithComplexSpecifications() {
+func (s *NotSpecificationTestSuite) TestWithComplexSpecifications() {
 	// Test NOT with AND specification
 	// Find users who are NOT (active AND adult)
 	// This should include: inactive users OR users under 18
@@ -231,16 +231,16 @@ func (suite *NotSpecificationTestSuite) TestWithComplexSpecifications() {
 	notActiveAndAdultSpec := specification.NewNotSpecification[TestUser](activeAndAdultSpec)
 
 	// Act
-	result, err := specification.Filter(suite.users, notActiveAndAdultSpec)
+	result, err := specification.Filter(s.users, notActiveAndAdultSpec)
 
 	// Assert
-	suite.Require().Error(err) // Some users are active AND adult
-	suite.NotEmpty(result)
+	s.Require().Error(err) // Some users are active AND adult
+	s.NotEmpty(result)
 
 	// Verify the logic: users should be either inactive OR under 18 (or both)
 	for _, user := range result {
 		isNotActiveOrNotAdult := !user.IsActive || user.Age < 18
-		suite.True(isNotActiveOrNotAdult,
+		s.True(isNotActiveOrNotAdult,
 			"User %s should be either inactive or under 18", user.Name)
 	}
 
@@ -261,12 +261,14 @@ func (suite *NotSpecificationTestSuite) TestWithComplexSpecifications() {
 			charlieIncluded = true
 		case "Alice":
 			aliceIncluded = true
+		default:
+			// other users are not asserted
 		}
 	}
 
-	suite.True(bobIncluded, "Bob should be included (under 18)")
-	suite.True(charlieIncluded, "Charlie should be included (inactive)")
-	suite.False(aliceIncluded, "Alice should not be included (active AND adult)")
+	s.True(bobIncluded, "Bob should be included (under 18)")
+	s.True(charlieIncluded, "Charlie should be included (inactive)")
+	s.False(aliceIncluded, "Alice should not be included (active AND adult)")
 }
 
 // Standalone tests for additional scenarios.
@@ -297,7 +299,8 @@ func TestNotSpecification_NilUser(t *testing.T) {
 
 	// Act & Assert
 	require.Panics(t, func() {
-		_ = notSpec.IsSatisfiedBy(nil)
+		err := notSpec.IsSatisfiedBy(nil)
+		assert.Error(t, err)
 	})
 }
 
@@ -364,7 +367,7 @@ func TestNotSpecification_ChainedNots(t *testing.T) {
 	// Arrange
 	user := &TestUser{ID: 1, Name: "Test", Age: 20, IsActive: true}
 
-	// NOT(NOT(NOT(active))) = NOT(active)
+	// Three negations collapse to a single one: an odd chain of NOTs behaves as NOT active
 	level1 := specification.NewNotSpecification[TestUser](&UserActiveSpec{}) // NOT active
 	level2 := specification.NewNotSpecification[TestUser](level1)            // NOT active = active
 	level3 := specification.NewNotSpecification[TestUser](level2)            // NOT active = NOT active

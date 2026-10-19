@@ -21,6 +21,12 @@ import (
 	"github.com/shortlink-org/go-sdk/observability/common"
 )
 
+// metricsPort is the port the Prometheus metrics server listens on.
+const metricsPort = 9090
+
+// metricsTimeout bounds every request to the Prometheus metrics server.
+const metricsTimeout = 30 * time.Second
+
 type Monitoring struct {
 	Handler    *http.ServeMux
 	Prometheus *prometheus.Registry
@@ -49,8 +55,8 @@ func New(ctx context.Context, log *slog.Logger, tracer trace.TracerProvider, cfg
 	go func() {
 		// Create a new HTTP server for Prometheus metrics
 		serverConfig := http_server.Config{
-			Port:    9090,             //nolint:mnd // port for Prometheus metrics
-			Timeout: 30 * time.Second, //nolint:mnd // timeout for Prometheus metrics
+			Port:    metricsPort,
+			Timeout: metricsTimeout,
 		}
 		server := http_server.New(ctx, monitoring.Handler, serverConfig, cfg)
 

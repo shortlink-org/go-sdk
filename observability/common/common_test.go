@@ -28,7 +28,8 @@ func TestNewResourceUsesCompatibleSchema(t *testing.T) {
 		t.Fatalf("resource missing %q", semconv.ServiceVersionKey)
 	}
 
-	if _, err := resource.Merge(resource.Empty(), res); err != nil {
+	_, err = resource.Merge(resource.Empty(), res)
+	if err != nil {
 		t.Fatalf("resource should merge cleanly: %v", err)
 	}
 }

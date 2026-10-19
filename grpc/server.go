@@ -181,7 +181,7 @@ func setServerConfig(
 func (s *server) WithMetrics(prom *prometheus.Registry) {
 	s.serverMetrics = grpc_prometheus.NewServerMetrics(
 		grpc_prometheus.WithServerHandlingTimeHistogram(
-			grpc_prometheus.WithHistogramBuckets([]float64{0.001, 0.01, 0.1, 0.3, 0.6, 1, 3, 6, 9, 20, 30, 60, 90, 120}),
+			grpc_prometheus.WithHistogramBuckets(handlingTimeBuckets),
 		),
 	)
 	prom.MustRegister(s.serverMetrics)

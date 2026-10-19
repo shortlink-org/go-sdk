@@ -64,7 +64,7 @@ func (s primarySample) lagBehind(replay wal.LSN, staleAfter time.Duration) int64
 	}
 
 	// A lag wider than 2^63 bytes is not a real PostgreSQL cluster.
-	return int64(s.position - replay) //nolint:gosec
+	return int64(s.position - replay) //nolint:gosec // a lag wider than 2^63 bytes is not a real PostgreSQL cluster
 }
 
 // replicaQualification is the outcome of applying the gate policy to one
@@ -118,7 +118,7 @@ type routingRequest struct {
 	fallbackPolicy  FallbackPolicy
 }
 
-func newRoutingRequest(ctx context.Context, class sqlclass.Class, opts Options) routingRequest {
+func newRoutingRequest(ctx context.Context, class sqlclass.Class, opts *Options) routingRequest {
 	return routingRequest{
 		class:           class,
 		strategy:        StrategyFromContext(ctx),

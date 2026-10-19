@@ -37,12 +37,12 @@ func (e *EventStore) GetAggregateWithoutSnapshot(ctx context.Context) ([]*events
 
 	for rows.Next() {
 		var (
-			id            sql.NullString
+			aggregateID   sql.NullString
 			typeAggregate sql.NullString
 			version       sql.NullInt32
 		)
 
-		err = rows.Scan(&id, &typeAggregate, &version)
+		err = rows.Scan(&aggregateID, &typeAggregate, &version)
 		if err != nil {
 			return nil, err
 		}
@@ -52,7 +52,7 @@ func (e *EventStore) GetAggregateWithoutSnapshot(ctx context.Context) ([]*events
 		}
 
 		aggregates = append(aggregates, &eventsourcing.BaseAggregate{
-			Id:      id.String,
+			Id:      aggregateID.String,
 			Type:    typeAggregate.String,
 			Version: version.Int32,
 		})
@@ -79,7 +79,10 @@ func (e *EventStore) SaveSnapshot(ctx context.Context, snapshot *eventsourcing.S
 	query := psql.Insert("snapshots").
 		Columns("aggregate_id", "aggregate_type", "aggregate_version", "payload").
 		Values(snapshot.GetAggregateId(), snapshot.GetAggregateType(), snapshot.GetAggregateVersion(), snapshot.GetPayload()).
-		Suffix("ON CONFLICT (aggregate_id) DO UPDATE SET aggregate_version = ?, payload = ?, updated_at = ?", snapshot.GetAggregateVersion(), snapshot.GetPayload(), time.Now())
+		Suffix(
+			"ON CONFLICT (aggregate_id) DO UPDATE SET aggregate_version = ?, payload = ?, updated_at = ?",
+			snapshot.GetAggregateVersion(), snapshot.GetPayload(), time.Now(),
+		)
 
 	q, args, err := query.ToSql()
 	if err != nil {

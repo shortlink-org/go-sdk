@@ -8,7 +8,7 @@ type Vertex struct {
 	children []*Vertex
 }
 
-func (v *Vertex) GetId() string {
+func (v *Vertex) GetId() string { //nolint:revive // public API: renaming the method breaks consumers
 	return v.id
 }
 

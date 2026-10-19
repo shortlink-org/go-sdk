@@ -49,7 +49,8 @@ func Open(ctx context.Context, cfg *Config) (*Router, error) {
 		return nil, &Error{Op: opOpen, Err: ErrInvalidOptions, Details: "config is nil"}
 	}
 
-	if err := cfg.Options.Validate(); err != nil {
+	err := cfg.Options.Validate()
+	if err != nil {
 		return nil, &Error{Op: opOpen, Err: err, Details: "invalid routing options"}
 	}
 

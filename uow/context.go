@@ -9,8 +9,12 @@ import (
 type ctxKey struct{}
 
 // FromContext returns the pgx.Tx from ctx, or nil if not set.
-func FromContext(ctx context.Context) pgx.Tx {
-	tx, _ := ctx.Value(ctxKey{}).(pgx.Tx)
+func FromContext(ctx context.Context) pgx.Tx { //nolint:ireturn // public API returns the pgx.Tx interface
+	tx, ok := ctx.Value(ctxKey{}).(pgx.Tx)
+	if !ok {
+		return nil
+	}
+
 	return tx
 }
 

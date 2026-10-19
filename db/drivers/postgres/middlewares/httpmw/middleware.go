@@ -40,9 +40,9 @@ const (
 	// sibling subdomain.
 	CookieName = "__Host-rlsn"
 
-	// unresolvedToken deliberately is not a valid WAL token. Receiving it
-	// means a write happened but its position could not be captured, so the
-	// read side pins the request to the primary instead of guessing.
+	// Deliberately not a valid WAL token. Receiving unresolvedToken means a
+	// write happened but its position could not be captured, so the read
+	// side pins the request to the primary instead of guessing.
 	unresolvedToken = "unresolved"
 
 	// The cookie's lifetime is short on purpose: the token is only useful until
@@ -188,7 +188,8 @@ const (
 )
 
 func newCarriers(cfg Config) responseCarriers {
-	destinations := headerCarrier
+	var destinations carrierSet
+
 	switch cfg.Carriers {
 	case CarriersNone:
 		destinations = 0
@@ -197,6 +198,9 @@ func newCarriers(cfg Config) responseCarriers {
 	case CarriersHeaderAndCookie:
 		destinations = headerCarrier | cookieCarrier
 	case CarriersDefault, CarriersHeader:
+		destinations = headerCarrier
+	default:
+		// An unknown value keeps the default: the header alone.
 		destinations = headerCarrier
 	}
 
@@ -379,6 +383,7 @@ func (c responseCarriers) stamp(
 ) {
 	raw := unresolvedToken
 	position := wal.Unknown
+
 	if watermark.state == watermarkResolved {
 		raw = watermark.token.String()
 		position = watermark.token.LSN

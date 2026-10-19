@@ -31,16 +31,16 @@ type MQ struct {
 }
 
 func New(log *slog.Logger, cfg *config.Config) *MQ {
-	mq := &MQ{
+	instance := &MQ{
 		log:    log,
 		cfg:    cfg,
 		config: loadConfig(cfg), // Set configuration
 		subs:   make(map[string]*amqp.Channel),
 	}
 
-	mq.state.Store(int32(amqp.StateClosed))
+	instance.state.Store(int32(amqp.StateClosed))
 
-	return mq
+	return instance
 }
 
 // Init initializes the RabbitMQ connection and sets up the channel.
@@ -48,7 +48,7 @@ func New(log *slog.Logger, cfg *config.Config) *MQ {
 // when the context is done.
 func (mq *MQ) Init(ctx context.Context, log *slog.Logger) error {
 	// connect to RabbitMQ server
-	err := mq.Dial()
+	err := mq.dial(ctx)
 	if err != nil {
 		return err
 	}
@@ -57,9 +57,7 @@ func (mq *MQ) Init(ctx context.Context, log *slog.Logger) error {
 	mq.ch, err = mq.conn.Channel()
 	if err != nil {
 		// Drop the connection so its recovery machinery does not outlive the failed Init.
-		_ = mq.conn.Close()
-
-		return err
+		return errors.Join(err, closeReleased(mq.conn.Close))
 	}
 
 	// Graceful shutdown
@@ -108,6 +106,18 @@ func (mq *MQ) close() error {
 	return errs
 }
 
+// closeReleased closes an AMQP entity that is being given up on after a failure.
+// One the broker already tore down (a channel exception closes the channel) reports
+// amqp.ErrClosed, which carries no information on top of the failure itself.
+func closeReleased(closer func() error) error {
+	err := closer()
+	if err != nil && !errors.Is(err, amqp.ErrClosed) {
+		return err
+	}
+
+	return nil
+}
+
 // Check verifies the connection status. A connection that is recovering is reported
 // as unhealthy: publishing fails until the recovery completes.
 func (mq *MQ) Check(_ context.Context) error {
@@ -115,7 +125,9 @@ func (mq *MQ) Check(_ context.Context) error {
 		return amqp.ErrClosed
 	}
 
-	state := amqp.LifeCycleState(mq.state.Load())
+	// mq.state is only ever written from an int32(amqp.LifeCycleState), a byte,
+	// so the stored value is within 0..255.
+	state := amqp.LifeCycleState(mq.state.Load()) //nolint:gosec // G115: see above, the value is provably in byte range
 	if state != amqp.StateOpen {
 		return fmt.Errorf("rabbit connection is %s: %w", state, amqp.ErrClosed)
 	}

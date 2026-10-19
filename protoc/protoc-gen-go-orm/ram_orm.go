@@ -6,7 +6,7 @@ import (
 	"google.golang.org/protobuf/compiler/protogen"
 )
 
-func generateRamFile(gen *protogen.Plugin, file *protogen.File) {
+func generateRAMFile(gen *protogen.Plugin, file *protogen.File) {
 	for _, message := range file.Messages {
 		filename := message.GoIdent.GoName + ".ram.orm.go"
 
@@ -17,40 +17,40 @@ func generateRamFile(gen *protogen.Plugin, file *protogen.File) {
 			}
 		}
 
-		g := gen.NewGeneratedFile(filename, file.GoImportPath)
-		printHeader(gen, g, file)
+		genFile := gen.NewGeneratedFile(filename, file.GoImportPath)
+		printHeader(gen, genFile, file)
 
-		g.P("import (")
-		g.P("\"reflect\"")
-		g.P("\"strings\"")
-		g.P()
+		genFile.P("import (")
+		genFile.P("\"reflect\"")
+		genFile.P("\"strings\"")
+		genFile.P()
 
 		if !*commonEnable {
-			g.P("    domain \"", *commonPath, "\"")
+			genFile.P("    domain \"", *commonPath, "\"")
 		}
 
-		g.P(")")
-		g.P()
+		genFile.P(")")
+		genFile.P()
 
 		// Generate the BuildFilter method
 		structName := "Filter" + message.GoIdent.GoName
 
-		generateBuildRamFilterMethod(g, structName, message.Fields)
+		generateBuildRAMFilterMethod(genFile, structName, message.Fields)
 	}
 }
 
-func generateBuildRamFilterMethod(g *protogen.GeneratedFile, structName string, fields []*protogen.Field) {
-	g.P("func (f *", structName, ") BuildRAMFilter(item any) bool {")
+func generateBuildRAMFilterMethod(genFile *protogen.GeneratedFile, structName string, fields []*protogen.Field) {
+	genFile.P("func (f *", structName, ") BuildRAMFilter(item any) bool {")
 
 	if *commonEnable {
-		g.P("var fieldVal *StringFilterInput")
+		genFile.P("var fieldVal *StringFilterInput")
 	} else {
-		g.P("var fieldVal *domain.StringFilterInput")
+		genFile.P("var fieldVal *domain.StringFilterInput")
 	}
 
-	g.P("var ok bool")
-	g.P("var v reflect.Value")
-	g.P()
+	genFile.P("var ok bool")
+	genFile.P("var v reflect.Value")
+	genFile.P()
 
 	for _, field := range fields {
 		if field.Desc.IsList() || field.Desc.IsMap() {
@@ -58,14 +58,14 @@ func generateBuildRamFilterMethod(g *protogen.GeneratedFile, structName string, 
 		}
 
 		fieldName := field.GoName
-		generateBuildRamFieldFilterConditions(g, fieldName)
+		generateBuildRAMFieldFilterConditions(genFile, fieldName)
 	}
 
-	g.P("return true")
-	g.P("}")
+	genFile.P("return true")
+	genFile.P("}")
 }
 
-func generateBuildRamFieldFilterConditions(g *protogen.GeneratedFile, fieldName string) {
+func generateBuildRAMFieldFilterConditions(genFile *protogen.GeneratedFile, fieldName string) {
 	var stringFilterInput string
 	if *commonEnable {
 		stringFilterInput = "StringFilterInput"
@@ -73,31 +73,31 @@ func generateBuildRamFieldFilterConditions(g *protogen.GeneratedFile, fieldName 
 		stringFilterInput = "domain.StringFilterInput"
 	}
 
-	g.P("fieldVal, ok = reflect.ValueOf(f).Elem().FieldByName(", strconv.Quote(fieldName), ").Interface().(*", stringFilterInput, ")")
-	g.P("if !ok || fieldVal == nil { return true } // If field is not found or nil, no filtering is applied")
-	g.P("v = reflect.ValueOf(item).Elem().FieldByName(", strconv.Quote(fieldName), ")")
-	g.P("if !v.IsValid() { return false } // If the link does not have this field, fail the filter")
+	genFile.P("fieldVal, ok = reflect.ValueOf(f).Elem().FieldByName(", strconv.Quote(fieldName), ").Interface().(*", stringFilterInput, ")")
+	genFile.P("if !ok || fieldVal == nil { return true } // If field is not found or nil, no filtering is applied")
+	genFile.P("v = reflect.ValueOf(item).Elem().FieldByName(", strconv.Quote(fieldName), ")")
+	genFile.P("if !v.IsValid() { return false } // If the link does not have this field, fail the filter")
 
 	// Generate condition checks
-	g.P("if fieldVal.Eq != \"\" && v.String() != fieldVal.Eq { return false }")
-	g.P("if fieldVal.Ne != \"\" && v.String() == fieldVal.Ne { return false }")
-	g.P("if fieldVal.Lt != \"\" && !(v.String() < fieldVal.Lt) { return false }")
-	g.P("if fieldVal.Le != \"\" && !(v.String() <= fieldVal.Le) { return false }")
-	g.P("if fieldVal.Gt != \"\" && !(v.String() > fieldVal.Gt) { return false }")
-	g.P("if fieldVal.Ge != \"\" && !(v.String() >= fieldVal.Ge) { return false }")
-	g.P("if fieldVal.StartsWith != \"\" && !strings.HasPrefix(v.String(), fieldVal.StartsWith) { return false }")
-	g.P("if fieldVal.EndsWith != \"\" && !strings.HasSuffix(v.String(), fieldVal.EndsWith) { return false }")
+	genFile.P("if fieldVal.Eq != \"\" && v.String() != fieldVal.Eq { return false }")
+	genFile.P("if fieldVal.Ne != \"\" && v.String() == fieldVal.Ne { return false }")
+	genFile.P("if fieldVal.Lt != \"\" && !(v.String() < fieldVal.Lt) { return false }")
+	genFile.P("if fieldVal.Le != \"\" && !(v.String() <= fieldVal.Le) { return false }")
+	genFile.P("if fieldVal.Gt != \"\" && !(v.String() > fieldVal.Gt) { return false }")
+	genFile.P("if fieldVal.Ge != \"\" && !(v.String() >= fieldVal.Ge) { return false }")
+	genFile.P("if fieldVal.StartsWith != \"\" && !strings.HasPrefix(v.String(), fieldVal.StartsWith) { return false }")
+	genFile.P("if fieldVal.EndsWith != \"\" && !strings.HasSuffix(v.String(), fieldVal.EndsWith) { return false }")
 
 	// Handle Contains and NotContains for slice of strings
-	g.P("for _, contain := range fieldVal.Contains {")
-	g.P("    if !strings.Contains(v.String(), contain) { return false }")
-	g.P("}")
-	g.P("for _, notContain := range fieldVal.NotContains {")
-	g.P("    if strings.Contains(v.String(), notContain) { return false }")
-	g.P("}")
-	g.P()
+	genFile.P("for _, contain := range fieldVal.Contains {")
+	genFile.P("    if !strings.Contains(v.String(), contain) { return false }")
+	genFile.P("}")
+	genFile.P("for _, notContain := range fieldVal.NotContains {")
+	genFile.P("    if strings.Contains(v.String(), notContain) { return false }")
+	genFile.P("}")
+	genFile.P()
 
 	// Handle IsEmpty and IsNotEmpty
-	g.P("if fieldVal.IsEmpty && v.String() != \"\" { return false }")
-	g.P("if fieldVal.IsNotEmpty && v.String() == \"\" { return false }")
+	genFile.P("if fieldVal.IsEmpty && v.String() != \"\" { return false }")
+	genFile.P("if fieldVal.IsNotEmpty && v.String() == \"\" { return false }")
 }

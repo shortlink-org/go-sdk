@@ -19,7 +19,7 @@ func (b *BaseAggregate) Uncommitted() []*Event {
 	return b.GetChanges()
 }
 
-// ClearUncommited the events
+// ClearUncommitted the events
 func (b *BaseAggregate) ClearUncommitted() {
 	b.Changes = []*Event{}
 }

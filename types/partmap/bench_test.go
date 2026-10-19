@@ -14,7 +14,7 @@ func BenchmarkStd(b *testing.B) {
 		var (
 			wg      sync.WaitGroup
 			mu      sync.RWMutex
-			counter int64
+			counter atomic.Int64
 		)
 
 		b.ResetTimer()
@@ -22,7 +22,7 @@ func BenchmarkStd(b *testing.B) {
 
 		for b.Loop() {
 			wg.Go(func() {
-				i := atomic.AddInt64(&counter, 1)
+				i := counter.Add(1)
 				key := strconv.FormatInt(i, 10)
 
 				mu.Lock()
@@ -40,7 +40,7 @@ func BenchmarkSyncStd(b *testing.B) {
 		var (
 			m       sync.Map
 			wg      sync.WaitGroup
-			counter int64
+			counter atomic.Int64
 		)
 
 		b.ResetTimer()
@@ -48,7 +48,7 @@ func BenchmarkSyncStd(b *testing.B) {
 
 		for b.Loop() {
 			wg.Go(func() {
-				i := atomic.AddInt64(&counter, 1)
+				i := counter.Add(1)
 				key := strconv.FormatInt(i, 10)
 				m.Store(key, int(i))
 			})
@@ -67,7 +67,7 @@ func BenchmarkPartitioned(b *testing.B) {
 	b.Run("set partitioned concurrently", func(b *testing.B) {
 		var (
 			wg      sync.WaitGroup
-			counter int64
+			counter atomic.Int64
 		)
 
 		b.ResetTimer()
@@ -75,9 +75,10 @@ func BenchmarkPartitioned(b *testing.B) {
 
 		for b.Loop() {
 			wg.Go(func() {
-				i := atomic.AddInt64(&counter, 1)
+				i := counter.Add(1)
 
 				key := strconv.FormatInt(i, 10)
+
 				err := m.Set(key, int(i))
 				if err != nil {
 					b.Errorf("Failed to set value in PartMap: %v", err)

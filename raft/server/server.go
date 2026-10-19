@@ -25,8 +25,10 @@ type Server struct {
 }
 
 func New(ctx context.Context, serverRPC *rpc.Server, peers []string, options ...Option) (*Server, error) {
-	const ElectionResetTimer = 150 * time.Millisecond
-	const MaxRandomTime = 51 * time.Millisecond
+	const (
+		ElectionResetTimer = 150 * time.Millisecond
+		MaxRandomTime      = 51 * time.Millisecond
+	)
 
 	rpcServer, err := api.NewServer(serverRPC)
 	if err != nil {
@@ -102,6 +104,8 @@ func (s *Server) runTimer(ctx context.Context) {
 			case v1.RaftStatus_RAFT_STATUS_CANDIDATE:
 			case v1.RaftStatus_RAFT_STATUS_LEADER:
 				s.sendHeartbeat(ctx)
+			default:
+				// Unknown status: nothing to do until the next tick.
 			}
 		case <-ctx.Done():
 			return

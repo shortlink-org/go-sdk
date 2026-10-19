@@ -31,12 +31,10 @@ func TestJWT_ValidToken(t *testing.T) {
 	require.NoError(t, err)
 
 	claims := oathkeeperClaims{
-		RegisteredClaims: jwt.RegisteredClaims{
-			Subject:   "user-123",
-			Issuer:    "https://shortlink.best",
-			ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Hour)),
-			IssuedAt:  jwt.NewNumericDate(time.Now()),
-		},
+		Subject:    "user-123",
+		Issuer:     "https://shortlink.best",
+		ExpiresAt:  jwt.NewNumericDate(time.Now().Add(time.Hour)),
+		IssuedAt:   jwt.NewNumericDate(time.Now()),
 		Email:      "test@example.com",
 		Name:       "Test User",
 		IdentityID: "identity-456",
@@ -110,11 +108,9 @@ func TestJWT_MissingSubject(t *testing.T) {
 	require.NoError(t, err)
 
 	claims := oathkeeperClaims{
-		RegisteredClaims: jwt.RegisteredClaims{
-			Subject: "", // Empty subject
-			Issuer:  "https://shortlink.best",
-		},
-		Email: "test@example.com",
+		Subject: "", // Empty subject
+		Issuer:  "https://shortlink.best",
+		Email:   "test@example.com",
 	}
 
 	tokenString := createTestToken(t, &claims)

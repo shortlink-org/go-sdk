@@ -12,7 +12,7 @@ import (
 type Step struct {
 	Options
 
-	ctx    context.Context
+	ctx    context.Context //nolint:containedctx // Run and Reject are func() error for errgroup.Go, so the step carries the context Play assigns to it
 	then   func(ctx context.Context) error
 	reject func(ctx context.Context, thenError error) error
 	dag    *dag.Dag
@@ -47,7 +47,7 @@ func (s *Step) Run() error {
 		}
 
 		// save error in context
-		s.ctx = WithError(s.ctx, err)
+		s.ctx = WithError(s.ctx, err) //nolint:fatcontext // wraps once per Run so Reject and the compensation callback can read the failure via GetError
 
 		return err
 	}

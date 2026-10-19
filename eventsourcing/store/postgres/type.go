@@ -5,8 +5,8 @@ import (
 )
 
 type EventStore struct {
-	db *pgxpool.Pool
-
 	Aggregates
 	Events
+
+	db *pgxpool.Pool
 }

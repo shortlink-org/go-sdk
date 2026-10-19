@@ -12,8 +12,9 @@ import (
 )
 
 type Saga struct {
-	ctx context.Context
 	Options
+
+	ctx       context.Context //nolint:containedctx // Play takes no context: the saga carries the one supplied through Builder.WithContext
 	steps     map[string]*Step
 	dag       *dag.Dag
 	name      string
@@ -29,7 +30,7 @@ func (s *Saga) AddStep(name string, setters ...Option) *BuilderStep {
 			dag:    s.dag,
 			status: INIT,
 
-			Options: Options{log: s.log},
+			Options: Options{log: s.log}, //nolint:modernize // the elided embedded-field literal does not compile with go1.27
 		},
 	}
 
@@ -65,10 +66,10 @@ func (s *Saga) Play(initSteps map[string]*Step) error {
 	}
 
 	// Run root steps
-	g := errgroup.Group{}
+	group := errgroup.Group{}
 	// set limiter for goroutines if it's set
 	if s.limiter > 0 {
-		g.SetLimit(s.limiter)
+		group.SetLimit(s.limiter)
 	}
 
 	// start tracing
@@ -79,10 +80,10 @@ func (s *Saga) Play(initSteps map[string]*Step) error {
 
 	for _, step := range initSteps {
 		step.ctx = newCtx //nolint:fatcontext // false positive?
-		g.Go(step.Run)
+		group.Go(step.Run)
 	}
 
-	err = g.Wait()
+	err = group.Wait()
 	if err != nil {
 		span.RecordError(err)
 		span.SetStatus(codes.Error, err.Error())
@@ -175,14 +176,14 @@ func (s *Saga) validateRun(steps map[string]*Step) (map[string]*Step, error) {
 
 func (s *Saga) Reject(rejectSteps map[string]*Step) error {
 	// Run root steps
-	g := errgroup.Group{}
+	group := errgroup.Group{}
 
 	for _, step := range rejectSteps {
-		g.Go(step.Reject)
+		group.Go(step.Reject)
 	}
 
 	// ignore error and continue reject parent func
-	err := g.Wait()
+	err := group.Wait()
 	if err != nil {
 		return err
 	}

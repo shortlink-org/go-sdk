@@ -358,7 +358,7 @@ func TestGateEligibility(t *testing.T) {
 			router := newTestRouter(t, 1)
 			tt.set(router.gate.replicas[0])
 
-			assert.Equal(t, tt.want, router.gate.eligible(router.gate.replicas[0]))
+			assert.Equal(t, tt.want, router.gate.replicas[0].state.eligible(router.gate.staleAfter))
 		})
 	}
 }

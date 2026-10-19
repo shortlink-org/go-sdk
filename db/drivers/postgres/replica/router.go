@@ -305,7 +305,7 @@ func (r *Router) Route(ctx context.Context, sql string) (Target, error) {
 // route is the whole decision, and it makes no I/O: everything it consults is
 // either in the context or in the poller's cached sample.
 func (r *Router) route(ctx context.Context, class sqlclass.Class) (Target, error) {
-	request := newRoutingRequest(ctx, class, r.opts)
+	request := newRoutingRequest(ctx, class, &r.opts)
 	target := request.primary(r.primary, "")
 
 	// A write is a write. The strategy may not override that: promoting it to
@@ -361,6 +361,7 @@ func (r *Router) route(ctx context.Context, class sqlclass.Class) (Target, error
 	}
 
 	required := request.requiredPosition()
+
 	selection := r.gate.pick(required)
 	if !selection.available() {
 		if !request.permitsFallback() {

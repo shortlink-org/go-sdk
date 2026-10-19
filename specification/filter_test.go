@@ -18,15 +18,15 @@ type FilterTestSuite struct {
 	users []*TestUser
 }
 
-func (suite *FilterTestSuite) SetupTest() {
-	suite.users = createTestUsers()
+func (s *FilterTestSuite) SetupTest() {
+	s.users = createTestUsers()
 }
 
 func TestFilterSuite(t *testing.T) {
 	suite.Run(t, new(FilterTestSuite))
 }
 
-func (suite *FilterTestSuite) TestFilter_EmptySlice() {
+func (s *FilterTestSuite) TestFilter_EmptySlice() {
 	// Arrange
 	emptyUsers := []*TestUser{}
 	spec := &AlwaysPassSpec[TestUser]{}
@@ -35,35 +35,35 @@ func (suite *FilterTestSuite) TestFilter_EmptySlice() {
 	result, err := specification.Filter(emptyUsers, spec)
 
 	// Assert
-	suite.Require().NoError(err)
-	suite.Require().Empty(result)
-	suite.Require().NotNil(result) // Should return empty slice, not nil
+	s.Require().NoError(err)
+	s.Require().Empty(result)
+	s.Require().NotNil(result) // Should return empty slice, not nil
 }
 
-func (suite *FilterTestSuite) TestFilter_AllPass() {
+func (s *FilterTestSuite) TestFilter_AllPass() {
 	// Arrange
 	spec := &AlwaysPassSpec[TestUser]{}
 
 	// Act
-	result, err := specification.Filter(suite.users, spec)
+	result, err := specification.Filter(s.users, spec)
 
 	// Assert
-	suite.Require().NoError(err)
-	suite.Require().Len(result, len(suite.users))
-	suite.Require().Equal(suite.users, result)
+	s.Require().NoError(err)
+	s.Require().Len(result, len(s.users))
+	s.Require().Equal(s.users, result)
 }
 
-func (suite *FilterTestSuite) TestFilter_AllFail() {
+func (s *FilterTestSuite) TestFilter_AllFail() {
 	// Arrange
 	spec := &AlwaysFailSpec[TestUser]{Reason: "test failure"}
 
 	// Act
-	result, err := specification.Filter(suite.users, spec)
+	result, err := specification.Filter(s.users, spec)
 
 	// Assert
-	suite.Require().Error(err)
-	suite.Require().Empty(result)
-	suite.Require().Contains(err.Error(), "test failure")
+	s.Require().Error(err)
+	s.Require().Empty(result)
+	s.Require().Contains(err.Error(), "test failure")
 
 	// Check that all users generated errors
 	errorCount := 0
@@ -81,51 +81,51 @@ func (suite *FilterTestSuite) TestFilter_AllFail() {
 		}
 	}
 	// The exact count may vary due to errors.Join implementation
-	suite.Positive(errorCount)
+	s.Positive(errorCount)
 }
 
-func (suite *FilterTestSuite) TestFilter_MixedResults() {
+func (s *FilterTestSuite) TestFilter_MixedResults() {
 	// Arrange - only active users should pass
 	spec := &UserActiveSpec{}
 
 	// Act
-	result, err := specification.Filter(suite.users, spec)
+	result, err := specification.Filter(s.users, spec)
 
 	// Assert
-	suite.Require().Error(err)       // Should have errors for inactive users
-	suite.Require().NotEmpty(result) // Should have some active users
+	s.Require().Error(err)       // Should have errors for inactive users
+	s.Require().NotEmpty(result) // Should have some active users
 
 	// Check that all returned users are active
 	for _, user := range result {
-		suite.Require().True(user.IsActive, "Expected user %s to be active", user.Name)
+		s.Require().True(user.IsActive, "Expected user %s to be active", user.Name)
 	}
 
 	// Check that inactive users are not in result
 	expectedActiveUsers := 0
 
-	for _, user := range suite.users {
+	for _, user := range s.users {
 		if user.IsActive {
 			expectedActiveUsers++
 		}
 	}
 
-	suite.Len(result, expectedActiveUsers)
+	s.Len(result, expectedActiveUsers)
 }
 
-func (suite *FilterTestSuite) TestFilter_AgeFilter() {
+func (s *FilterTestSuite) TestFilter_AgeFilter() {
 	// Arrange - users must be 18 or older
 	spec := &UserAgeMinSpec{MinAge: 18}
 
 	// Act
-	result, err := specification.Filter(suite.users, spec)
+	result, err := specification.Filter(s.users, spec)
 
 	// Assert
-	suite.Require().Error(err) // Should have errors for underage users
-	suite.Require().NotEmpty(result)
+	s.Require().Error(err) // Should have errors for underage users
+	s.Require().NotEmpty(result)
 
 	// Check that all returned users are 18 or older
 	for _, user := range result {
-		suite.Require().GreaterOrEqual(user.Age, 18, "Expected user %s to be 18 or older", user.Name)
+		s.Require().GreaterOrEqual(user.Age, 18, "Expected user %s to be 18 or older", user.Name)
 	}
 
 	// Verify specific users
@@ -142,44 +142,45 @@ func (suite *FilterTestSuite) TestFilter_AgeFilter() {
 		}
 	}
 
-	suite.True(aliceInResult, "Alice (25) should be in result")
-	suite.False(bobInResult, "Bob (17) should not be in result")
+	s.True(aliceInResult, "Alice (25) should be in result")
+	s.False(bobInResult, "Bob (17) should not be in result")
 }
 
-func (suite *FilterTestSuite) TestFilter_EmailValidation() {
+func (s *FilterTestSuite) TestFilter_EmailValidation() {
 	// Arrange
 	spec := &UserEmailValidSpec{}
 
 	// Act
-	result, err := specification.Filter(suite.users, spec)
+	result, err := specification.Filter(s.users, spec)
 
 	// Assert
-	suite.Require().Error(err) // Should have errors for invalid emails
-	suite.Require().NotEmpty(result)
+	s.Require().Error(err) // Should have errors for invalid emails
+	s.Require().NotEmpty(result)
 
 	// Check that all returned users have valid emails
 	for _, user := range result {
-		suite.Require().NotEmpty(user.Email, "Expected user %s to have non-empty email", user.Name)
-		suite.Require().Contains(user.Email, "@", "Expected user %s to have valid email", user.Name)
+		s.Require().NotEmpty(user.Email, "Expected user %s to have non-empty email", user.Name)
+		s.Require().Contains(user.Email, "@", "Expected user %s to have valid email", user.Name)
 	}
 }
 
-func (suite *FilterTestSuite) TestFilter_NilSpecification() {
+func (s *FilterTestSuite) TestFilter_NilSpecification() {
 	// This test ensures graceful handling of nil specification
 	// Note: This would normally panic, but we're testing the behavior
 	defer func() {
 		if r := recover(); r != nil {
-			suite.T().Log("Expected panic when using nil specification")
+			s.T().Log("Expected panic when using nil specification")
 		}
 	}()
 
 	// Act & Assert
-	suite.Panics(func() {
-		_, _ = specification.Filter(suite.users, nil)
+	s.Panics(func() {
+		_, err := specification.Filter(s.users, nil)
+		s.Error(err)
 	})
 }
 
-func (suite *FilterTestSuite) TestFilter_NilSlice() {
+func (s *FilterTestSuite) TestFilter_NilSlice() {
 	// Arrange
 	spec := &AlwaysPassSpec[TestUser]{}
 
@@ -187,25 +188,26 @@ func (suite *FilterTestSuite) TestFilter_NilSlice() {
 	result, err := specification.Filter(nil, spec)
 
 	// Assert
-	suite.Require().NoError(err)
-	suite.Require().Empty(result)
-	suite.Require().NotNil(result) // Should return empty slice, not nil
+	s.Require().NoError(err)
+	s.Require().Empty(result)
+	s.Require().NotNil(result) // Should return empty slice, not nil
 }
 
-func (suite *FilterTestSuite) TestFilter_SliceWithNilElements() {
+func (s *FilterTestSuite) TestFilter_SliceWithNilElements() {
 	// Arrange
 	usersWithNil := []*TestUser{
-		suite.users[0],
+		s.users[0],
 		nil,
-		suite.users[1],
+		s.users[1],
 		nil,
 	}
 	spec := &UserActiveSpec{} // Using a real spec that would panic on nil
 
 	// Act & Assert
 	// This should panic when spec.IsSatisfiedBy is called with nil
-	suite.Panics(func() {
-		_, _ = specification.Filter(usersWithNil, spec)
+	s.Panics(func() {
+		_, err := specification.Filter(usersWithNil, spec)
+		s.Error(err)
 	})
 }
 

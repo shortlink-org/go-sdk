@@ -56,6 +56,13 @@ linters:
         linters:
           - revive
         text: "add-constant:"
+
+      # The mq module is deprecated as a whole and its drivers register
+      # themselves in it; the self-import is the deprecation, not a use of it.
+      - path: "^mq/"
+        linters:
+          - staticcheck
+        text: "SA1019: github.com/shortlink-org/go-sdk/mq"
     generated: strict              # Skip all generated files across linters/formatters
 
   # Per‑linter tuning ---------------------------------------------------------
@@ -176,6 +183,10 @@ linters:
       strict: true
 
     # ▶️ Revive — full ruleset (best‑practice Aug 2025) ----------------------
+    ireturn:
+      # Generic helpers (Take[T], Pop[T], Force[T]) return T, not an interface.
+      allow: [anon, error, empty, stdlib, generic]
+
     revive:
       max-open-files: 2048
       directives:

@@ -17,15 +17,15 @@ type AndSpecificationTestSuite struct {
 	users []*TestUser
 }
 
-func (suite *AndSpecificationTestSuite) SetupTest() {
-	suite.users = createTestUsers()
+func (s *AndSpecificationTestSuite) SetupTest() {
+	s.users = createTestUsers()
 }
 
 func TestAndSpecificationSuite(t *testing.T) {
 	suite.Run(t, new(AndSpecificationTestSuite))
 }
 
-func (suite *AndSpecificationTestSuite) TestNewAndSpecification() {
+func (s *AndSpecificationTestSuite) TestNewAndSpecification() {
 	// Arrange
 	spec1 := &UserAgeMinSpec{MinAge: 18}
 	spec2 := &UserActiveSpec{}
@@ -34,22 +34,22 @@ func (suite *AndSpecificationTestSuite) TestNewAndSpecification() {
 	andSpec := specification.NewAndSpecification[TestUser](spec1, spec2)
 
 	// Assert
-	suite.NotNil(andSpec)
-	suite.Len(andSpec.Specs, 2)
-	suite.Equal(spec1, andSpec.Specs[0])
-	suite.Equal(spec2, andSpec.Specs[1])
+	s.NotNil(andSpec)
+	s.Len(andSpec.Specs, 2)
+	s.Equal(spec1, andSpec.Specs[0])
+	s.Equal(spec2, andSpec.Specs[1])
 }
 
-func (suite *AndSpecificationTestSuite) TestNewAndSpecification_NoSpecs() {
+func (s *AndSpecificationTestSuite) TestNewAndSpecification_NoSpecs() {
 	// Act
 	andSpec := specification.NewAndSpecification[TestUser]()
 
 	// Assert
-	suite.NotNil(andSpec)
-	suite.Empty(andSpec.Specs)
+	s.NotNil(andSpec)
+	s.Empty(andSpec.Specs)
 }
 
-func (suite *AndSpecificationTestSuite) TestNewAndSpecification_SingleSpec() {
+func (s *AndSpecificationTestSuite) TestNewAndSpecification_SingleSpec() {
 	// Arrange
 	spec := &UserAgeMinSpec{MinAge: 18}
 
@@ -57,12 +57,12 @@ func (suite *AndSpecificationTestSuite) TestNewAndSpecification_SingleSpec() {
 	andSpec := specification.NewAndSpecification[TestUser](spec)
 
 	// Assert
-	suite.NotNil(andSpec)
-	suite.Len(andSpec.Specs, 1)
-	suite.Equal(spec, andSpec.Specs[0])
+	s.NotNil(andSpec)
+	s.Len(andSpec.Specs, 1)
+	s.Equal(spec, andSpec.Specs[0])
 }
 
-func (suite *AndSpecificationTestSuite) TestIsSatisfiedBy_AllPass() {
+func (s *AndSpecificationTestSuite) TestIsSatisfiedBy_AllPass() {
 	// Arrange
 	user := &TestUser{ID: 1, Name: "Alice", Age: 25, Email: "alice@example.com", IsActive: true}
 	andSpec := specification.NewAndSpecification[TestUser](
@@ -75,10 +75,10 @@ func (suite *AndSpecificationTestSuite) TestIsSatisfiedBy_AllPass() {
 	err := andSpec.IsSatisfiedBy(user)
 
 	// Assert
-	suite.NoError(err)
+	s.NoError(err)
 }
 
-func (suite *AndSpecificationTestSuite) TestIsSatisfiedBy_OneFails() {
+func (s *AndSpecificationTestSuite) TestIsSatisfiedBy_OneFails() {
 	// Arrange - Bob is 17, so fails age requirement
 	user := &TestUser{ID: 2, Name: "Bob", Age: 17, Email: "bob@example.com", IsActive: true}
 	andSpec := specification.NewAndSpecification[TestUser](
@@ -91,11 +91,11 @@ func (suite *AndSpecificationTestSuite) TestIsSatisfiedBy_OneFails() {
 	err := andSpec.IsSatisfiedBy(user)
 
 	// Assert
-	suite.Require().Error(err)
-	suite.Require().Contains(err.Error(), "user age 17 is below minimum 18")
+	s.Require().Error(err)
+	s.Require().Contains(err.Error(), "user age 17 is below minimum 18")
 }
 
-func (suite *AndSpecificationTestSuite) TestIsSatisfiedBy_MultipleFail() {
+func (s *AndSpecificationTestSuite) TestIsSatisfiedBy_MultipleFail() {
 	// Arrange - Charlie is inactive and has no email
 	user := &TestUser{ID: 3, Name: "Charlie", Age: 30, Email: "", IsActive: false}
 	andSpec := specification.NewAndSpecification[TestUser](
@@ -108,12 +108,12 @@ func (suite *AndSpecificationTestSuite) TestIsSatisfiedBy_MultipleFail() {
 	err := andSpec.IsSatisfiedBy(user)
 
 	// Assert
-	suite.Require().Error(err)
-	suite.Require().Contains(err.Error(), "user is not active")
-	suite.Require().Contains(err.Error(), "user email is empty")
+	s.Require().Error(err)
+	s.Require().Contains(err.Error(), "user is not active")
+	s.Require().Contains(err.Error(), "user email is empty")
 }
 
-func (suite *AndSpecificationTestSuite) TestIsSatisfiedBy_EmptySpecs() {
+func (s *AndSpecificationTestSuite) TestIsSatisfiedBy_EmptySpecs() {
 	// Arrange
 	user := &TestUser{ID: 1, Name: "Alice", Age: 25, IsActive: true}
 	andSpec := specification.NewAndSpecification[TestUser]()
@@ -122,10 +122,10 @@ func (suite *AndSpecificationTestSuite) TestIsSatisfiedBy_EmptySpecs() {
 	err := andSpec.IsSatisfiedBy(user)
 
 	// Assert
-	suite.NoError(err) // No Specs to fail
+	s.NoError(err) // No Specs to fail
 }
 
-func (suite *AndSpecificationTestSuite) TestIsSatisfiedBy_NestedAndSpecifications() {
+func (s *AndSpecificationTestSuite) TestIsSatisfiedBy_NestedAndSpecifications() {
 	// Arrange
 	innerAnd1 := specification.NewAndSpecification[TestUser](
 		&UserAgeMinSpec{MinAge: 18},
@@ -143,10 +143,10 @@ func (suite *AndSpecificationTestSuite) TestIsSatisfiedBy_NestedAndSpecification
 	err := outerAnd.IsSatisfiedBy(user)
 
 	// Assert
-	suite.NoError(err)
+	s.NoError(err)
 }
 
-func (suite *AndSpecificationTestSuite) TestIsSatisfiedBy_NestedAndSpecifications_Fails() {
+func (s *AndSpecificationTestSuite) TestIsSatisfiedBy_NestedAndSpecifications_Fails() {
 	// Arrange
 	innerAnd1 := specification.NewAndSpecification[TestUser](
 		&UserAgeMinSpec{MinAge: 18},
@@ -165,11 +165,11 @@ func (suite *AndSpecificationTestSuite) TestIsSatisfiedBy_NestedAndSpecification
 	err := outerAnd.IsSatisfiedBy(user)
 
 	// Assert
-	suite.Require().Error(err)
-	suite.Require().Contains(err.Error(), "user age 17 is below minimum 18")
+	s.Require().Error(err)
+	s.Require().Contains(err.Error(), "user age 17 is below minimum 18")
 }
 
-func (suite *AndSpecificationTestSuite) TestIsSatisfiedBy_ErrorAggregation() {
+func (s *AndSpecificationTestSuite) TestIsSatisfiedBy_ErrorAggregation() {
 	// Arrange - User that fails multiple Specs
 	user := &TestUser{ID: 6, Name: "Frank", Age: 16, Email: "frank.invalid", IsActive: false}
 	andSpec := specification.NewAndSpecification[TestUser](
@@ -182,15 +182,15 @@ func (suite *AndSpecificationTestSuite) TestIsSatisfiedBy_ErrorAggregation() {
 	err := andSpec.IsSatisfiedBy(user)
 
 	// Assert
-	suite.Require().Error(err)
+	s.Require().Error(err)
 
 	// Check that all three errors are included
-	suite.Require().Contains(err.Error(), "user age 16 is below minimum 18")
-	suite.Require().Contains(err.Error(), "user is not active")
-	suite.Require().Contains(err.Error(), "is missing @ symbol")
+	s.Require().Contains(err.Error(), "user age 16 is below minimum 18")
+	s.Require().Contains(err.Error(), "user is not active")
+	s.Require().Contains(err.Error(), "is missing @ symbol")
 }
 
-func (suite *AndSpecificationTestSuite) TestWithFilter_ComplexScenario() {
+func (s *AndSpecificationTestSuite) TestWithFilter_ComplexScenario() {
 	// Arrange - find users who are active, 18+, and have valid email
 	andSpec := specification.NewAndSpecification[TestUser](
 		&UserAgeMinSpec{MinAge: 18},
@@ -199,23 +199,23 @@ func (suite *AndSpecificationTestSuite) TestWithFilter_ComplexScenario() {
 	)
 
 	// Act
-	result, err := specification.Filter(suite.users, andSpec)
+	result, err := specification.Filter(s.users, andSpec)
 
 	// Assert
-	suite.Require().Error(err) // Some users will fail the criteria
-	suite.Require().NotEmpty(result)
+	s.Require().Error(err) // Some users will fail the criteria
+	s.Require().NotEmpty(result)
 
 	// Verify all returned users meet all criteria
 	for _, user := range result {
-		suite.Require().GreaterOrEqual(user.Age, 18, "User %s should be 18+", user.Name)
-		suite.Require().True(user.IsActive, "User %s should be active", user.Name)
-		suite.Require().NotEmpty(user.Email, "User %s should have email", user.Name)
-		suite.Require().Contains(user.Email, "@", "User %s should have valid email", user.Name)
+		s.Require().GreaterOrEqual(user.Age, 18, "User %s should be 18+", user.Name)
+		s.Require().True(user.IsActive, "User %s should be active", user.Name)
+		s.Require().NotEmpty(user.Email, "User %s should have email", user.Name)
+		s.Require().Contains(user.Email, "@", "User %s should have valid email", user.Name)
 	}
 
 	// Check specific users
 	expectedUsers := []string{"Alice", "Eve"} // Only these meet all criteria
-	suite.Len(result, len(expectedUsers))
+	s.Len(result, len(expectedUsers))
 
 	for _, expectedName := range expectedUsers {
 		found := false
@@ -228,7 +228,7 @@ func (suite *AndSpecificationTestSuite) TestWithFilter_ComplexScenario() {
 			}
 		}
 
-		suite.True(found, "Expected to find user %s in results", expectedName)
+		s.True(found, "Expected to find user %s in results", expectedName)
 	}
 }
 

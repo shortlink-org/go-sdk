@@ -21,7 +21,7 @@ type metrics struct {
 // The registry is explicit because the exposed one is rarely the global
 // default: observability serves its own registry, and metrics registered
 // globally never reach that /metrics. Pass prometheus.DefaultRegisterer to
-// keep the previous behaviour.
+// keep the previous behavior.
 func NewMetrics(reg prometheus.Registerer) (func(next http.Handler) http.Handler, error) {
 	collector := &metrics{
 		reqs: prometheus.NewCounterVec(prometheus.CounterOpts{ //nolint:exhaustruct // Prometheus options intentionally use defaults

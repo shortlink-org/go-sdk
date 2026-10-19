@@ -11,6 +11,12 @@ import (
 
 // Benchmark tests for performance evaluation
 
+// Sinks keep the benchmarked results alive so the compiler cannot elide the calls.
+var (
+	errSink   error
+	usersSink []*TestUser
+)
+
 func BenchmarkFilter(b *testing.B) {
 	users := createTestUsers()
 	spec := &UserActiveSpec{}
@@ -18,7 +24,7 @@ func BenchmarkFilter(b *testing.B) {
 	b.ResetTimer()
 
 	for range b.N {
-		_, _ = specification.Filter(users, spec)
+		usersSink, errSink = specification.Filter(users, spec)
 	}
 }
 
@@ -40,7 +46,7 @@ func BenchmarkFilter_LargeDataset(b *testing.B) {
 	b.ResetTimer()
 
 	for range b.N {
-		_, _ = specification.Filter(users, spec)
+		usersSink, errSink = specification.Filter(users, spec)
 	}
 }
 
@@ -55,7 +61,7 @@ func BenchmarkAndSpecification(b *testing.B) {
 	b.ResetTimer()
 
 	for range b.N {
-		_ = andSpec.IsSatisfiedBy(user)
+		errSink = andSpec.IsSatisfiedBy(user)
 	}
 }
 
@@ -70,7 +76,7 @@ func BenchmarkOrSpecification(b *testing.B) {
 	b.ResetTimer()
 
 	for range b.N {
-		_ = orSpec.IsSatisfiedBy(user)
+		errSink = orSpec.IsSatisfiedBy(user)
 	}
 }
 
@@ -85,7 +91,7 @@ func BenchmarkOrSpecification_AllFail(b *testing.B) {
 	b.ResetTimer()
 
 	for range b.N {
-		_ = orSpec.IsSatisfiedBy(user)
+		errSink = orSpec.IsSatisfiedBy(user)
 	}
 }
 
@@ -96,7 +102,7 @@ func BenchmarkNotSpecification(b *testing.B) {
 	b.ResetTimer()
 
 	for range b.N {
-		_ = notSpec.IsSatisfiedBy(user)
+		errSink = notSpec.IsSatisfiedBy(user)
 	}
 }
 
@@ -124,7 +130,7 @@ func BenchmarkComplexSpecification(b *testing.B) {
 	b.ResetTimer()
 
 	for range b.N {
-		_ = complexSpec.IsSatisfiedBy(user)
+		errSink = complexSpec.IsSatisfiedBy(user)
 	}
 }
 
@@ -143,7 +149,7 @@ func BenchmarkFilter_ComplexSpecification(b *testing.B) {
 	b.ResetTimer()
 
 	for range b.N {
-		_, _ = specification.Filter(users, complexSpec)
+		usersSink, errSink = specification.Filter(users, complexSpec)
 	}
 }
 
@@ -214,7 +220,7 @@ func BenchmarkSpecificationComparisons(b *testing.B) {
 	for _, bm := range benchmarks {
 		b.Run(bm.name, func(b *testing.B) {
 			for range b.N {
-				_ = bm.spec.IsSatisfiedBy(user)
+				errSink = bm.spec.IsSatisfiedBy(user)
 			}
 		})
 	}
@@ -231,7 +237,7 @@ func BenchmarkSpecification_Allocations(b *testing.B) {
 		b.ResetTimer()
 
 		for range b.N {
-			_ = spec.IsSatisfiedBy(user)
+			errSink = spec.IsSatisfiedBy(user)
 		}
 	})
 
@@ -245,7 +251,7 @@ func BenchmarkSpecification_Allocations(b *testing.B) {
 		b.ResetTimer()
 
 		for range b.N {
-			_ = andSpec.IsSatisfiedBy(user)
+			errSink = andSpec.IsSatisfiedBy(user)
 		}
 	})
 
@@ -257,7 +263,7 @@ func BenchmarkSpecification_Allocations(b *testing.B) {
 		b.ResetTimer()
 
 		for range b.N {
-			_, _ = specification.Filter(users, spec)
+			usersSink, errSink = specification.Filter(users, spec)
 		}
 	})
 }
@@ -285,7 +291,7 @@ func BenchmarkFilter_Scaling(b *testing.B) {
 			b.ResetTimer()
 
 			for range b.N {
-				_, _ = specification.Filter(users, spec)
+				usersSink, errSink = specification.Filter(users, spec)
 			}
 		})
 	}
@@ -341,7 +347,7 @@ func BenchmarkWorstCase_DeepNesting(b *testing.B) {
 	b.ResetTimer()
 
 	for range b.N {
-		_ = spec.IsSatisfiedBy(user)
+		errSink = spec.IsSatisfiedBy(user)
 	}
 }
 
@@ -359,7 +365,7 @@ func BenchmarkWorstCase_WideAND(b *testing.B) {
 	b.ResetTimer()
 
 	for range b.N {
-		_ = andSpec.IsSatisfiedBy(user)
+		errSink = andSpec.IsSatisfiedBy(user)
 	}
 }
 
@@ -377,6 +383,6 @@ func BenchmarkWorstCase_WideOR_AllFail(b *testing.B) {
 	b.ResetTimer()
 
 	for range b.N {
-		_ = orSpec.IsSatisfiedBy(user)
+		errSink = orSpec.IsSatisfiedBy(user)
 	}
 }

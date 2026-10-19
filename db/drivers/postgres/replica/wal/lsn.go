@@ -51,6 +51,16 @@ const (
 	tokenFields  = 5
 )
 
+// Positions of the fields in an encoded Token, in the order String renders
+// them.
+const (
+	versionField = iota
+	systemIDField
+	timelineField
+	lsnField
+	issuedAtField
+)
+
 var (
 	// ErrInvalidLSN indicates a string that is not a PostgreSQL WAL position.
 	ErrInvalidLSN = errors.New("invalid PostgreSQL LSN")
@@ -118,28 +128,28 @@ func ParseToken(text string) (Token, error) {
 	}
 
 	parts := strings.Split(text, ":")
-	if len(parts) != tokenFields || parts[0] != tokenVersion {
+	if len(parts) != tokenFields || parts[versionField] != tokenVersion {
 		return Token{}, fmt.Errorf("%w: %q", ErrInvalidToken, text)
 	}
 
-	systemID, err := strconv.ParseUint(parts[1], decimalBase, systemIDBits)
+	systemID, err := strconv.ParseUint(parts[systemIDField], decimalBase, systemIDBits)
 	if err != nil {
-		return Token{}, fmt.Errorf("%w: system id: %q", ErrInvalidToken, parts[1])
+		return Token{}, fmt.Errorf("%w: system id: %q", ErrInvalidToken, parts[systemIDField])
 	}
 
-	timeline, err := strconv.ParseUint(parts[2], decimalBase, timelineBits)
+	timeline, err := strconv.ParseUint(parts[timelineField], decimalBase, timelineBits)
 	if err != nil {
-		return Token{}, fmt.Errorf("%w: timeline: %q", ErrInvalidToken, parts[2])
+		return Token{}, fmt.Errorf("%w: timeline: %q", ErrInvalidToken, parts[timelineField])
 	}
 
-	lsn, err := ParseLSN(parts[3])
+	lsn, err := ParseLSN(parts[lsnField])
 	if err != nil {
 		return Token{}, fmt.Errorf("%w: %w", ErrInvalidToken, err)
 	}
 
-	millis, err := strconv.ParseInt(parts[4], decimalBase, millisBits)
+	millis, err := strconv.ParseInt(parts[issuedAtField], decimalBase, millisBits)
 	if err != nil {
-		return Token{}, fmt.Errorf("%w: issued at: %q", ErrInvalidToken, parts[4])
+		return Token{}, fmt.Errorf("%w: issued at: %q", ErrInvalidToken, parts[issuedAtField])
 	}
 
 	return Token{

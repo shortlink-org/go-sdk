@@ -25,13 +25,14 @@ import (
 const CooperativeStickyMigrationStrategyName = "cooperative-sticky-migration"
 
 const (
-	// healthcheckPeriod - how often the broker connection is re-checked.
+	// How often the broker connection is re-checked.
 	healthcheckPeriod = 5 * time.Second
 
-	// minConsumeBackoff, maxConsumeBackoff - bounds of the backoff applied between
-	// failed `Consume` calls.
-	minConsumeBackoff = 100 * time.Millisecond
-	maxConsumeBackoff = 30 * time.Second
+	// Bounds of the backoff applied between failed `Consume` calls, and the
+	// factor it grows by after each failure.
+	minConsumeBackoff    = 100 * time.Millisecond
+	maxConsumeBackoff    = 30 * time.Second
+	consumeBackoffFactor = 2
 )
 
 // ErrSubscribeStopped is returned when the consume loop stops before the
@@ -85,12 +86,13 @@ func (mq *Kafka) Init(ctx context.Context, log *slog.Logger) error {
 	mq.log = log
 
 	// Set configuration
-	config, err := mq.setConfig()
+	saramaConfig, err := mq.setConfig()
 	if err != nil {
 		return err
 	}
 
-	if mq.client, err = sarama.NewClient(mq.URI, config); err != nil {
+	mq.client, err = sarama.NewClient(mq.URI, saramaConfig)
+	if err != nil {
 		return err
 	}
 
@@ -101,7 +103,7 @@ func (mq *Kafka) Init(ctx context.Context, log *slog.Logger) error {
 	}
 
 	// OpenTelemetry
-	mq.producer = otelsarama.WrapSyncProducer(config, producer)
+	mq.producer = otelsarama.WrapSyncProducer(saramaConfig, producer)
 
 	// Check connection
 	if len(mq.client.Brokers()) == 0 {
@@ -145,6 +147,7 @@ func (mq *Kafka) close() error {
 		}
 
 		mq.subscriptions.Delete(key)
+
 		errs = errors.Join(errs, sub.stop())
 
 		return true
@@ -254,7 +257,7 @@ func (mq *Kafka) consume(ctx context.Context, group sarama.ConsumerGroup, target
 				return
 			}
 
-			backoff = min(backoff*2, maxConsumeBackoff)
+			backoff = min(backoff*consumeBackoffFactor, maxConsumeBackoff)
 		}
 
 		// check if context was canceled, signaling that the consumer should stop
@@ -283,12 +286,15 @@ func (mq *Kafka) UnSubscribe(target string) error {
 // Reference:
 // - https://developers.redhat.com/articles/2022/05/03/fine-tune-kafka-performance-kafka-optimization-theorem#the_kafka_optimization_theorem
 func (mq *Kafka) setConfig() (*sarama.Config, error) {
-	mq.cfg.SetDefault("MQ_KAFKA_URI", "localhost:9092")                                                         // Kafka URI
-	mq.cfg.SetDefault("MQ_KAFKA_CONSUMER_GROUP", mq.cfg.GetString("SERVICE_NAME"))                              // Kafka consumer group
-	mq.cfg.SetDefault("MQ_KAFKA_CONSUMER_GROUP_PARTITION_ASSIGNMENT_STRATEGY", sarama.RangeBalanceStrategyName) // Consumer group partition assignment strategy (range, roundrobin, sticky, cooperative-sticky, cooperative-sticky-migration)
-	mq.cfg.SetDefault("MQ_KAFKA_CONSUMER_GROUP_OFFSET", sarama.OffsetNewest)                                    // Kafka consumer consumes initial offset from oldest
-	mq.cfg.SetDefault("MQ_KAFKA_PRODUCER_RETRY_MAX", 3)                                                         // Kafka producer retry max
-	mq.cfg.SetDefault("MQ_KAFKA_SARAMA_VERSION", "MAX")                                                         // Kafka sarama version: MAX, DEFAULT
+	mq.cfg.SetDefault("MQ_KAFKA_URI", "localhost:9092")                            // Kafka URI
+	mq.cfg.SetDefault("MQ_KAFKA_CONSUMER_GROUP", mq.cfg.GetString("SERVICE_NAME")) // Kafka consumer group
+	// Consumer group partition assignment strategy:
+	// range, roundrobin, sticky, cooperative-sticky, cooperative-sticky-migration
+	mq.cfg.SetDefault("MQ_KAFKA_CONSUMER_GROUP_PARTITION_ASSIGNMENT_STRATEGY", sarama.RangeBalanceStrategyName)
+	// Kafka consumer consumes initial offset from oldest
+	mq.cfg.SetDefault("MQ_KAFKA_CONSUMER_GROUP_OFFSET", sarama.OffsetNewest)
+	mq.cfg.SetDefault("MQ_KAFKA_PRODUCER_RETRY_MAX", 3) // Kafka producer retry max
+	mq.cfg.SetDefault("MQ_KAFKA_SARAMA_VERSION", "MAX") // Kafka sarama version: MAX, DEFAULT
 
 	mq.Config = &Config{
 		URI: []string{
@@ -339,6 +345,8 @@ func (mq *Kafka) setConfig() (*sarama.Config, error) {
 		saramaConfig.Version = sarama.MaxVersion
 	case "DEFAULT":
 		saramaConfig.Version = sarama.DefaultVersion
+	default:
+		// Any other value keeps the version sarama.NewConfig() ships with.
 	}
 
 	// idempotent producer

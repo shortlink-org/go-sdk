@@ -2,6 +2,7 @@ package rabbit
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"go.opentelemetry.io/otel"
@@ -40,13 +41,13 @@ func (mq *MQ) Subscribe(ctx context.Context, target string, message query.Respon
 		nil,
 	)
 	if err != nil {
-		_ = subCh.Close()
+		errClose := closeReleased(subCh.Close)
 		mq.mu.Unlock()
 
-		return fmt.Errorf("failed to declare exchange: %w", err)
+		return errors.Join(fmt.Errorf("failed to declare exchange: %w", err), errClose)
 	}
 
-	q, err := subCh.QueueDeclare(
+	queue, err := subCh.QueueDeclare(
 		queueName,
 		true,
 		false,
@@ -55,28 +56,28 @@ func (mq *MQ) Subscribe(ctx context.Context, target string, message query.Respon
 		nil,
 	)
 	if err != nil {
-		_ = subCh.Close()
+		errClose := closeReleased(subCh.Close)
 		mq.mu.Unlock()
 
-		return fmt.Errorf("failed to declare queue: %w", err)
+		return errors.Join(fmt.Errorf("failed to declare queue: %w", err), errClose)
 	}
 
-	err = subCh.QueueBind(q.Name, "", target, false, nil)
+	err = subCh.QueueBind(queue.Name, "", target, false, nil)
 	if err != nil {
-		_ = subCh.Close()
+		errClose := closeReleased(subCh.Close)
 		mq.mu.Unlock()
 
-		return fmt.Errorf("failed to bind queue: %w", err)
+		return errors.Join(fmt.Errorf("failed to bind queue: %w", err), errClose)
 	}
 
 	// The consumer is tracked for topology recovery: after a reconnect amqp091-go
 	// re-subscribes it onto this very delivery channel, so msgs stays valid.
-	msgs, err := subCh.ConsumeWithContext(ctx, q.Name, "", true, false, false, false, nil)
+	msgs, err := subCh.ConsumeWithContext(ctx, queue.Name, "", true, false, false, false, nil)
 	if err != nil {
-		_ = subCh.Close()
+		errClose := closeReleased(subCh.Close)
 		mq.mu.Unlock()
 
-		return fmt.Errorf("failed to consume messages: %w", err)
+		return errors.Join(fmt.Errorf("failed to consume messages: %w", err), errClose)
 	}
 
 	mq.subs[target] = subCh
@@ -92,7 +93,7 @@ func (mq *MQ) Subscribe(ctx context.Context, target string, message query.Respon
 
 				spanCtx := propagation.TraceContext{}.Extract(ctx, amqpHeadersCarrier(msg.Headers))
 				spanCtx, span := otel.Tracer("AMQP").Start(spanCtx, "ConsumeMessage")
-				span.SetAttributes(attribute.String("queue", q.Name))
+				span.SetAttributes(attribute.String("queue", queue.Name))
 
 				message.Chan <- query.ResponseMessage{
 					Body:    msg.Body,
@@ -125,12 +126,11 @@ func (mq *MQ) UnSubscribe(target string) error {
 
 	err := subCh.QueueUnbind(queueName, "", target, nil)
 	if err != nil {
-		_ = subCh.Close()
-
-		return fmt.Errorf("failed to unbind queue: %w", err)
+		return errors.Join(fmt.Errorf("failed to unbind queue: %w", err), closeReleased(subCh.Close))
 	}
 
-	if err := subCh.Close(); err != nil {
+	err = subCh.Close()
+	if err != nil {
 		return fmt.Errorf("failed to close subscription channel: %w", err)
 	}
 

@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"runtime/trace"
 	"sort"
+	"strings"
 	"sync"
 	"time"
 
@@ -16,11 +17,18 @@ import (
 // defaultMaxDumps is how many dump files are kept when the setting is unset or invalid.
 const defaultMaxDumps = 100
 
+// defaultMaxBytes is the flight recorder buffer size (20 MB) when the setting is unset.
+const defaultMaxBytes = 20 * 1024 * 1024
+
+// dumpDirPerm keeps dump files readable by the owner and its group only.
+const dumpDirPerm = 0o750
+
 var (
 	ErrRecorderNotInitialized = errors.New("flight recorder not initialized")
 	ErrRecorderNotStarted     = errors.New("flight recorder not started")
 	ErrCreateDumpPath         = errors.New("failed to create dump path")
 	ErrCreateDumpFile         = errors.New("failed to create dump file")
+	ErrInvalidDumpFileName    = errors.New("dump file name escapes the dump path")
 	ErrWriteDump              = errors.New("failed to write flight dump")
 	ErrStartRecorder          = errors.New("failed to start flight recorder")
 )
@@ -46,26 +54,31 @@ type Recorder struct {
 func New(ctx context.Context, cfg *config.Config) (*Recorder, error) {
 	cfg.SetDefault("FLIGHT_RECORDER_ENABLED", true)
 	cfg.SetDefault("FLIGHT_RECORDER_MIN_AGE", "1s")
-	cfg.SetDefault("FLIGHT_RECORDER_MAX_BYTES", 20*1024*1024)
+	cfg.SetDefault("FLIGHT_RECORDER_MAX_BYTES", defaultMaxBytes)
 	cfg.SetDefault("FLIGHT_RECORDER_DUMP_PATH", "/tmp/flight_dumps")
 	cfg.SetDefault("FLIGHT_RECORDER_MAX_DUMPS", defaultMaxDumps)
 	cfg.SetDefault("FLIGHT_RECORDER_CLEANUP_INTERVAL", "10m")
 
 	if !cfg.GetBool("FLIGHT_RECORDER_ENABLED") {
-		return nil, nil
+		// A disabled recorder is a nil *Recorder, not an error: the HTTP and gRPC
+		// middleware check for nil and skip dumping, and every method tolerates
+		// a nil receiver.
+		return nil, nil //nolint:nilnil // nil recorder is the documented "disabled" value the middleware relies on
 	}
 
 	dumpPath := cfg.GetString("FLIGHT_RECORDER_DUMP_PATH")
-	err := os.MkdirAll(dumpPath, 0o755)
+
+	err := os.MkdirAll(dumpPath, dumpDirPerm)
 	if err != nil {
 		return nil, ErrCreateDumpPath
 	}
 
-	fr := trace.NewFlightRecorder(trace.FlightRecorderConfig{
+	recorder := trace.NewFlightRecorder(trace.FlightRecorderConfig{
 		MinAge:   cfg.GetDuration("FLIGHT_RECORDER_MIN_AGE"),
 		MaxBytes: cfg.GetUint64("FLIGHT_RECORDER_MAX_BYTES"),
 	})
-	err = fr.Start()
+
+	err = recorder.Start()
 	if err != nil {
 		return nil, ErrStartRecorder
 	}
@@ -76,7 +89,7 @@ func New(ctx context.Context, cfg *config.Config) (*Recorder, error) {
 	}
 
 	rec := &Recorder{
-		fr:       fr,
+		fr:       recorder,
 		dumpPath: dumpPath,
 		maxDumps: maxDumps,
 	}
@@ -106,19 +119,39 @@ func (wr *Recorder) DumpToFile(fileName string) error {
 		return ErrRecorderNotStarted
 	}
 
-	f, err := os.Create(filepath.Join(wr.dumpPath, fileName))
+	// Clean is already applied by Join; repeating it here keeps the path
+	// provably sanitized for the reader (and gosec) at the point of use.
+	path := filepath.Clean(filepath.Join(wr.dumpPath, fileName))
+	if !wr.insideDumpPath(path) {
+		return ErrInvalidDumpFileName
+	}
+
+	file, err := os.Create(path)
 	if err != nil {
 		return ErrCreateDumpFile
 	}
-	defer f.Close()
 
-	if _, err = wr.fr.WriteTo(f); err != nil {
+	_, err = wr.fr.WriteTo(file)
+	closeErr := file.Close()
+
+	if err != nil || closeErr != nil {
 		return ErrWriteDump
 	}
 
 	go wr.cleanupOldDumps()
 
 	return nil
+}
+
+// insideDumpPath reports whether a cleaned path is a file strictly below the
+// dump directory, so a file name such as "../etc/passwd" cannot escape it.
+func (wr *Recorder) insideDumpPath(path string) bool {
+	rel, err := filepath.Rel(filepath.Clean(wr.dumpPath), path)
+	if err != nil {
+		return false
+	}
+
+	return rel != "." && rel != ".." && !strings.HasPrefix(rel, ".."+string(filepath.Separator))
 }
 
 // stop ends the recording. It is idempotent, and it waits for a dump that is
@@ -135,29 +168,49 @@ func (wr *Recorder) stop() {
 	wr.fr.Stop()
 }
 
-// DumpToFileAsync runs DumpToFile asynchronously.
+// DumpToFileAsync runs DumpToFile asynchronously. The result is not reported
+// anywhere: the caller chose fire-and-forget, and this package has no logger.
 func (wr *Recorder) DumpToFileAsync(fileName string) {
 	go func() {
-		_ = wr.DumpToFile(fileName)
+		_ = wr.DumpToFile(fileName) //nolint:errcheck // fire-and-forget by contract; no channel or logger to report the error through
 	}()
+}
+
+// dumpFile is a dump on disk with the modification time the rotation sorts by.
+type dumpFile struct {
+	path    string
+	modTime time.Time
 }
 
 // cleanupOldDumps keeps only the N newest dump files, deleting older ones.
 func (wr *Recorder) cleanupOldDumps() {
-	files, err := filepath.Glob(filepath.Join(wr.dumpPath, "flight-*.out"))
-	if err != nil || len(files) <= wr.maxDumps {
+	paths, err := filepath.Glob(filepath.Join(wr.dumpPath, "flight-*.out"))
+	if err != nil || len(paths) <= wr.maxDumps {
 		return
 	}
 
-	sort.Slice(files, func(i, j int) bool {
-		fi, _ := os.Stat(files[i])
-		fj, _ := os.Stat(files[j])
+	dumps := make([]dumpFile, 0, len(paths))
 
-		return fi.ModTime().After(fj.ModTime()) // newest first
+	for _, path := range paths {
+		info, statErr := os.Stat(path)
+		if statErr != nil {
+			// Removed between Glob and Stat; nothing left to rotate.
+			continue
+		}
+
+		dumps = append(dumps, dumpFile{path: path, modTime: info.ModTime()})
+	}
+
+	if len(dumps) <= wr.maxDumps {
+		return
+	}
+
+	sort.Slice(dumps, func(i, j int) bool {
+		return dumps[i].modTime.After(dumps[j].modTime) // newest first
 	})
 
-	for _, old := range files[wr.maxDumps:] {
-		_ = os.Remove(old)
+	for _, old := range dumps[wr.maxDumps:] {
+		_ = os.Remove(old.path) //nolint:errcheck // best effort: a file that cannot be removed now is retried on the next cleanup
 	}
 }
 

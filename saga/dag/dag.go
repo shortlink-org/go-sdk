@@ -16,51 +16,40 @@ func New() *Dag {
 }
 
 // AddVertex adds a vertex to the graph
-func (d *Dag) AddVertex(id string, value any) (*Vertex, error) {
+func (d *Dag) AddVertex(vertexID string, value any) (*Vertex, error) {
 	// check on an uniq key
-	if _, ok := d.vertices.Load(id); ok {
-		return nil, &VertexAlreadyExistsError{Id: id}
+	if _, ok := d.vertices.Load(vertexID); ok {
+		return nil, &VertexAlreadyExistsError{Id: vertexID}
 	}
 
 	node := &Vertex{
-		id:       id,
+		id:       vertexID,
 		value:    value,
 		parents:  make([]*Vertex, 0),
 		children: make([]*Vertex, 0),
 	}
-	d.vertices.Store(id, node)
+	d.vertices.Store(vertexID, node)
 
 	return node, nil
 }
 
-func (d *Dag) AddEdge(from, to string) error {
-	fromVertexRaw, ok := d.vertices.Load(from)
-	if !ok {
-		return &VertexNotFoundError{Id: from}
+func (d *Dag) AddEdge(fromID, toID string) error {
+	fromVertex, err := d.GetVertex(fromID)
+	if err != nil {
+		return err
 	}
 
-	fromVertex, ok := fromVertexRaw.(*Vertex)
-	if !ok {
-		return ErrIncorrectTypeAssertion
-	}
-
-	toVertexRaw, ok := d.vertices.Load(to)
-
-	if !ok {
-		return &VertexNotFoundError{Id: to}
-	}
-
-	toVertex, ok := toVertexRaw.(*Vertex)
-	if !ok {
-		return ErrIncorrectTypeAssertion
+	toVertex, err := d.GetVertex(toID)
+	if err != nil {
+		return err
 	}
 
 	fromVertex.children = append(fromVertex.children, toVertex)
 	toVertex.parents = append(toVertex.parents, fromVertex)
 
 	// update map
-	d.vertices.Store(from, fromVertex)
-	d.vertices.Store(to, toVertex)
+	d.vertices.Store(fromID, fromVertex)
+	d.vertices.Store(toID, toVertex)
 
 	return nil
 }

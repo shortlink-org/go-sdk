@@ -17,24 +17,24 @@ func generatePostgresFile(gen *protogen.Plugin, file *protogen.File) {
 			}
 		}
 
-		g := gen.NewGeneratedFile(filename, file.GoImportPath)
-		printHeader(gen, g, file)
+		genFile := gen.NewGeneratedFile(filename, file.GoImportPath)
+		printHeader(gen, genFile, file)
 
-		g.P("import (")
-		g.P("\"strings\"")
-		g.P("\"github.com/Masterminds/squirrel\"")
-		g.P(")")
-		g.P()
+		genFile.P("import (")
+		genFile.P("\"strings\"")
+		genFile.P("\"github.com/Masterminds/squirrel\"")
+		genFile.P(")")
+		genFile.P()
 
 		// Generate the BuildFilter method
 		structName := "Filter" + message.GoIdent.GoName
 
-		generateBuildPostgresFilterMethod(g, structName, message.Fields)
+		generateBuildPostgresFilterMethod(genFile, structName, message.Fields)
 	}
 }
 
-func generateBuildPostgresFilterMethod(g *protogen.GeneratedFile, structName string, fields []*protogen.Field) {
-	g.P("func (f *", structName, ") BuildFilter(query squirrel.SelectBuilder) squirrel.SelectBuilder {")
+func generateBuildPostgresFilterMethod(genFile *protogen.GeneratedFile, structName string, fields []*protogen.Field) {
+	genFile.P("func (f *", structName, ") BuildFilter(query squirrel.SelectBuilder) squirrel.SelectBuilder {")
 
 	for _, field := range fields {
 		if field.Desc.IsList() || field.Desc.IsMap() {
@@ -43,72 +43,75 @@ func generateBuildPostgresFilterMethod(g *protogen.GeneratedFile, structName str
 
 		fieldName := field.GoName
 		dbColumnName := strings.ToLower(fieldName)
-		generateFieldFilterConditions(g, fieldName, dbColumnName)
+		generateFieldFilterConditions(genFile, fieldName, dbColumnName)
 	}
 
-	g.P("return query")
-	g.P("}")
+	genFile.P("return query")
+	genFile.P("}")
 }
 
-func generateFieldFilterConditions(g *protogen.GeneratedFile, fieldName, dbColumnName string) {
+func generateFieldFilterConditions(genFile *protogen.GeneratedFile, fieldName, dbColumnName string) {
 	conditions := []string{"Eq", "Ne", "Lt", "Le", "Gt", "Ge", "StartsWith", "EndsWith"}
 	operators := []string{"=", "<>", "<", "<=", ">", ">=", "LIKE", "LIKE"}
 
-	g.P("if f.", fieldName, " != nil {") // nil pointer check
+	genFile.P("if f.", fieldName, " != nil {") // nil pointer check
 
 	for i, cond := range conditions {
-		op := operators[i]
+		operator := operators[i]
 
-		valuePlaceholder := "?"
+		var valuePlaceholder string
+
 		switch cond {
 		case "StartsWith":
 			valuePlaceholder = "'%' || ?"
 		case "EndsWith":
 			valuePlaceholder = "? || '%'"
+		default:
+			valuePlaceholder = "?"
 		}
 
-		g.P("if f.", fieldName, ".", cond, " != \"\" {")
-		g.P("query = query.Where(\"", dbColumnName, " ", op, " ", valuePlaceholder, "\", f.", fieldName, ".", cond, ")")
-		g.P("}")
+		genFile.P("if f.", fieldName, ".", cond, " != \"\" {")
+		genFile.P("query = query.Where(\"", dbColumnName, " ", operator, " ", valuePlaceholder, "\", f.", fieldName, ".", cond, ")")
+		genFile.P("}")
 	}
 
 	// Handle Contains
-	g.P("if len(f.", fieldName, ".Contains) > 0 {")
-	g.P("containsQueries := []string{}")
-	g.P("containsArgs := []interface{}{}")
-	g.P("for _, v := range f.", fieldName, ".Contains {")
-	g.P("    if v != \"\" {")
-	g.P("        containsQueries = append(containsQueries, \"", dbColumnName, " LIKE ?\")")
-	g.P("        containsArgs = append(containsArgs, \"%\" + v + \"%\")")
-	g.P("    }")
-	g.P("}")
-	g.P("if len(containsQueries) > 0 {")
-	g.P("    query = query.Where(\"(\" + strings.Join(containsQueries, \" OR \") + \")\", containsArgs...)")
-	g.P("}")
-	g.P("}")
+	genFile.P("if len(f.", fieldName, ".Contains) > 0 {")
+	genFile.P("containsQueries := []string{}")
+	genFile.P("containsArgs := []interface{}{}")
+	genFile.P("for _, v := range f.", fieldName, ".Contains {")
+	genFile.P("    if v != \"\" {")
+	genFile.P("        containsQueries = append(containsQueries, \"", dbColumnName, " LIKE ?\")")
+	genFile.P("        containsArgs = append(containsArgs, \"%\" + v + \"%\")")
+	genFile.P("    }")
+	genFile.P("}")
+	genFile.P("if len(containsQueries) > 0 {")
+	genFile.P("    query = query.Where(\"(\" + strings.Join(containsQueries, \" OR \") + \")\", containsArgs...)")
+	genFile.P("}")
+	genFile.P("}")
 
 	// Handle NotContains
-	g.P("if len(f.", fieldName, ".NotContains) > 0 {")
-	g.P("notContainsQueries := []string{}")
-	g.P("notContainsArgs := []interface{}{}")
-	g.P("for _, v := range f.", fieldName, ".NotContains {")
-	g.P("    if v != \"\" {")
-	g.P("        notContainsQueries = append(notContainsQueries, \"", dbColumnName, " NOT LIKE ?\")")
-	g.P("        notContainsArgs = append(notContainsArgs, \"%\" + v + \"%\")")
-	g.P("    }")
-	g.P("}")
-	g.P("if len(notContainsQueries) > 0 {")
-	g.P("    query = query.Where(\"(\" + strings.Join(notContainsQueries, \" OR \") + \")\", notContainsArgs...)")
-	g.P("}")
-	g.P("}")
+	genFile.P("if len(f.", fieldName, ".NotContains) > 0 {")
+	genFile.P("notContainsQueries := []string{}")
+	genFile.P("notContainsArgs := []interface{}{}")
+	genFile.P("for _, v := range f.", fieldName, ".NotContains {")
+	genFile.P("    if v != \"\" {")
+	genFile.P("        notContainsQueries = append(notContainsQueries, \"", dbColumnName, " NOT LIKE ?\")")
+	genFile.P("        notContainsArgs = append(notContainsArgs, \"%\" + v + \"%\")")
+	genFile.P("    }")
+	genFile.P("}")
+	genFile.P("if len(notContainsQueries) > 0 {")
+	genFile.P("    query = query.Where(\"(\" + strings.Join(notContainsQueries, \" OR \") + \")\", notContainsArgs...)")
+	genFile.P("}")
+	genFile.P("}")
 
-	g.P("if f.", fieldName, ".IsEmpty {")
-	g.P("query = query.Where(\"", dbColumnName, " = '' OR ", dbColumnName, " IS NULL\")")
-	g.P("}")
+	genFile.P("if f.", fieldName, ".IsEmpty {")
+	genFile.P("query = query.Where(\"", dbColumnName, " = '' OR ", dbColumnName, " IS NULL\")")
+	genFile.P("}")
 
-	g.P("if f.", fieldName, ".IsNotEmpty {")
-	g.P("query = query.Where(\"", dbColumnName, " <> '' AND ", dbColumnName, " IS NOT NULL\")")
-	g.P("}")
+	genFile.P("if f.", fieldName, ".IsNotEmpty {")
+	genFile.P("query = query.Where(\"", dbColumnName, " <> '' AND ", dbColumnName, " IS NOT NULL\")")
+	genFile.P("}")
 
-	g.P("}") // End of nil pointer check
+	genFile.P("}") // End of nil pointer check
 }

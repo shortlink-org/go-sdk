@@ -1,5 +1,5 @@
 /*
-Package event_store - implementation of event store
+Package eventsourcing - implementation of event store
 */
 package eventsourcing
 
@@ -13,33 +13,33 @@ import (
 )
 
 // New - create new EventStore
-func New(ctx context.Context, log *slog.Logger, store db.DB, cfg *config.Config) (EventSourcing, error) {
+func New(ctx context.Context, log *slog.Logger, store db.DB, cfg *config.Config) (EventSourcing, error) { //nolint:ireturn // public API returns the interface
 	var err error
 
 	// Initialize EventStore
-	e := &eventSourcing{cfg: cfg}
+	eventStore := &eventSourcing{cfg: cfg}
 
 	// Set configuration
-	e.setConfig()
+	eventStore.setConfig()
 
-	switch e.typeStore {
+	switch eventStore.typeStore {
 	case "postgres":
-		e.repository, err = es_postgres.New(ctx, store)
+		eventStore.repository, err = es_postgres.New(ctx, store)
 		if err != nil {
 			return nil, err
 		}
 	default:
-		e.repository, err = es_postgres.New(ctx, store)
+		eventStore.repository, err = es_postgres.New(ctx, store)
 		if err != nil {
 			return nil, err
 		}
 	}
 
 	log.Info("run db",
-		slog.String("db", e.typeStore),
+		slog.String("db", eventStore.typeStore),
 	)
 
-	return e.repository, nil
+	return eventStore.repository, nil
 }
 
 // setConfig - set configuration

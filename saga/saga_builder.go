@@ -29,7 +29,7 @@ func New(name string, setters ...Option) *Builder {
 }
 
 func (s *Builder) WithContext(ctx context.Context) *Builder {
-	s.ctx = ctx
+	s.ctx = ctx //nolint:fatcontext // stores the caller-supplied context once; nothing is derived from s.ctx here
 	return s
 }
 

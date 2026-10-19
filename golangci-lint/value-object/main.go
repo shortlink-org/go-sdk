@@ -36,5 +36,5 @@ func run(pass *analysis.Pass) (any, error) {
 		})
 	}
 
-	return nil, nil
+	return nil, nil //nolint:nilnil // analysis.Analyzer Run returns nil, nil when there is no result value
 }

@@ -64,7 +64,7 @@ func DefaultOptions() Options {
 // Validate checks the fully resolved routing configuration. Callers are
 // expected to merge defaults, environment values and functional options
 // first; validation then describes the value that would actually be used.
-func (o Options) Validate() error {
+func (o Options) Validate() error { //nolint:gocritic // hugeParam: exported value-receiver method; a pointer receiver would change the method set
 	switch {
 	case o.PollInterval < 0:
 		return invalidOption("PollInterval", o.PollInterval, "zero or a positive duration")

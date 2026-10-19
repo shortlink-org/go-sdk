@@ -18,6 +18,12 @@ import (
 // MaxRetryCount is zero. Once the retries are exhausted the connection is closed
 // for good and Check starts reporting the failure.
 func (mq *MQ) Dial() error {
+	return mq.dial(context.Background())
+}
+
+// dial is Dial with the context the state watcher logs against: Init hands in
+// its own, a bare Dial has none to offer.
+func (mq *MQ) dial(ctx context.Context) error {
 	conn, err := amqp.DialConfig(mq.config.URI, amqp.Config{
 		Recovery: &amqp.Recovery{
 			ReconnectionConfig: &amqp.ReconnectionConfig{
@@ -34,23 +40,19 @@ func (mq *MQ) Dial() error {
 
 	mq.conn = conn
 	mq.state.Store(int32(amqp.StateOpen))
-	mq.watchState(conn)
+	mq.watchState(ctx, conn)
 
 	return nil
 }
 
 // watchState mirrors the connection life cycle into mq.state so Check can tell a
 // connection that is recovering apart from one that is gone, and logs every
-// transition along the way.
-func (mq *MQ) watchState(conn *amqp.Connection) {
+// transition along the way. The context is only used to correlate those log records.
+func (mq *MQ) watchState(ctx context.Context, conn *amqp.Connection) {
 	states := make(chan *amqp.StateChanged, 1)
 	conn.NotifyStateChange(states)
 
 	go func() {
-		// This watcher outlives any single caller, so there is no request
-		// context to correlate against.
-		ctx := context.Background()
-
 		// The library closes the listener channel right after the terminal
 		// StateClosed transition, which ends this goroutine.
 		for state := range states {

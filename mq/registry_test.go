@@ -97,7 +97,7 @@ func withCleanRegistry(t *testing.T) {
 
 	registryMu.Lock()
 	savedRegistry := maps.Clone(registry)
-	savedErrs := registerErrs
+	savedErrs := errRegister
 	registryMu.Unlock()
 
 	t.Cleanup(func() {
@@ -105,7 +105,7 @@ func withCleanRegistry(t *testing.T) {
 		defer registryMu.Unlock()
 
 		registry = savedRegistry
-		registerErrs = savedErrs
+		errRegister = savedErrs
 	})
 }
 

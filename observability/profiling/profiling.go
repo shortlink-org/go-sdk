@@ -14,10 +14,19 @@ import (
 	http_server "github.com/shortlink-org/go-sdk/http/server"
 )
 
+// defaultProfilingPort is the port the pprof server listens on when PROFILING_PORT is unset.
+const defaultProfilingPort = 7071
+
+// mutexProfileFraction samples 1 in N mutex contention events.
+const mutexProfileFraction = 10
+
+// blockProfileRate samples one blocking event per N nanoseconds blocked.
+const blockProfileRate = 10
+
 type PprofEndpoint *http.ServeMux
 
 func New(ctx context.Context, log *slog.Logger, tracer trace.TracerProvider, cfg *config.Config) (PprofEndpoint, error) {
-	cfg.SetDefault("PROFILING_PORT", 7071)
+	cfg.SetDefault("PROFILING_PORT", defaultProfilingPort)
 	cfg.SetDefault("PROFILING_TIMEOUT", "30s")
 
 	mux := http.NewServeMux()
@@ -44,6 +53,7 @@ func New(ctx context.Context, log *slog.Logger, tracer trace.TracerProvider, cfg
 		}
 
 		server := http_server.New(ctx, mux, serverCfg, cfg)
+
 		err := server.ListenAndServe()
 		if err != nil {
 			log.Error(err.Error())
@@ -54,8 +64,8 @@ func New(ctx context.Context, log *slog.Logger, tracer trace.TracerProvider, cfg
 		slog.String("addr", "0.0.0.0:7071"),
 	)
 
-	runtime.SetMutexProfileFraction(10)
-	runtime.SetBlockProfileRate(10)
+	runtime.SetMutexProfileFraction(mutexProfileFraction)
+	runtime.SetBlockProfileRate(blockProfileRate)
 
 	return mux, nil
 }

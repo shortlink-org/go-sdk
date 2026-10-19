@@ -72,18 +72,18 @@ type replicaState struct {
 	failures   int
 }
 
-func (s replicaState) inRecovery() bool { return s.lifecycle == replicaStandby }
+func (s *replicaState) inRecovery() bool { return s.lifecycle == replicaStandby }
 
-func (s replicaState) quarantined() bool { return s.lifecycle == replicaQuarantined }
+func (s *replicaState) quarantined() bool { return s.lifecycle == replicaQuarantined }
 
-func (s replicaState) eligible(staleAfter time.Duration) bool {
+func (s *replicaState) eligible(staleAfter time.Duration) bool {
 	return s.lifecycle == replicaStandby &&
 		!s.lastPoll.IsZero() &&
 		s.failures < failureThreshold &&
 		time.Since(s.lastPoll) <= staleAfter
 }
 
-func (s replicaState) qualification(
+func (s *replicaState) qualification(
 	required wal.LSN,
 	maxLagBytes int64,
 	staleAfter time.Duration,
@@ -112,8 +112,8 @@ func (s *replicaState) recordFailure(err error) {
 	s.lastErr = err
 }
 
-func (s *replicaState) recordPromotion(observed time.Time) (alreadyKnown bool) {
-	alreadyKnown = s.lifecycle == replicaQuarantined
+func (s *replicaState) recordPromotion(observed time.Time) bool {
+	alreadyKnown := s.lifecycle == replicaQuarantined
 	s.lifecycle = replicaQuarantined
 	s.lastPoll = observed
 	s.lastErr = ErrReplicaPromoted
@@ -243,12 +243,6 @@ func (g *gate) health() []ReplicaHealth {
 	}
 
 	return out
-}
-
-// eligible reports whether a node may serve reads at all. The caller must hold
-// at least a read lock on node.
-func (g *gate) eligible(node *replicaNode) bool {
-	return node.state.eligible(g.staleAfter)
 }
 
 // pick chooses a replica able to serve a read requiring the given position, or

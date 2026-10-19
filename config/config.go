@@ -26,13 +26,13 @@ type Config struct {
 
 // New - read .env and ENV variables.
 func New() (*Config, error) {
-	v := viper.New()
-	v.SetConfigName(".env")
-	v.SetConfigType("dotenv")
-	v.AddConfigPath(".") // look for config in the working directory
-	v.AutomaticEnv()
+	settings := viper.New()
+	settings.SetConfigName(".env")
+	settings.SetConfigType("dotenv")
+	settings.AddConfigPath(".") // look for config in the working directory
+	settings.AutomaticEnv()
 
-	err := v.ReadInConfig()
+	err := settings.ReadInConfig()
 	if err != nil {
 		// A missing .env is normal: the settings may come from the environment alone.
 		//nolint:errcheck // AsType's first result is the matched error itself; only the match matters here
@@ -42,7 +42,7 @@ func New() (*Config, error) {
 	}
 
 	config := &Config{
-		v: v,
+		v: settings,
 	}
 
 	// Enable feature toggle

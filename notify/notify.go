@@ -52,21 +52,21 @@ func UnSubscribe(event uint32, subscriber Subscriber[any]) {
 // If a callback is provided, it returns the first successful response that matches the response filter.
 //
 // Deprecated: Use github.com/shortlink-org/go-sdk/cqrs instead.
-func Publish(ctx context.Context, event uint32, payload any, cb *Callback) {
+func Publish(ctx context.Context, event uint32, payload any, callback *Callback) {
 	responses := map[string]Response[any]{}
 
 	subscribers.mu.RLock()
 	defer subscribers.mu.RUnlock()
 
-	if len(subscribers.subscriberMap[event]) == 0 && cb != nil {
-		cb.CB <- nil
+	if len(subscribers.subscriberMap[event]) == 0 && callback != nil {
+		callback.CB <- nil
 	}
 
 	for _, s := range subscribers.subscriberMap[event] {
 		response := s.Notify(ctx, event, payload)
 
-		if response.Error != nil && cb != nil {
-			cb.CB <- response
+		if response.Error != nil && callback != nil {
+			callback.CB <- response
 			return
 		}
 
@@ -75,8 +75,8 @@ func Publish(ctx context.Context, event uint32, payload any, cb *Callback) {
 		}
 	}
 
-	if cb != nil && responses[cb.ResponseFilter].Name != "" {
-		cb.CB <- responses[cb.ResponseFilter]
+	if callback != nil && responses[callback.ResponseFilter].Name != "" {
+		callback.CB <- responses[callback.ResponseFilter]
 	}
 }
 

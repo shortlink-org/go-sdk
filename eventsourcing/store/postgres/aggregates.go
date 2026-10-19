@@ -62,7 +62,7 @@ func (e *EventStore) updateAggregate(ctx context.Context, event *eventsourcing.E
 			"id":      event.GetAggregateId(),
 		})
 
-	q, args, err := entities.ToSql()
+	statement, args, err := entities.ToSql()
 	if err != nil {
 		span.RecordError(err)
 		span.SetStatus(codes.Error, err.Error())
@@ -70,7 +70,7 @@ func (e *EventStore) updateAggregate(ctx context.Context, event *eventsourcing.E
 		return err
 	}
 
-	row, err := e.db.Exec(ctx, q, args...)
+	row, err := e.db.Exec(ctx, statement, args...)
 	if err != nil {
 		span.RecordError(err)
 		span.SetStatus(codes.Error, err.Error())

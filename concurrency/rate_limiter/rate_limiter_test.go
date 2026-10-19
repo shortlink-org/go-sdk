@@ -75,8 +75,8 @@ func TestRateLimiterWithSynctest(t *testing.T) {
 
 		// Confirm request is still blocking before refill occurs
 		select {
-		case <-done:
-			t.Fatal("request should be blocked waiting for token refill")
+		case got := <-done:
+			t.Fatalf("request should be blocked waiting for token refill, got %v", got)
 		default:
 		}
 

@@ -33,7 +33,6 @@ func TestMain(m *testing.M) {
 	os.Exit(m.Run())
 }
 
-// TestOutputInfoWithContextSlog ...
 func TestOutputInfoWithContextSlog(t *testing.T) {
 	var buffer bytes.Buffer
 
@@ -67,7 +66,8 @@ func TestOutputInfoWithContextSlog(t *testing.T) {
 	require.True(t, ok, "source.file should be a string")
 	assert.True(t, strings.HasSuffix(file, ".go"), "unexpected source.file: %s", file)
 
-	fun, _ := src["function"].(string)
+	fun, ok := src["function"].(string)
+	require.True(t, ok, "source.function should be a string")
 	assert.NotEmpty(t, fun, "source.function should be reported")
 
 	if ln, ok := src["line"].(float64); ok {
@@ -84,7 +84,8 @@ func BenchmarkOutputSlog(bench *testing.B) {
 		TimeFormat: time.RFC822,
 	}
 
-	log, _ := logger.New(conf)
+	log, err := logger.New(conf)
+	require.NoError(bench, err, "Error init a logger")
 
 	for range bench.N {
 		log.Info("Hello World")
@@ -114,7 +115,7 @@ func TestFieldsSlog(t *testing.T) {
 	require.Equal(t, expectedTime, response["time"])
 	require.Equal(t, "Hello World", response["msg"])
 	require.Equal(t, "world", response["hello"])
-	require.Equal(t, float64(1), response["first"])
+	require.InDelta(t, float64(1), response["first"], 0)
 
 	// Source is reported, but which frame it names is deliberately not
 	// asserted: it tracks whatever calls into slog, and that call site moves
@@ -126,7 +127,8 @@ func TestFieldsSlog(t *testing.T) {
 	require.True(t, ok, "source.file should be a string")
 	assert.True(t, strings.HasSuffix(file, ".go"), "unexpected source.file: %s", file)
 
-	fun, _ := src["function"].(string)
+	fun, ok := src["function"].(string)
+	require.True(t, ok, "source.function should be a string")
 	assert.NotEmpty(t, fun, "source.function should be reported")
 
 	if ln, ok := src["line"].(float64); ok {
@@ -272,12 +274,12 @@ func TestWarnWithContext(t *testing.T) {
 	require.NoError(t, err)
 
 	ctx := context.WithValue(context.Background(), userIDKey, "user-456")
-	log.WarnContext(ctx, "Slow query detected", slog.String("duration", "2.5s"), slog.String("query", "SELECT * FROM users"))
+	log.WarnContext(ctx, "Slow query detected", slog.String("duration", "2.5s"), slog.String("query", "SELECT id, name FROM users"))
 
 	require.Contains(t, buffer.String(), `"level":"WARN"`)
 	require.Contains(t, buffer.String(), `"msg":"Slow query detected"`)
 	require.Contains(t, buffer.String(), `"duration":"2.5s"`)
-	require.Contains(t, buffer.String(), `"query":"SELECT * FROM users"`)
+	require.Contains(t, buffer.String(), `"query":"SELECT id, name FROM users"`)
 	require.Contains(t, buffer.String(), `"traceID"`)
 }
 

@@ -24,7 +24,8 @@ func TestPartitionedMapSetAndGet(t *testing.T) {
 	testValue := "value1"
 
 	// Test Set
-	if err := m.Set(testKey, testValue); err != nil {
+	err = m.Set(testKey, testValue)
+	if err != nil {
 		t.Errorf("Failed to set value: %v", err)
 	}
 
@@ -49,12 +50,14 @@ func TestPartitionedMapDelete(t *testing.T) {
 	testValue := "value1"
 
 	// Set a value
-	if err := m.Set(testKey, testValue); err != nil {
+	err = m.Set(testKey, testValue)
+	if err != nil {
 		t.Errorf("Failed to set value: %v", err)
 	}
 
 	// Delete the value
-	if err := m.Delete(testKey); err != nil {
+	err = m.Delete(testKey)
+	if err != nil {
 		t.Errorf("Failed to delete key: %v", err)
 	}
 

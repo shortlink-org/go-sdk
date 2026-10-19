@@ -99,9 +99,7 @@ func WithMetrics(prom *prometheus.Registry) Option {
 
 		clientMetrics := grpc_prometheus.NewClientMetrics(
 			grpc_prometheus.WithClientHandlingTimeHistogram(
-				grpc_prometheus.WithHistogramBuckets([]float64{
-					0.001, 0.01, 0.1, 0.3, 0.6, 1, 3, 6, 9, 20, 30, 60, 90, 120,
-				}),
+				grpc_prometheus.WithHistogramBuckets(handlingTimeBuckets),
 			),
 		)
 		exemplarFromCtx := grpc_prometheus.WithExemplarFromContext(exemplarFromContext)

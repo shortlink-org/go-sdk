@@ -16,6 +16,11 @@ import (
 
 const callersSkip = 3
 
+// extraAttrCapacity reserves room for the attributes normalizeToAttrs adds on
+// top of tags and fields: log.severity, log.message, exception.message and
+// exception.type.
+const extraAttrCapacity = 4
+
 // ErrLogField is a sentinel used to wrap error messages extracted from log fields.
 var ErrLogField = errors.New("log field error")
 
@@ -23,6 +28,8 @@ var ErrLogField = errors.New("log field error")
 // - If an active span exists: add an Event ("log.<LEVEL>") with attributes.
 // - If there is no active span: create a short span only for WARN/ERROR.
 // - Always return fields augmented with traceID/spanID when a span exists.
+//
+//nolint:contextcheck // the nil-ctx guard falls back to context.Background: there is no parent to inherit from
 func NewTraceFromContext(
 	ctx context.Context,
 	level string, // "INFO"|"WARN"|"ERROR"|...
@@ -103,8 +110,7 @@ func annotateByLevel(span trace.Span, level, msg string, err error) {
 		)
 	}
 
-	switch level {
-	case "ERROR", "FATAL":
+	if level == "ERROR" || level == "FATAL" {
 		span.SetStatus(codes.Error, msg)
 	}
 }
@@ -115,7 +121,7 @@ func annotateByLevel(span trace.Span, level, msg string, err error) {
 //   - maps is_error → log.is_error
 //   - converts the rest of slog.Attr to attributes
 func normalizeToAttrs(msg, level string, tags []attribute.KeyValue, fields ...slog.Attr) ([]attribute.KeyValue, error) {
-	attrs := make([]attribute.KeyValue, 0, len(fields)+4+len(tags))
+	attrs := make([]attribute.KeyValue, 0, len(fields)+extraAttrCapacity+len(tags))
 	attrs = append(attrs,
 		attribute.String("log.severity", level),
 		attribute.String("log.message", msg),
@@ -133,8 +139,10 @@ func normalizeToAttrs(msg, level string, tags []attribute.KeyValue, fields ...sl
 			switch typedVal := val.(type) {
 			case error:
 				capturedErr = typedVal
-				attrs = append(attrs, attribute.String("exception.message", typedVal.Error()))
-				attrs = append(attrs, attribute.String("exception.type", fmt.Sprintf("%T", typedVal)))
+				attrs = append(attrs,
+					attribute.String("exception.message", typedVal.Error()),
+					attribute.String("exception.type", fmt.Sprintf("%T", typedVal)),
+				)
 			case string:
 				if typedVal != "" {
 					capturedErr = fmt.Errorf("%w: %s", ErrLogField, typedVal) // wrap sentinel (err113)

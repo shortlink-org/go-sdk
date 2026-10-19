@@ -18,14 +18,14 @@ func (im *importManager) addImports(imports map[string]bool) {
 	}
 }
 
-func (im *importManager) writeImports(g *protogen.GeneratedFile) {
+func (im *importManager) writeImports(genFile *protogen.GeneratedFile) {
 	if len(im.imports) > 0 {
-		g.P("import (")
+		genFile.P("import (")
 
 		for imp := range im.imports {
-			g.P("\t\"", imp, "\"")
+			genFile.P("\t\"", imp, "\"")
 		}
 
-		g.P(")")
+		genFile.P(")")
 	}
 }

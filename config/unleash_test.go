@@ -22,7 +22,10 @@ func TestConfigClose(t *testing.T) {
 			w.Header().Set("Content-Type", "application/json")
 
 			if r.URL.Path == "/api/client/features" {
-				_, _ = w.Write([]byte(`{"version":2,"features":[]}`))
+				_, err := w.Write([]byte(`{"version":2,"features":[]}`))
+				if err != nil {
+					t.Error(err)
+				}
 
 				return
 			}

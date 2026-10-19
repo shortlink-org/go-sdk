@@ -3,7 +3,7 @@ package dag
 import "errors"
 
 type VertexAlreadyExistsError struct {
-	Id string
+	Id string //nolint:revive // public API: renaming the field breaks consumers
 }
 
 func (e *VertexAlreadyExistsError) Error() string {
@@ -11,7 +11,7 @@ func (e *VertexAlreadyExistsError) Error() string {
 }
 
 type VertexNotFoundError struct {
-	Id string
+	Id string //nolint:revive // public API: renaming the field breaks consumers
 }
 
 func (e *VertexNotFoundError) Error() string {

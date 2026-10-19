@@ -101,14 +101,14 @@ func (e *EventStore) Load(ctx context.Context, aggregateID string) (*eventsourci
 			"aggregate_id": aggregateID,
 		})
 
-	q, args, err := querySnaphot.ToSql()
+	statement, args, err := querySnaphot.ToSql()
 	if err != nil {
 		return nil, nil, err
 	}
 
 	var snapshot eventsourcing.Snapshot
 
-	row := e.db.QueryRow(ctx, q, args...)
+	row := e.db.QueryRow(ctx, statement, args...)
 
 	err = row.Scan(&snapshot.AggregateId, &snapshot.AggregateType, &snapshot.AggregateVersion, &snapshot.Payload)
 	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
@@ -126,12 +126,12 @@ func (e *EventStore) Load(ctx context.Context, aggregateID string) (*eventsourci
 		).
 		OrderBy("created_at")
 
-	q, args, err = queryEvents.ToSql()
+	statement, args, err = queryEvents.ToSql()
 	if err != nil {
 		return nil, nil, err
 	}
 
-	rows, err := e.db.Query(ctx, q, args...)
+	rows, err := e.db.Query(ctx, statement, args...)
 	if err != nil {
 		return nil, nil, err
 	}

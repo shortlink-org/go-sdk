@@ -58,6 +58,7 @@ func (mq *MQ) close() error {
 
 	for name, sub := range mq.subscribes {
 		subs = append(subs, sub)
+
 		delete(mq.subscribes, name)
 	}
 	mq.mu.Unlock()
@@ -103,9 +104,9 @@ func (mq *MQ) Subscribe(ctx context.Context, target string, message query.Respon
 		return nil
 	}
 
-	ch := make(chan *nats.Msg, mq.config.ChannelSize)
+	msgs := make(chan *nats.Msg, mq.config.ChannelSize)
 
-	sub, err := mq.client.ChanSubscribe(target, ch)
+	sub, err := mq.client.ChanSubscribe(target, msgs)
 	if err != nil {
 		return err
 	}
@@ -119,20 +120,20 @@ func (mq *MQ) Subscribe(ctx context.Context, target string, message query.Respon
 	}
 	mq.subscribes[target] = entry
 
-	go mq.consume(subCtx, entry, ch, message)
+	go mq.consume(subCtx, entry, msgs, message)
 
 	return nil
 }
 
 // consume - forward messages to the subscriber until the subscription is stopped.
-func (mq *MQ) consume(ctx context.Context, sub *subscription, ch <-chan *nats.Msg, message query.Response) {
+func (mq *MQ) consume(ctx context.Context, sub *subscription, msgs <-chan *nats.Msg, message query.Response) {
 	defer close(sub.done)
 
 	for {
 		select {
 		case <-ctx.Done():
 			return
-		case msg, ok := <-ch:
+		case msg, ok := <-msgs:
 			if !ok {
 				return
 			}

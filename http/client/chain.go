@@ -2,6 +2,7 @@ package http_client
 
 import (
 	"net/http"
+	"slices"
 
 	"github.com/shortlink-org/go-sdk/http/client/internal/types"
 )
@@ -15,8 +16,8 @@ type RoundTripperFunc = types.RoundTripperFunc
 // Chain builds a middleware pipeline.
 func Chain(mw ...types.Middleware) types.Middleware {
 	return func(final http.RoundTripper) http.RoundTripper {
-		for i := len(mw) - 1; i >= 0; i-- {
-			final = mw[i](final)
+		for _, middleware := range slices.Backward(mw) {
+			final = middleware(final)
 		}
 
 		return final

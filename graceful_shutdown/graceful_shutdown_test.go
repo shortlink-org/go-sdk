@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/shortlink-org/go-sdk/graceful_shutdown"
@@ -16,7 +17,7 @@ func TestGracefulShutdown(t *testing.T) {
 		time.Sleep(time.Second) // wait for GracefulShutdown to start listening for signals
 
 		err := syscall.Kill(syscall.Getpid(), syscall.SIGTERM)
-		require.NoError(t, err)
+		assert.NoError(t, err)
 	}()
 
 	receivedSignal := graceful_shutdown.GracefulShutdown()

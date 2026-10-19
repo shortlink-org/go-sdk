@@ -42,13 +42,13 @@ import (
 //   - TEMPORAL_TLS_ENABLED: Override TLS for Temporal connection (optional, uses GRPC_CLIENT_TLS_ENABLED if not set)
 //
 // Reference: https://docs.temporal.io/develop/go/temporal-client
-func New(
-	l *slog.Logger,
+func New( //nolint:ireturn // client.Client is the Temporal SDK's own client abstraction; callers program against it
+	logger *slog.Logger,
 	cfg *config.Config,
 	tracer trace.TracerProvider,
 	monitor *metrics.Monitoring,
 ) (client.Client, error) {
-	l = orDiscard(l)
+	logger = orDiscard(logger)
 
 	// Set defaults
 	cfg.SetDefault("TEMPORAL_HOST", "temporal-frontend.temporal.svc.cluster.local:7233")
@@ -65,14 +65,16 @@ func New(
 
 	// Build gRPC dial options using go-sdk/grpc
 	grpcOpts := []sdkgrpc.Option{
-		sdkgrpc.WithLogger(l),
+		sdkgrpc.WithLogger(logger),
 		sdkgrpc.WithTimeout(),
 	}
 
 	// Add tracing and metrics if available
 	if tracer != nil && monitor != nil {
-		grpcOpts = append(grpcOpts, sdkgrpc.WithTracer(tracer, monitor.Prometheus, monitor.Metrics))
-		grpcOpts = append(grpcOpts, sdkgrpc.WithMetrics(monitor.Prometheus))
+		grpcOpts = append(grpcOpts,
+			sdkgrpc.WithTracer(tracer, monitor.Prometheus, monitor.Metrics),
+			sdkgrpc.WithMetrics(monitor.Prometheus),
+		)
 	}
 
 	// Add auth forwarding for Istio/Oathkeeper integration
@@ -86,7 +88,7 @@ func New(
 
 	// Build Temporal interceptors
 	// Reference: https://docs.temporal.io/develop/go/observability#tracing-and-context-propagation
-	interceptors := make([]interceptor.ClientInterceptor, 0)
+	interceptors := make([]interceptor.ClientInterceptor, 0, 1)
 
 	// OpenTelemetry tracing interceptor for Temporal workflows
 	tracingInterceptor, err := opentelemetry.NewTracingInterceptor(opentelemetry.TracerOptions{
@@ -102,7 +104,7 @@ func New(
 	opts := client.Options{
 		HostPort:     host,
 		Namespace:    namespace,
-		Logger:       l,
+		Logger:       logger,
 		Interceptors: interceptors,
 		ConnectionOptions: client.ConnectionOptions{
 			DialOptions: grpcClient.GetOptions(),
@@ -116,7 +118,7 @@ func New(
 		opts.MetricsHandler = opentelemetry.NewMetricsHandler(opentelemetry.MetricsHandlerOptions{
 			Meter: meter,
 			OnError: func(err error) {
-				l.Error("Temporal metrics error", slog.String("error", err.Error()))
+				logger.Error("Temporal metrics error", slog.String("error", err.Error()))
 			},
 		})
 	}
@@ -126,17 +128,17 @@ func New(
 	}
 
 	// Create client
-	c, err := client.Dial(opts)
+	temporalClient, err := client.Dial(opts)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create temporal client: %w", err)
 	}
 
-	l.Info("Temporal client created",
+	logger.Info("Temporal client created",
 		slog.String("host", host),
 		slog.String("namespace", namespace),
 	)
 
-	return c, nil
+	return temporalClient, nil
 }
 
 // CheckHealth verifies the connection to Temporal server.
