@@ -7,8 +7,8 @@ require (
 	github.com/grafana/otel-profiling-go v0.7.0
 	github.com/heptiolabs/healthcheck v0.0.0-20211123025425-613501dd5deb
 	github.com/prometheus/client_golang v1.25.0
-	github.com/shortlink-org/go-sdk/config v0.0.0-20260914110947-2237285eb582
-	github.com/shortlink-org/go-sdk/http v0.0.0-20260914110947-2237285eb582
+	github.com/shortlink-org/go-sdk/config v0.0.0-20261019174741-2195694abc9f
+	github.com/shortlink-org/go-sdk/http v0.0.0-20261019174741-2195694abc9f
 	go.opentelemetry.io/contrib/propagators/b3 v1.47.0
 	go.opentelemetry.io/otel v1.47.0
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc v1.47.0
