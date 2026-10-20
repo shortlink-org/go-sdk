@@ -4,7 +4,7 @@ go 1.27.2
 
 require (
 	github.com/minio/minio-go/v7 v7.4.1
-	github.com/shortlink-org/go-sdk/config v0.0.0-20260914110947-2237285eb582
+	github.com/shortlink-org/go-sdk/config v0.0.0-20261019174741-2195694abc9f
 	github.com/stretchr/testify v1.12.1
 	github.com/testcontainers/testcontainers-go v0.44.0
 	go.uber.org/goleak v1.3.0
