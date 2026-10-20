@@ -7,7 +7,7 @@ require (
 	github.com/dnwe/otelsarama v0.0.0-20240308230250-9388d9d40bc0
 	github.com/heptiolabs/healthcheck v0.0.0-20211123025425-613501dd5deb
 	github.com/nats-io/nats.go v1.54.0
-	github.com/rabbitmq/amqp091-go v1.15.0
+	github.com/rabbitmq/amqp091-go v1.16.0
 	github.com/redis/rueidis v1.0.79
 	github.com/shortlink-org/go-sdk/config v0.0.0-20260914110947-2237285eb582
 	github.com/shortlink-org/go-sdk/db v0.0.0-20260914110947-2237285eb582
