@@ -28,6 +28,8 @@ github.com/nbio/st v0.0.0-20140626010706-e9e8d9816f32 h1:W6apQkHrMkS0Muv8G/TipAy
 github.com/nbio/st v0.0.0-20140626010706-e9e8d9816f32/go.mod h1:9wM+0iRr9ahx58uYLpLIr5fm8diHn0JbqRycJi6w0Ms=
 github.com/ory/client-go v1.22.83 h1:jtyqf5JSFZP5nD7fNKnnuYIZJP9HdER/TOdyDbmxro0=
 github.com/ory/client-go v1.22.83/go.mod h1:Wrl5ahzWgI815iijeZBJEczZwQrvCUV9ToBNfDJB4tQ=
+github.com/ory/client-go v1.22.86 h1:Q4vfWsRrDIwzn0WmxdKcHam6Dgx5CKwR5A/o/vOIQTM=
+github.com/ory/client-go v1.22.86/go.mod h1:Wrl5ahzWgI815iijeZBJEczZwQrvCUV9ToBNfDJB4tQ=
 github.com/pelletier/go-toml/v2 v2.4.3 h1:GTRvJQutkOSftxIFD5xw9aepkYNuPWmVJpffdDPYVpY=
 github.com/pelletier/go-toml/v2 v2.4.3/go.mod h1:2gIqNv+qfxSVS7cM2xJQKtLSTLUE9V8t9Stt+h56mCY=
 github.com/rogpeppe/go-internal v1.14.1 h1:UQB4HGPB6osV0SQTLymcB4TgvyWu6ZyliaW0tI/otEQ=
