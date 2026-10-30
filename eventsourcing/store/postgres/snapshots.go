@@ -2,33 +2,38 @@ package es_postgres
 
 import (
 	"context"
-	"database/sql"
-	"errors"
 	"time"
 
-	"github.com/jackc/pgx/v5"
-	"go.opentelemetry.io/otel"
-	"go.opentelemetry.io/otel/attribute"
-	"go.opentelemetry.io/otel/codes"
+	"github.com/Masterminds/squirrel"
 
 	eventsourcing "github.com/shortlink-org/go-sdk/eventsourcing/domain/eventsourcing/v1"
+	"github.com/shortlink-org/go-sdk/eventsourcing/semconv"
 )
 
-// GetAggregateWithoutSnapshot - get aggregates without a snapshot
+// GetAggregateWithoutSnapshot returns the aggregates that gained at least
+// WithSnapshotThreshold events since their last snapshot, least recently
+// changed first, at most WithSnapshotBatchSize of them. An aggregate leaves the
+// result once its snapshot is saved, so call it again until it returns nothing.
 func (e *EventStore) GetAggregateWithoutSnapshot(ctx context.Context) ([]*eventsourcing.BaseAggregate, error) {
+	// start tracing
+	ctx, span := tracer().Start(ctx, "GetAggregateWithoutSnapshot")
+	defer span.End()
+
 	query := psql.Select("aggregates.id", "aggregates.type", "aggregates.version").
 		From("aggregates AS aggregates").
 		LeftJoin("snapshots AS snapshots ON aggregates.id = snapshots.aggregate_id").
-		Where("aggregates.version > snapshots.aggregate_version OR snapshots.aggregate_version IS NULL")
+		Where(squirrel.Expr("aggregates.version - COALESCE(snapshots.aggregate_version, 0) >= ?", e.opts.snapshotThreshold)).
+		OrderBy("aggregates.updated_at", "aggregates.id").
+		Limit(e.opts.snapshotBatchSize)
 
 	q, args, err := query.ToSql()
 	if err != nil {
-		return nil, err
+		return nil, recordError(span, err)
 	}
 
-	rows, err := e.db.Query(ctx, q, args...)
-	if err != nil || rows.Err() != nil {
-		return nil, err
+	rows, err := e.conn(ctx).Query(ctx, q, args...)
+	if err != nil {
+		return nil, recordError(span, err)
 	}
 
 	defer rows.Close()
@@ -36,71 +41,53 @@ func (e *EventStore) GetAggregateWithoutSnapshot(ctx context.Context) ([]*events
 	var aggregates []*eventsourcing.BaseAggregate //nolint:prealloc // false positive
 
 	for rows.Next() {
-		var (
-			aggregateID   sql.NullString
-			typeAggregate sql.NullString
-			version       sql.NullInt32
-		)
+		aggregate := &eventsourcing.BaseAggregate{}
 
-		err = rows.Scan(&aggregateID, &typeAggregate, &version)
+		err = rows.Scan(&aggregate.Id, &aggregate.Type, &aggregate.Version)
 		if err != nil {
-			return nil, err
+			return nil, recordError(span, err)
 		}
 
-		if rows.Err() != nil {
-			return nil, rows.Err()
-		}
-
-		aggregates = append(aggregates, &eventsourcing.BaseAggregate{
-			Id:      aggregateID.String,
-			Type:    typeAggregate.String,
-			Version: version.Int32,
-		})
+		aggregates = append(aggregates, aggregate)
 	}
 
 	if rows.Err() != nil {
-		return nil, rows.Err()
+		return nil, recordError(span, rows.Err())
 	}
 
 	return aggregates, nil
 }
 
-// SaveSnapshot - save snapshot
+// SaveSnapshot saves the snapshot unless a newer one is already stored.
 func (e *EventStore) SaveSnapshot(ctx context.Context, snapshot *eventsourcing.Snapshot) error {
-	// TODO: use worker pool
-	//nolint:wsl // TODO: fix this
-
 	// start tracing
-	_, span := otel.Tracer("snapshot").Start(ctx, "SaveSnapshot")
+	ctx, span := tracer().Start(ctx, "SaveSnapshot")
 	defer span.End()
 
-	span.SetAttributes(attribute.String("aggregate id", snapshot.GetAggregateId()))
+	span.SetAttributes(semconv.AggregateID(snapshot.GetAggregateId()))
+
+	err := validateUUID(snapshot.GetAggregateId(), ErrInvalidAggregateID)
+	if err != nil {
+		return recordError(span, err)
+	}
+
+	now := time.Now().UTC()
 
 	query := psql.Insert("snapshots").
-		Columns("aggregate_id", "aggregate_type", "aggregate_version", "payload").
-		Values(snapshot.GetAggregateId(), snapshot.GetAggregateType(), snapshot.GetAggregateVersion(), snapshot.GetPayload()).
-		Suffix(
-			"ON CONFLICT (aggregate_id) DO UPDATE SET aggregate_version = ?, payload = ?, updated_at = ?",
-			snapshot.GetAggregateVersion(), snapshot.GetPayload(), time.Now(),
-		)
+		Columns("aggregate_id", "aggregate_type", "aggregate_version", "payload", "created_at", "updated_at").
+		Values(snapshot.GetAggregateId(), snapshot.GetAggregateType(), snapshot.GetAggregateVersion(), snapshot.GetPayload(), now, now).
+		Suffix(`ON CONFLICT (aggregate_id) DO UPDATE
+			SET aggregate_version = EXCLUDED.aggregate_version, payload = EXCLUDED.payload, updated_at = EXCLUDED.updated_at
+			WHERE snapshots.aggregate_version < EXCLUDED.aggregate_version`)
 
 	q, args, err := query.ToSql()
 	if err != nil {
-		return err
+		return recordError(span, err)
 	}
 
-	row := e.db.QueryRow(ctx, q, args...)
-
-	err = row.Scan()
-	if errors.Is(err, pgx.ErrNoRows) {
-		return nil
-	}
-
-	if err.Error() != "" {
-		span.RecordError(err)
-		span.SetStatus(codes.Error, err.Error())
-
-		return err
+	_, err = e.conn(ctx).Exec(ctx, q, args...)
+	if err != nil {
+		return recordError(span, err)
 	}
 
 	return nil

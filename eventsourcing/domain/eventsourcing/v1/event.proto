@@ -29,6 +29,6 @@ message Event {
   // The timestamp when the event was created.
   google.protobuf.Timestamp created_at = 7;
 
-  // The timestamp when the event was last updated.
-  google.protobuf.Timestamp updated_at = 8;
+  // Events are immutable, the store neither writes nor returns this field.
+  google.protobuf.Timestamp updated_at = 8 [deprecated = true];
 }

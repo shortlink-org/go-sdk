@@ -1,0 +1,44 @@
+# Telemetry of the eventsourcing module (github.com/shortlink-org/go-sdk/eventsourcing).
+groups:
+  - id: registry.eventsourcing
+    type: attribute_group
+    display_name: Event Sourcing Attributes
+    brief: Attributes recorded on the spans and metrics of the eventsourcing module.
+    attributes:
+      - id: aggregate_id
+        type: string
+        stability: development
+        brief: The identifier of the aggregate. Recorded on spans only, its cardinality is unbounded.
+        examples: ["0199f1c2-7a3b-7c10-9e21-5d6f7a8b9c0d"]
+      - id: aggregate_type
+        type: string
+        stability: development
+        brief: The type of the aggregate.
+        examples: ["order"]
+      - id: event_id
+        type: string
+        stability: development
+        brief: The identifier of the event. Recorded on spans only, its cardinality is unbounded.
+        examples: ["0199f1c2-7a3b-7c10-9e21-5d6f7a8b9c0e"]
+
+  - id: metric.eventsourcing.events.appended
+    type: metric
+    metric_name: shortlink_eventsourcing_events_appended_total
+    stability: development
+    brief: Events written to the event store.
+    instrument: counter
+    unit: ""
+    attributes:
+      - ref: aggregate_type
+        requirement_level: required
+
+  - id: metric.eventsourcing.concurrency.conflicts
+    type: metric
+    metric_name: shortlink_eventsourcing_concurrency_conflicts_total
+    stability: development
+    brief: Saves rejected because the aggregate moved past the expected version.
+    instrument: counter
+    unit: ""
+    attributes:
+      - ref: aggregate_type
+        requirement_level: required

@@ -21,6 +21,7 @@ independent modules (one `go.mod` per top-level directory, listed in `go.work`).
   | Module   | Tags            |
   |----------|-----------------|
   | db       | `unit,database` |
+  | eventsourcing | `unit,database` |
   | outbox   | `unit,database` |
   | s3       | `unit,media`    |
 

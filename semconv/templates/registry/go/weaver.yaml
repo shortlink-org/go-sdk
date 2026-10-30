@@ -5,7 +5,8 @@
 # packages (Apache-2.0), trimmed to what a single-module package needs.
 params:
   # Which module to generate: the metrics are the `metric.<module>.*` groups
-  # of the registry, the attributes are the ones those metrics reference.
+  # of the registry, the attributes are the ones those metrics reference plus
+  # the ones the `registry.<module>` group declares for spans.
   # Passed per module from semconv/Makefile with -D module=... -D prefix=...
   module: watermill
   # Metric and attribute names that start with this prefix lose it in the Go
@@ -21,9 +22,13 @@ templates:
     file_name: metrics.go
   - pattern: attributes.go.j2
     filter: >
-      semconv_metrics({"exclude_deprecated": true})
-      | map(select(.id | startswith("metric." + $module + ".")))
-      | map(.attributes // []) | add // []
+      . as $registry
+      | ($registry | semconv_metrics({"exclude_deprecated": true})
+        | map(select(.id | startswith("metric." + $module + ".")))
+        | map(.attributes // []) | add // [])
+        + ($registry.groups
+        | map(select(.id == "registry." + $module))
+        | map(.attributes // []) | add // [])
       | map(select(.deprecated | not))
       | unique_by(.name) | sort_by(.name)
     application_mode: single

@@ -15,6 +15,7 @@ semconv/
     watermill.yaml       attributes and metrics of the watermill module
     postgres.yaml        attributes and metrics of the read-replica router
     cqrs.yaml            attributes and metrics of the cqrs outbox forwarder
+    eventsourcing.yaml   attributes and metrics of the event store
   templates/registry/go/ Weaver templates that render the registry as Go
   Makefile               check / generate / diff, all through the Weaver image
 ```
@@ -27,6 +28,7 @@ consumer of the SDK never needs Weaver:
 | `registry/watermill.yaml` | [`watermill/semconv`](../watermill/semconv)                                     |
 | `registry/postgres.yaml`  | [`db/drivers/postgres/replica/semconv`](../db/drivers/postgres/replica/semconv) |
 | `registry/cqrs.yaml`      | [`cqrs/semconv`](../cqrs/semconv)                                               |
+| `registry/eventsourcing.yaml` | [`eventsourcing/semconv`](../eventsourcing/semconv)                         |
 
 The module list is `MODULES` in the Makefile: module name, the prefix stripped
 from the Go identifiers, and the output directory.

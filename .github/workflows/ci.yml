@@ -44,7 +44,7 @@ jobs:
           - module: db
             tags: unit,database
           - module: eventsourcing
-            tags: unit
+            tags: unit,database
           - module: flags
             tags: unit
           - module: flight_trace

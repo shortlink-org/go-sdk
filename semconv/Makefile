@@ -21,7 +21,8 @@ BASE ?= origin/main
 MODULES := \
 	watermill:watermill:watermill/semconv \
 	postgres:postgres:db/drivers/postgres/replica/semconv \
-	cqrs:shortlink_cqrs:cqrs/semconv
+	cqrs:shortlink_cqrs:cqrs/semconv \
+	eventsourcing:shortlink_eventsourcing:eventsourcing/semconv
 
 WEAVER = docker run --rm \
 	-u "$(shell id -u):$(shell id -g)" \

@@ -2,48 +2,45 @@ package es_postgres
 
 import (
 	"context"
-	"errors"
+	"time"
+	"uuid"
 
-	"github.com/jackc/pgx/v5"
-	"go.opentelemetry.io/otel"
-	"go.opentelemetry.io/otel/attribute"
-	"go.opentelemetry.io/otel/codes"
+	"google.golang.org/protobuf/types/known/timestamppb"
 
 	eventsourcing "github.com/shortlink-org/go-sdk/eventsourcing/domain/eventsourcing/v1"
+	"github.com/shortlink-org/go-sdk/eventsourcing/semconv"
 )
 
-type Events interface {
-	addEvent(ctx context.Context, event *eventsourcing.Event) error
-}
-
-func (e *EventStore) addEvent(ctx context.Context, event *eventsourcing.Event) error {
+// addEvent writes the event, filling in Id and CreatedAt when they are not set.
+func (e *EventStore) addEvent(ctx context.Context, conn querier, event *eventsourcing.Event) error {
 	// start tracing
-	_, span := otel.Tracer("aggregate").Start(ctx, "addEvent")
-
-	span.SetAttributes(attribute.String("event_id", event.GetId()))
+	ctx, span := tracer().Start(ctx, "addEvent")
 	defer span.End()
 
-	entities := psql.Insert("events").
-		Columns("aggregate_id", "aggregate_type", "type", "payload", "version").
-		Values(event.GetAggregateId(), event.GetAggregateType(), event.GetType(), event.GetPayload(), event.GetVersion())
+	if event.GetId() == "" {
+		event.Id = uuid.NewV7().String()
+	}
 
-	q, args, err := entities.ToSql()
+	if event.GetCreatedAt() == nil {
+		event.CreatedAt = timestamppb.New(time.Now())
+	}
+
+	span.SetAttributes(semconv.EventID(event.GetId()))
+
+	statement, args, err := psql.Insert("events").
+		Columns("aggregate_id", "aggregate_type", "id", "type", "payload", "version", "created_at").
+		Values(
+			event.GetAggregateId(), event.GetAggregateType(), event.GetId(), event.GetType(),
+			event.GetPayload(), event.GetVersion(), event.GetCreatedAt().AsTime(),
+		).
+		ToSql()
 	if err != nil {
-		return err
+		return recordError(span, err)
 	}
 
-	row := e.db.QueryRow(ctx, q, args...)
-
-	err = row.Scan()
-	if errors.Is(err, pgx.ErrNoRows) {
-		return nil
-	}
-
-	if err.Error() != "" {
-		span.RecordError(err)
-		span.SetStatus(codes.Error, err.Error())
-
-		return err
+	_, err = conn.Exec(ctx, statement, args...)
+	if err != nil {
+		return recordError(span, asConflict(err, event))
 	}
 
 	return nil

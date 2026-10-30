@@ -13,38 +13,23 @@ import (
 )
 
 // New - create new EventStore
-func New(ctx context.Context, log *slog.Logger, store db.DB, cfg *config.Config) (EventSourcing, error) { //nolint:ireturn // public API returns the interface
-	var err error
-
-	// Initialize EventStore
-	eventStore := &eventSourcing{cfg: cfg}
-
-	// Set configuration
-	eventStore.setConfig()
-
-	switch eventStore.typeStore {
-	case "postgres":
-		eventStore.repository, err = es_postgres.New(ctx, store)
-		if err != nil {
-			return nil, err
-		}
-	default:
-		eventStore.repository, err = es_postgres.New(ctx, store)
-		if err != nil {
-			return nil, err
-		}
+//
+// The engine follows store, and PostgreSQL is the only one: any other driver
+// yields db.ErrGetConnection. The config is no longer read and stays for
+// compatibility.
+//
+//nolint:ireturn,iface // public API returns the interface
+func New(ctx context.Context, log *slog.Logger, store db.DB, _ *config.Config, opts ...es_postgres.Option) (EventSourcing, error) {
+	repository, err := es_postgres.New(ctx, store, opts...)
+	if err != nil {
+		return nil, err
 	}
 
-	log.Info("run db",
-		slog.String("db", eventStore.typeStore),
-	)
+	if log != nil {
+		log.Info("run db",
+			slog.String("db", "postgres"),
+		)
+	}
 
-	return eventStore.repository, nil
-}
-
-// setConfig - set configuration
-func (e *eventSourcing) setConfig() {
-	e.cfg.SetDefault("STORE_TYPE", "ram") // Select: postgres
-
-	e.typeStore = e.cfg.GetString("STORE_TYPE")
+	return repository, nil
 }
