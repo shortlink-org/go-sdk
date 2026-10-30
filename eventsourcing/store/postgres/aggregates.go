@@ -12,7 +12,8 @@ import (
 	eventsourcing "github.com/shortlink-org/go-sdk/eventsourcing/domain/eventsourcing/v1"
 )
 
-func (e *EventStore) addAggregate(ctx context.Context, conn querier, event *eventsourcing.Event) error {
+// addAggregate creates the aggregate of the first event, at the given version.
+func (e *EventStore) addAggregate(ctx context.Context, conn querier, first *eventsourcing.Event, version int32) error {
 	// start tracing
 	ctx, span := tracer().Start(ctx, "addAggregate")
 	defer span.End()
@@ -20,8 +21,8 @@ func (e *EventStore) addAggregate(ctx context.Context, conn querier, event *even
 	now := time.Now().UTC()
 
 	statement, args, err := psql.Insert("aggregates").
-		Columns("id", "type", "version", "created_at", "updated_at").
-		Values(event.GetAggregateId(), event.GetAggregateType(), event.GetVersion(), now, now).
+		Columns("id", "type", columnVersion, "created_at", "updated_at").
+		Values(first.GetAggregateId(), first.GetAggregateType(), version, now, now).
 		ToSql()
 	if err != nil {
 		return recordError(span, err)
@@ -29,23 +30,25 @@ func (e *EventStore) addAggregate(ctx context.Context, conn querier, event *even
 
 	_, err = conn.Exec(ctx, statement, args...)
 	if err != nil {
-		return recordError(span, asConflict(err, event))
+		return recordError(span, asConflict(err, first))
 	}
 
 	return nil
 }
 
-func (e *EventStore) updateAggregate(ctx context.Context, conn querier, event *eventsourcing.Event) error {
+// updateAggregate moves the aggregate from the version before first to the given
+// version. The row lock it takes serializes the writers of one aggregate.
+func (e *EventStore) updateAggregate(ctx context.Context, conn querier, first *eventsourcing.Event, version int32) error {
 	// start tracing
 	ctx, span := tracer().Start(ctx, "updateAggregate")
 	defer span.End()
 
 	statement, args, err := psql.Update("aggregates").
-		Set("version", event.GetVersion()).
+		Set(columnVersion, version).
 		Set("updated_at", time.Now().UTC()).
 		Where(squirrel.Eq{
-			"version": event.GetVersion() - 1,
-			"id":      event.GetAggregateId(),
+			columnVersion: first.GetVersion() - 1,
+			"id":          first.GetAggregateId(),
 		}).
 		ToSql()
 	if err != nil {
@@ -59,8 +62,8 @@ func (e *EventStore) updateAggregate(ctx context.Context, conn querier, event *e
 
 	if row.RowsAffected() != 1 {
 		return recordError(span, &ConcurrencyConflictError{
-			AggregateID: event.GetAggregateId(),
-			Version:     event.GetVersion(),
+			AggregateID: first.GetAggregateId(),
+			Version:     first.GetVersion(),
 			Updated:     row.RowsAffected(),
 		})
 	}

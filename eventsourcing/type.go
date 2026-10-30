@@ -27,4 +27,31 @@ type EventSourcing interface {
 	SaveSnapshot(ctx context.Context, snapshot *eventsourcing.Snapshot) error
 }
 
-var _ EventSourcing = (*es_postgres.EventStore)(nil)
+// Store is the stream API of an event store, what Repository works on.
+// It is implemented by es_postgres.EventStore.
+type Store interface {
+	// Append writes the events as the next versions of the aggregate, and returns
+	// an error matching ErrConcurrencyConflict unless it is at expectedVersion, 0
+	// for an aggregate that does not exist yet.
+	Append(ctx context.Context, aggregateID string, expectedVersion int32, events []*eventsourcing.Event) error
+	// ReadStream returns the events of the aggregate after the given version.
+	ReadStream(ctx context.Context, aggregateID string, afterVersion int32) ([]*eventsourcing.Event, error)
+	// LoadSnapshot returns the snapshot of the aggregate, an empty one at version 0
+	// when it has none.
+	LoadSnapshot(ctx context.Context, aggregateID string) (*eventsourcing.Snapshot, error)
+	SaveSnapshot(ctx context.Context, snapshot *eventsourcing.Snapshot) error
+}
+
+// GlobalReader reads the events of all aggregates, what a projection works on.
+// It is implemented by es_postgres.EventStore.
+type GlobalReader interface {
+	// ReadAll returns up to limit events after the cursor. Start with an empty
+	// cursor, and continue with the Cursor of the last event handled.
+	ReadAll(ctx context.Context, cursor string, limit uint64) ([]*eventsourcing.Event, error)
+}
+
+var (
+	_ EventSourcing = (*es_postgres.EventStore)(nil)
+	_ Store         = (*es_postgres.EventStore)(nil)
+	_ GlobalReader  = (*es_postgres.EventStore)(nil)
+)

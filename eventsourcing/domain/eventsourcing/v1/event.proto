@@ -31,4 +31,21 @@ message Event {
 
   // Events are immutable, the store neither writes nor returns this field.
   google.protobuf.Timestamp updated_at = 8 [deprecated = true];
+
+  // The version of the payload schema, what an upcaster keys on. The store
+  // writes 1 when it is not set.
+  int32 schema_version = 9;
+
+  // The id shared by everything one request caused.
+  string correlation_id = 10;
+
+  // The id of the command or event that caused this event.
+  string causation_id = 11;
+
+  // Free-form string pairs. The store adds the W3C trace context of the write.
+  map<string, string> metadata = 12;
+
+  // The opaque position of the event in the global stream. The store sets it on
+  // read; pass it to ReadAll to continue after this event.
+  string cursor = 13;
 }

@@ -58,7 +58,8 @@ func (e *EventStore) GetAggregateWithoutSnapshot(ctx context.Context) ([]*events
 	return aggregates, nil
 }
 
-// SaveSnapshot saves the snapshot unless a newer one is already stored.
+// SaveSnapshot saves the snapshot unless a newer one is already stored: one of a
+// later schema version, or of a later aggregate version in the same schema version.
 func (e *EventStore) SaveSnapshot(ctx context.Context, snapshot *eventsourcing.Snapshot) error {
 	// start tracing
 	ctx, span := tracer().Start(ctx, "SaveSnapshot")
@@ -71,14 +72,20 @@ func (e *EventStore) SaveSnapshot(ctx context.Context, snapshot *eventsourcing.S
 		return recordError(span, err)
 	}
 
+	schemaVersion := snapshot.GetSchemaVersion()
+	if schemaVersion == 0 {
+		schemaVersion = defaultSchemaVersion
+	}
+
 	now := time.Now().UTC()
 
 	query := psql.Insert("snapshots").
-		Columns("aggregate_id", "aggregate_type", "aggregate_version", "payload", "created_at", "updated_at").
-		Values(snapshot.GetAggregateId(), snapshot.GetAggregateType(), snapshot.GetAggregateVersion(), snapshot.GetPayload(), now, now).
+		Columns(columnAggregateID, "aggregate_type", "aggregate_version", "payload", "schema_version", "created_at", "updated_at").
+		Values(snapshot.GetAggregateId(), snapshot.GetAggregateType(), snapshot.GetAggregateVersion(), snapshot.GetPayload(), schemaVersion, now, now).
 		Suffix(`ON CONFLICT (aggregate_id) DO UPDATE
-			SET aggregate_version = EXCLUDED.aggregate_version, payload = EXCLUDED.payload, updated_at = EXCLUDED.updated_at
-			WHERE snapshots.aggregate_version < EXCLUDED.aggregate_version`)
+			SET aggregate_version = EXCLUDED.aggregate_version, payload = EXCLUDED.payload,
+				schema_version = EXCLUDED.schema_version, updated_at = EXCLUDED.updated_at
+			WHERE (snapshots.schema_version, snapshots.aggregate_version) < (EXCLUDED.schema_version, EXCLUDED.aggregate_version)`)
 
 	q, args, err := query.ToSql()
 	if err != nil {

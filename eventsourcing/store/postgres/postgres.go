@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
-	"time"
 	"uuid"
 
 	"github.com/Masterminds/squirrel"
@@ -15,7 +14,6 @@ import (
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/trace"
-	"google.golang.org/protobuf/types/known/timestamppb"
 
 	"github.com/shortlink-org/go-sdk/db"
 	"github.com/shortlink-org/go-sdk/db/drivers/postgres/migrate"
@@ -84,6 +82,58 @@ func New(ctx context.Context, store db.DB, opts ...Option) (*EventStore, error) 
 	}, nil
 }
 
+// Append writes the events as the next versions of the aggregate, in one
+// transaction with one UPDATE of the aggregate and batched INSERTs. It returns an
+// error matching ErrConcurrencyConflict unless the aggregate is at expectedVersion,
+// 0 for an aggregate that does not exist yet.
+//
+// Events get the aggregate id and their version from this call. Setting a different
+// one is an ErrInvalidEvent. Like Save, it fills in what the events do not set.
+func (e *EventStore) Append(ctx context.Context, aggregateID string, expectedVersion int32, events []*eventsourcing.Event) error {
+	// start tracing
+	ctx, span := tracer().Start(ctx, "Append")
+	defer span.End()
+
+	span.SetAttributes(semconv.AggregateID(aggregateID))
+
+	err := stampEvents(aggregateID, expectedVersion, events)
+	if err != nil {
+		return recordError(span, err)
+	}
+
+	return e.save(ctx, span, events)
+}
+
+// stampEvents gives the events the aggregate id and the versions Append expects.
+func stampEvents(aggregateID string, expectedVersion int32, events []*eventsourcing.Event) error {
+	if expectedVersion < 0 {
+		return fmt.Errorf("%w: expected version %d", ErrInvalidEvent, expectedVersion)
+	}
+
+	version := expectedVersion
+
+	for i, event := range events {
+		version++
+
+		if event == nil {
+			return fmt.Errorf("%w: event %d is nil", ErrInvalidEvent, i)
+		}
+
+		if event.GetAggregateId() != "" && event.GetAggregateId() != aggregateID {
+			return fmt.Errorf("%w: event %d belongs to aggregate %s", ErrInvalidEvent, i, event.GetAggregateId())
+		}
+
+		if event.GetVersion() != 0 && event.GetVersion() != version {
+			return fmt.Errorf("%w: event %d has version %d, expected %d", ErrInvalidEvent, i, event.GetVersion(), version)
+		}
+
+		event.AggregateId = aggregateID
+		event.Version = version
+	}
+
+	return nil
+}
+
 // save writes the events atomically: in the transaction ctx carries, see the
 // uow package, or else in its own.
 func (e *EventStore) save(ctx context.Context, span trace.Span, events []*eventsourcing.Event) error {
@@ -97,10 +147,10 @@ func (e *EventStore) save(ctx context.Context, span trace.Span, events []*events
 	}
 
 	if tx := uow.FromContext(ctx); tx != nil {
-		err = e.append(ctx, tx, events)
+		err = e.appendRuns(ctx, tx, events)
 	} else {
 		err = pgx.BeginFunc(ctx, e.db, func(tx pgx.Tx) error {
-			return e.append(ctx, tx, events)
+			return e.appendRuns(ctx, tx, events)
 		})
 	}
 
@@ -119,27 +169,44 @@ func (e *EventStore) save(ctx context.Context, span trace.Span, events []*events
 	return nil
 }
 
-func (e *EventStore) append(ctx context.Context, conn querier, events []*eventsourcing.Event) error {
-	for _, event := range events {
-		// Either insert a new aggregate or append to an existing.
-		var err error
-		if event.GetVersion() == 1 {
-			err = e.addAggregate(ctx, conn, event)
-		} else {
-			err = e.updateAggregate(ctx, conn, event)
+// appendRuns writes each run of consecutive versions of one aggregate with one
+// UPDATE. A gap starts a new run, whose expected version then fails to match.
+func (e *EventStore) appendRuns(ctx context.Context, conn querier, events []*eventsourcing.Event) error {
+	for start := 0; start < len(events); {
+		end := start + 1
+		for end < len(events) &&
+			events[end].GetAggregateId() == events[start].GetAggregateId() &&
+			events[end].GetVersion() == events[end-1].GetVersion()+1 {
+			end++
 		}
 
+		err := e.appendRun(ctx, conn, events[start:end])
 		if err != nil {
 			return err
 		}
 
-		err = e.addEvent(ctx, conn, event)
-		if err != nil {
-			return err
-		}
+		start = end
 	}
 
 	return nil
+}
+
+func (e *EventStore) appendRun(ctx context.Context, conn querier, run []*eventsourcing.Event) error {
+	first, last := run[0], run[len(run)-1]
+
+	// Either insert a new aggregate or append to an existing.
+	var err error
+	if first.GetVersion() == 1 {
+		err = e.addAggregate(ctx, conn, first, last.GetVersion())
+	} else {
+		err = e.updateAggregate(ctx, conn, first, last.GetVersion())
+	}
+
+	if err != nil {
+		return err
+	}
+
+	return e.addEvents(ctx, conn, run)
 }
 
 // Save appends the events atomically. It returns an error matching
@@ -191,79 +258,6 @@ func (e *EventStore) Load(ctx context.Context, aggregateID string) (*eventsourci
 	}
 
 	return snapshot, events, nil
-}
-
-func loadSnapshot(ctx context.Context, conn querier, aggregateID string) (*eventsourcing.Snapshot, error) {
-	statement, args, err := psql.Select("aggregate_id", "aggregate_type", "aggregate_version", "payload", "created_at", "updated_at").
-		From("snapshots").
-		Where(squirrel.Eq{"aggregate_id": aggregateID}).
-		ToSql()
-	if err != nil {
-		return nil, err
-	}
-
-	var (
-		snapshot             eventsourcing.Snapshot
-		createdAt, updatedAt time.Time
-	)
-
-	err = conn.QueryRow(ctx, statement, args...).
-		Scan(&snapshot.AggregateId, &snapshot.AggregateType, &snapshot.AggregateVersion, &snapshot.Payload, &createdAt, &updatedAt)
-	if errors.Is(err, pgx.ErrNoRows) {
-		return &snapshot, nil
-	}
-
-	if err != nil {
-		return nil, err
-	}
-
-	snapshot.CreatedAt = timestamppb.New(createdAt)
-	snapshot.UpdatedAt = timestamppb.New(updatedAt)
-
-	return &snapshot, nil
-}
-
-func loadEvents(ctx context.Context, conn querier, aggregateID string, afterVersion int32) ([]*eventsourcing.Event, error) {
-	statement, args, err := psql.Select("aggregate_type", "id", "type", "payload", "version", "created_at").
-		From("events").
-		Where(squirrel.And{
-			squirrel.Eq{"aggregate_id": aggregateID},
-			squirrel.Gt{"version": afterVersion},
-		}).
-		OrderBy("version").
-		ToSql()
-	if err != nil {
-		return nil, err
-	}
-
-	rows, err := conn.Query(ctx, statement, args...)
-	if err != nil {
-		return nil, err
-	}
-
-	defer rows.Close()
-
-	var events []*eventsourcing.Event //nolint:prealloc // false positive
-
-	for rows.Next() {
-		var createdAt time.Time
-
-		event := &eventsourcing.Event{AggregateId: aggregateID}
-
-		err = rows.Scan(&event.AggregateType, &event.Id, &event.Type, &event.Payload, &event.Version, &createdAt)
-		if err != nil {
-			return nil, err
-		}
-
-		event.CreatedAt = timestamppb.New(createdAt)
-		events = append(events, event)
-	}
-
-	if rows.Err() != nil {
-		return nil, rows.Err()
-	}
-
-	return events, nil
 }
 
 func validateEvents(events []*eventsourcing.Event) error {

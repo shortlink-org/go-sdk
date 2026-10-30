@@ -1,0 +1,1 @@
+DROP INDEX CONCURRENTLY "events_transaction_id_global_position_uindex";

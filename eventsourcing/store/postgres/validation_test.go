@@ -74,3 +74,33 @@ func TestOptions(t *testing.T) {
 	require.EqualValues(t, 10, config.snapshotThreshold)
 	require.True(t, config.skipMigrations)
 }
+
+func TestParseCursor(t *testing.T) {
+	transactionID, position, err := parseCursor("")
+	require.NoError(t, err)
+	require.Equal(t, "0", transactionID)
+	require.Zero(t, position)
+
+	transactionID, position, err = parseCursor("812-40")
+	require.NoError(t, err)
+	require.Equal(t, "812", transactionID)
+	require.EqualValues(t, 40, position)
+
+	for _, cursor := range []string{"812", "a-1", "1-b", "1--1", "1;drop-1"} {
+		_, _, err = parseCursor(cursor)
+		require.ErrorIs(t, err, ErrInvalidCursor, cursor)
+	}
+}
+
+func TestStampEvents(t *testing.T) {
+	first, second := &eventsourcing.Event{}, &eventsourcing.Event{Version: 4}
+
+	require.NoError(t, stampEvents(testUUID, 2, []*eventsourcing.Event{first}))
+	require.Equal(t, testUUID, first.GetAggregateId())
+	require.EqualValues(t, 3, first.GetVersion())
+
+	require.ErrorIs(t, stampEvents(testUUID, -1, nil), ErrInvalidEvent)
+	require.ErrorIs(t, stampEvents(testUUID, 0, []*eventsourcing.Event{nil}), ErrInvalidEvent)
+	require.ErrorIs(t, stampEvents(testUUID, 0, []*eventsourcing.Event{second}), ErrInvalidEvent, "a version that does not follow")
+	require.ErrorIs(t, stampEvents(testUUID, 0, []*eventsourcing.Event{{AggregateId: "other"}}), ErrInvalidEvent, "another aggregate")
+}

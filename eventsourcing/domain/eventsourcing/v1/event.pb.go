@@ -42,7 +42,19 @@ type Event struct {
 	// Events are immutable, the store neither writes nor returns this field.
 	//
 	// Deprecated: Marked as deprecated in domain/eventsourcing/v1/event.proto.
-	UpdatedAt     *timestamppb.Timestamp `protobuf:"bytes,8,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
+	UpdatedAt *timestamppb.Timestamp `protobuf:"bytes,8,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
+	// The version of the payload schema, what an upcaster keys on. The store
+	// writes 1 when it is not set.
+	SchemaVersion int32 `protobuf:"varint,9,opt,name=schema_version,json=schemaVersion,proto3" json:"schema_version,omitempty"`
+	// The id shared by everything one request caused.
+	CorrelationId string `protobuf:"bytes,10,opt,name=correlation_id,json=correlationId,proto3" json:"correlation_id,omitempty"`
+	// The id of the command or event that caused this event.
+	CausationId string `protobuf:"bytes,11,opt,name=causation_id,json=causationId,proto3" json:"causation_id,omitempty"`
+	// Free-form string pairs. The store adds the W3C trace context of the write.
+	Metadata map[string]string `protobuf:"bytes,12,rep,name=metadata,proto3" json:"metadata,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	// The opaque position of the event in the global stream. The store sets it on
+	// read; pass it to ReadAll to continue after this event.
+	Cursor        string `protobuf:"bytes,13,opt,name=cursor,proto3" json:"cursor,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -134,11 +146,46 @@ func (x *Event) GetUpdatedAt() *timestamppb.Timestamp {
 	return nil
 }
 
+func (x *Event) GetSchemaVersion() int32 {
+	if x != nil {
+		return x.SchemaVersion
+	}
+	return 0
+}
+
+func (x *Event) GetCorrelationId() string {
+	if x != nil {
+		return x.CorrelationId
+	}
+	return ""
+}
+
+func (x *Event) GetCausationId() string {
+	if x != nil {
+		return x.CausationId
+	}
+	return ""
+}
+
+func (x *Event) GetMetadata() map[string]string {
+	if x != nil {
+		return x.Metadata
+	}
+	return nil
+}
+
+func (x *Event) GetCursor() string {
+	if x != nil {
+		return x.Cursor
+	}
+	return ""
+}
+
 var File_domain_eventsourcing_v1_event_proto protoreflect.FileDescriptor
 
 const file_domain_eventsourcing_v1_event_proto_rawDesc = "" +
 	"\n" +
-	"#domain/eventsourcing/v1/event.proto\x12\x17domain.eventsourcing.v1\x1a\x1fgoogle/protobuf/timestamp.proto\"\xa3\x02\n" +
+	"#domain/eventsourcing/v1/event.proto\x12\x17domain.eventsourcing.v1\x1a\x1fgoogle/protobuf/timestamp.proto\"\xb3\x04\n" +
 	"\x05Event\x12!\n" +
 	"\faggregate_id\x18\x01 \x01(\tR\vaggregateId\x12%\n" +
 	"\x0eaggregate_type\x18\x02 \x01(\tR\raggregateType\x12\x0e\n" +
@@ -149,7 +196,16 @@ const file_domain_eventsourcing_v1_event_proto_rawDesc = "" +
 	"\n" +
 	"created_at\x18\a \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt\x12=\n" +
 	"\n" +
-	"updated_at\x18\b \x01(\v2\x1a.google.protobuf.TimestampB\x02\x18\x01R\tupdatedAtBGZEgithub.com/shortlink-org/go-sdk/eventsourcing/domain/eventsourcing/v1b\x06proto3"
+	"updated_at\x18\b \x01(\v2\x1a.google.protobuf.TimestampB\x02\x18\x01R\tupdatedAt\x12%\n" +
+	"\x0eschema_version\x18\t \x01(\x05R\rschemaVersion\x12%\n" +
+	"\x0ecorrelation_id\x18\n" +
+	" \x01(\tR\rcorrelationId\x12!\n" +
+	"\fcausation_id\x18\v \x01(\tR\vcausationId\x12H\n" +
+	"\bmetadata\x18\f \x03(\v2,.domain.eventsourcing.v1.Event.MetadataEntryR\bmetadata\x12\x16\n" +
+	"\x06cursor\x18\r \x01(\tR\x06cursor\x1a;\n" +
+	"\rMetadataEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01BGZEgithub.com/shortlink-org/go-sdk/eventsourcing/domain/eventsourcing/v1b\x06proto3"
 
 var (
 	file_domain_eventsourcing_v1_event_proto_rawDescOnce sync.Once
@@ -163,19 +219,21 @@ func file_domain_eventsourcing_v1_event_proto_rawDescGZIP() []byte {
 	return file_domain_eventsourcing_v1_event_proto_rawDescData
 }
 
-var file_domain_eventsourcing_v1_event_proto_msgTypes = make([]protoimpl.MessageInfo, 1)
+var file_domain_eventsourcing_v1_event_proto_msgTypes = make([]protoimpl.MessageInfo, 2)
 var file_domain_eventsourcing_v1_event_proto_goTypes = []any{
 	(*Event)(nil),                 // 0: domain.eventsourcing.v1.Event
-	(*timestamppb.Timestamp)(nil), // 1: google.protobuf.Timestamp
+	nil,                           // 1: domain.eventsourcing.v1.Event.MetadataEntry
+	(*timestamppb.Timestamp)(nil), // 2: google.protobuf.Timestamp
 }
 var file_domain_eventsourcing_v1_event_proto_depIdxs = []int32{
-	1, // 0: domain.eventsourcing.v1.Event.created_at:type_name -> google.protobuf.Timestamp
-	1, // 1: domain.eventsourcing.v1.Event.updated_at:type_name -> google.protobuf.Timestamp
-	2, // [2:2] is the sub-list for method output_type
-	2, // [2:2] is the sub-list for method input_type
-	2, // [2:2] is the sub-list for extension type_name
-	2, // [2:2] is the sub-list for extension extendee
-	0, // [0:2] is the sub-list for field type_name
+	2, // 0: domain.eventsourcing.v1.Event.created_at:type_name -> google.protobuf.Timestamp
+	2, // 1: domain.eventsourcing.v1.Event.updated_at:type_name -> google.protobuf.Timestamp
+	1, // 2: domain.eventsourcing.v1.Event.metadata:type_name -> domain.eventsourcing.v1.Event.MetadataEntry
+	3, // [3:3] is the sub-list for method output_type
+	3, // [3:3] is the sub-list for method input_type
+	3, // [3:3] is the sub-list for extension type_name
+	3, // [3:3] is the sub-list for extension extendee
+	0, // [0:3] is the sub-list for field type_name
 }
 
 func init() { file_domain_eventsourcing_v1_event_proto_init() }
@@ -189,7 +247,7 @@ func file_domain_eventsourcing_v1_event_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_domain_eventsourcing_v1_event_proto_rawDesc), len(file_domain_eventsourcing_v1_event_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   1,
+			NumMessages:   2,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

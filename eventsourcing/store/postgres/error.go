@@ -19,6 +19,9 @@ var (
 
 	// ErrInvalidEventID is returned when an event id is set and is not a UUID.
 	ErrInvalidEventID = errors.New("eventsourcing: event id is not a UUID")
+
+	// ErrInvalidCursor is returned for a cursor ReadAll did not produce.
+	ErrInvalidCursor = errors.New("eventsourcing: invalid cursor")
 )
 
 // ConcurrencyConflictError carries the details of an ErrConcurrencyConflict.

@@ -25,4 +25,7 @@ message Snapshot {
 
   // The timestamp when the snapshot was last updated.
   google.protobuf.Timestamp updated_at = 6;
+
+  // The version of the payload schema. The store writes 1 when it is not set.
+  int32 schema_version = 7;
 }

@@ -28,6 +28,12 @@ type AggregateHandler interface {
 	IncrementVersion()
 }
 
+// Base returns the base of an aggregate that embeds BaseAggregate, which is how
+// generic code reaches its id, type and version.
+func (b *BaseAggregate) Base() *BaseAggregate {
+	return b
+}
+
 // Uncommitted return the events to be saved
 func (b *BaseAggregate) Uncommitted() []*Event {
 	return b.GetChanges()
