@@ -4,7 +4,7 @@ go 1.27.2
 
 require (
 	github.com/pganalyze/pg_query_go/v6 v6.2.5
-	github.com/shortlink-org/go-sdk/db v0.0.0-20260914110947-2237285eb582
+	github.com/shortlink-org/go-sdk/db v0.0.0-20261030183028-cc22c7468d78
 	github.com/stretchr/testify v1.12.1
 	google.golang.org/protobuf v1.36.12
 )

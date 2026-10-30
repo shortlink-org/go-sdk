@@ -6,9 +6,9 @@ require (
 	github.com/Masterminds/squirrel v1.5.4
 	github.com/jackc/pgerrcode v0.0.0-20250907135507-afb5586c32a6
 	github.com/jackc/pgx/v5 v5.11.0
-	github.com/shortlink-org/go-sdk/config v0.0.0-20260914110947-2237285eb582
-	github.com/shortlink-org/go-sdk/db v0.0.0-20260914110947-2237285eb582
-	github.com/shortlink-org/go-sdk/uow v0.0.0-20261019174741-2195694abc9f
+	github.com/shortlink-org/go-sdk/config v0.0.0-20261030183028-cc22c7468d78
+	github.com/shortlink-org/go-sdk/db v0.0.0-20261030183028-cc22c7468d78
+	github.com/shortlink-org/go-sdk/uow v0.0.0-20261030183028-cc22c7468d78
 	github.com/stretchr/testify v1.12.1
 	github.com/testcontainers/testcontainers-go v0.44.0
 	go.opentelemetry.io/otel v1.47.0
