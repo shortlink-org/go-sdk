@@ -10,67 +10,23 @@ import (
 	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/trace"
 
-	eventsourcing "github.com/shortlink-org/go-sdk/eventsourcing/domain/eventsourcing/v1"
 	"github.com/shortlink-org/go-sdk/eventsourcing/semconv"
 	"github.com/shortlink-org/go-sdk/uow"
 )
 
 const instrumentationName = "github.com/shortlink-org/go-sdk/eventsourcing"
 
-var (
-	// ErrNilStore is returned by NewRepository without a store.
-	ErrNilStore = errors.New("eventsourcing: repository requires a store")
-
-	// ErrNilFactory is returned by NewRepository without a factory.
-	ErrNilFactory = errors.New("eventsourcing: repository requires a factory")
-
-	// ErrEmptyAggregateType is returned by NewRepository without an aggregate type.
-	ErrEmptyAggregateType = errors.New("eventsourcing: repository requires an aggregate type")
-
-	// ErrAggregateNotFound is returned by Repository.Load for an aggregate without
-	// a snapshot or events.
-	ErrAggregateNotFound = errors.New("eventsourcing: aggregate not found")
-
-	// ErrAggregateTypeMismatch is returned by Repository.Load for an aggregate of
-	// another type than the repository handles.
-	ErrAggregateTypeMismatch = errors.New("eventsourcing: aggregate type mismatch")
-
-	// ErrNotSnapshotter is returned by Repository.Snapshot for an aggregate that
-	// does not implement Snapshotter.
-	ErrNotSnapshotter = errors.New("eventsourcing: aggregate does not implement Snapshotter")
-)
-
-// Aggregate is what Repository needs from an aggregate. A pointer to a type that
-// embeds BaseAggregate and implements ApplyChange and HandleCommand satisfies it.
-type Aggregate interface {
-	eventsourcing.AggregateHandler
-	Base() *eventsourcing.BaseAggregate
-}
-
-// Snapshotter is implemented by an aggregate that can be restored from a snapshot.
-// Implementing it is optional: without it, Load replays all the events.
-type Snapshotter interface {
-	// SnapshotSchemaVersion is the version of the MarshalSnapshot format. Bump it
-	// when the format changes: snapshots of another version are ignored and the
-	// events are replayed.
-	SnapshotSchemaVersion() int32
-	// MarshalSnapshot returns the state of the aggregate as JSON.
-	MarshalSnapshot() (string, error)
-	// RestoreSnapshot sets the state of the aggregate from MarshalSnapshot's output.
-	RestoreSnapshot(payload string) error
-}
-
 // Upcaster brings an event of an older schema up to date in place, before the
 // aggregate sees it. It leaves events it does not recognize alone.
-type Upcaster func(ctx context.Context, event *eventsourcing.Event) error
-
-type repositoryOptions struct {
-	snapshotEvery int32
-	upcasters     []Upcaster
-}
+type Upcaster func(event *Event) error
 
 // RepositoryOption configures a Repository.
 type RepositoryOption func(*repositoryOptions)
+
+type repositoryOptions struct {
+	snapshotEvery int64
+	upcasters     []Upcaster
+}
 
 // WithSnapshotEvery makes Repository.Save take a snapshot whenever the version of
 // the aggregate crosses a multiple of events. Off by default.
@@ -78,8 +34,8 @@ type RepositoryOption func(*repositoryOptions)
 // The events are saved by then, so a failed snapshot is recorded on the span and
 // does not fail Save. Inside a uow transaction no snapshot is taken: an error would
 // abort the transaction of the caller. Use Repository.Snapshot from a background
-// job there, driven by GetAggregateWithoutSnapshot.
-func WithSnapshotEvery(events int32) RepositoryOption {
+// job there, driven by SnapshotScheduler.
+func WithSnapshotEvery(events int64) RepositoryOption {
 	return func(o *repositoryOptions) {
 		if events > 0 {
 			o.snapshotEvery = events
@@ -129,7 +85,19 @@ func NewRepository[T Aggregate](store Store, aggregateType string, factory func(
 //
 //nolint:ireturn // T is the caller's own aggregate type
 func (r *Repository[T]) New() T {
-	return r.empty(uuid.NewV7().String())
+	return r.NewWithID(uuid.NewV7().String())
+}
+
+// NewWithID returns an empty aggregate with the given id, which must be a UUID.
+//
+//nolint:ireturn // T is the caller's own aggregate type
+func (r *Repository[T]) NewWithID(aggregateID string) T {
+	aggregate := r.factory()
+	root := aggregate.root()
+	root.id = aggregateID
+	root.aggregateType = r.aggregateType
+
+	return aggregate
 }
 
 // Load rebuilds the aggregate from its snapshot, if it has a usable one, and the
@@ -145,24 +113,24 @@ func (r *Repository[T]) Load(ctx context.Context, aggregateID string) (T, error)
 
 	var zero T
 
-	snapshot, err := r.store.LoadSnapshot(ctx, aggregateID)
+	aggregate, err := r.restore(ctx, span, aggregateID)
 	if err != nil {
 		return zero, recordError(span, err)
 	}
 
-	aggregate := r.restore(span, aggregateID, snapshot)
+	root := aggregate.root()
 
-	events, err := r.store.ReadStream(ctx, aggregateID, aggregate.Base().GetVersion())
+	events, err := r.store.ReadStream(ctx, aggregateID, root.version)
 	if err != nil {
 		return zero, recordError(span, err)
 	}
 
-	if aggregate.Base().GetVersion() == 0 && len(events) == 0 {
+	if root.version == 0 && len(events) == 0 {
 		return zero, recordError(span, fmt.Errorf("%w: %s", ErrAggregateNotFound, aggregateID))
 	}
 
 	for _, event := range events {
-		err = r.replay(ctx, aggregate, event)
+		err = r.replay(aggregate, event)
 		if err != nil {
 			return zero, recordError(span, err)
 		}
@@ -181,39 +149,36 @@ func (r *Repository[T]) Save(ctx context.Context, aggregate T) error {
 	ctx, span := tracer().Start(ctx, "Repository.Save")
 	defer span.End()
 
-	base := aggregate.Base()
-	events := aggregate.Uncommitted()
+	root := aggregate.root()
+	events := root.uncommitted
 
 	if len(events) == 0 {
 		return nil
 	}
 
-	if base.GetId() == "" {
-		base.Id = uuid.NewV7().String()
+	if root.id == "" {
+		root.id = uuid.NewV7().String()
 	}
 
-	if base.GetType() == "" {
-		base.Type = r.aggregateType
-	}
+	root.aggregateType = r.aggregateType
 
-	span.SetAttributes(semconv.AggregateID(base.GetId()), semconv.AggregateType(base.GetType()))
+	span.SetAttributes(semconv.AggregateID(root.id), semconv.AggregateType(root.aggregateType))
 
 	for _, event := range events {
-		if event.GetAggregateType() == "" {
-			event.AggregateType = base.GetType()
-		}
+		event.AggregateID = root.id
+		event.AggregateType = root.aggregateType
 	}
 
-	expectedVersion := base.GetVersion() - int32(len(events)) //nolint:gosec // an aggregate's events fit its int32 version
+	expectedVersion := root.version - int64(len(events))
 
-	err := r.store.Append(ctx, base.GetId(), expectedVersion, events)
+	err := r.store.Append(ctx, root.id, expectedVersion, events)
 	if err != nil {
 		return recordError(span, err)
 	}
 
-	aggregate.ClearUncommitted()
+	root.uncommitted = nil
 
-	if r.snapshotDue(ctx, expectedVersion, base.GetVersion()) {
+	if r.snapshotDue(ctx, expectedVersion, root.version) {
 		err = r.saveSnapshot(ctx, aggregate)
 		if err != nil && !errors.Is(err, ErrNotSnapshotter) {
 			span.RecordError(err)
@@ -241,61 +206,64 @@ func (r *Repository[T]) Snapshot(ctx context.Context, aggregateID string) error 
 	return nil
 }
 
-//nolint:ireturn // T is the caller's own aggregate type
-func (r *Repository[T]) empty(aggregateID string) T {
-	aggregate := r.factory()
-	base := aggregate.Base()
-	base.Id = aggregateID
-	base.Type = r.aggregateType
-
-	return aggregate
-}
-
-// restore returns the aggregate at the snapshot, or an empty one when the snapshot
-// is missing or not usable. A snapshot can always be rebuilt from the events, so a
-// broken one is no reason to fail the load.
+// restore returns the aggregate at its snapshot, or an empty one when there is no
+// usable snapshot. A snapshot can always be rebuilt from the events, so one that
+// does not restore is no reason to fail the load.
 //
 //nolint:ireturn // T is the caller's own aggregate type
-func (r *Repository[T]) restore(span trace.Span, aggregateID string, snapshot *eventsourcing.Snapshot) T {
-	aggregate := r.empty(aggregateID)
+func (r *Repository[T]) restore(ctx context.Context, span trace.Span, aggregateID string) (T, error) {
+	aggregate := r.NewWithID(aggregateID)
 
 	snapshotter, ok := any(aggregate).(Snapshotter)
-	if !ok || snapshot.GetAggregateVersion() == 0 || snapshot.GetAggregateType() != r.aggregateType {
-		return aggregate
+	if !ok {
+		return aggregate, nil
 	}
 
-	if normalizeSchemaVersion(snapshot.GetSchemaVersion()) != normalizeSchemaVersion(snapshotter.SnapshotSchemaVersion()) {
-		return aggregate
+	snapshot, err := r.store.LoadSnapshot(ctx, aggregateID)
+	if errors.Is(err, ErrSnapshotNotFound) {
+		return aggregate, nil
 	}
 
-	err := snapshotter.RestoreSnapshot(snapshot.GetPayload())
+	if err != nil {
+		return aggregate, err
+	}
+
+	if snapshot.AggregateType != r.aggregateType {
+		return aggregate, nil
+	}
+
+	if normalizeSchemaVersion(snapshot.SchemaVersion) != normalizeSchemaVersion(snapshotter.SnapshotSchemaVersion()) {
+		return aggregate, nil
+	}
+
+	err = snapshotter.RestoreSnapshot(snapshot.Payload)
 	if err != nil {
 		span.RecordError(err)
 
-		return r.empty(aggregateID)
+		return r.NewWithID(aggregateID), nil
 	}
 
-	aggregate.Base().Version = snapshot.GetAggregateVersion()
+	aggregate.root().version = snapshot.Version
 
-	return aggregate
+	return aggregate, nil
 }
 
-func (r *Repository[T]) replay(ctx context.Context, aggregate T, event *eventsourcing.Event) error {
-	if event.GetAggregateType() != r.aggregateType {
-		return fmt.Errorf("%w: %s is a %s, not a %s", ErrAggregateTypeMismatch, event.GetAggregateId(), event.GetAggregateType(), r.aggregateType)
+func (r *Repository[T]) replay(aggregate T, event *Event) error {
+	if event.AggregateType != r.aggregateType {
+		return fmt.Errorf("%w: %s is a %s, not a %s", ErrAggregateTypeMismatch, event.AggregateID, event.AggregateType, r.aggregateType)
 	}
 
 	for _, upcaster := range r.opts.upcasters {
-		err := upcaster(ctx, event)
+		err := upcaster(event)
 		if err != nil {
 			return err
 		}
 	}
 
-	return aggregate.ApplyChangeHelper(ctx, aggregate, event, false)
+	return replay(aggregate, event)
 }
 
-func (r *Repository[T]) snapshotDue(ctx context.Context, before, after int32) bool {
+func (r *Repository[T]) snapshotDue(ctx context.Context, before, after int64) bool {
 	every := r.opts.snapshotEvery
 
 	return every > 0 && after/every > before/every && !uow.HasTx(ctx)
@@ -312,19 +280,19 @@ func (r *Repository[T]) saveSnapshot(ctx context.Context, aggregate T) error {
 		return err
 	}
 
-	base := aggregate.Base()
+	root := aggregate.root()
 
-	return r.store.SaveSnapshot(ctx, &eventsourcing.Snapshot{
-		AggregateId:      base.GetId(),
-		AggregateType:    base.GetType(),
-		AggregateVersion: base.GetVersion(),
-		SchemaVersion:    normalizeSchemaVersion(snapshotter.SnapshotSchemaVersion()),
-		Payload:          payload,
+	return r.store.SaveSnapshot(ctx, &Snapshot{
+		AggregateID:   root.id,
+		AggregateType: root.aggregateType,
+		Version:       root.version,
+		SchemaVersion: normalizeSchemaVersion(snapshotter.SnapshotSchemaVersion()),
+		Payload:       payload,
 	})
 }
 
 // normalizeSchemaVersion treats an unset schema version as 1, as the store does.
-func normalizeSchemaVersion(version int32) int32 {
+func normalizeSchemaVersion(version int) int {
 	if version == 0 {
 		return 1
 	}

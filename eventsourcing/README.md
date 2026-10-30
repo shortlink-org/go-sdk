@@ -1,29 +1,60 @@
 ### event-sourcing
 
-This is a simple event sourcing library for Go.
+Event sourcing for Go, with PostgreSQL as the store.
 
-### Feature
-
-- Atomic append with optimistic concurrency
 - A generic repository for aggregates
+- Atomic append with optimistic concurrency
 - Snapshots with a policy and schema versions
 - Event metadata and upcasters
 - A global stream for projections
 - OpenTelemetry traces and metrics, declared in
   [`semconv/registry/eventsourcing.yaml`](../semconv/registry/eventsourcing.yaml)
-- Store engine
-  - PostgreSQL
+
+The root package is the domain and its ports (`Store`, `GlobalReader`,
+`SnapshotScheduler`). [`store/postgres`](./store/postgres) implements them.
 
 There is no event bus: publish through a transactional outbox, as below.
 
-##### Repository
+##### Aggregates
 
-`Repository[T]` loads an aggregate from its snapshot and events, and saves its
-uncommitted events. An aggregate embeds `BaseAggregate` and implements
-`ApplyChange` and `HandleCommand`:
+An aggregate embeds `Root` and defines `Apply`, which runs both when an event is raised
+and when it is replayed:
 
 ```go
-store, err := es_postgres.New(ctx, db)
+type Order struct {
+	eventsourcing.Root
+
+	total int
+}
+
+func (o *Order) Apply(event *eventsourcing.Event) error {
+	switch event.Type {
+	case "item_added":
+		var item ItemAdded
+		if err := json.Unmarshal(event.Payload, &item); err != nil {
+			return err
+		}
+
+		o.total += item.Price
+	}
+
+	return nil
+}
+
+func (o *Order) AddItem(price int) error {
+	event, err := eventsourcing.NewEvent("item_added", ItemAdded{Price: price})
+	if err != nil {
+		return err
+	}
+
+	return eventsourcing.Raise(o, event)
+}
+```
+
+##### Repository
+
+```go
+store, err := postgres.New(ctx, db)
 if err != nil {
 	return err
 }
@@ -33,12 +64,14 @@ if err != nil {
 	return err
 }
 
-order, err := orders.Load(ctx, id)
+order, err := orders.Load(ctx, id) // or orders.New() for a new one
 if err != nil {
 	return err
 }
 
-// apply new events with order.ApplyChangeHelper(ctx, order, event, true)
+if err := order.AddItem(100); err != nil {
+	return err
+}
 
 err = orders.Save(ctx, order)
 if errors.Is(err, eventsourcing.ErrConcurrencyConflict) {
@@ -46,15 +79,12 @@ if errors.Is(err, eventsourcing.ErrConcurrencyConflict) {
 }
 ```
 
-Use `orders.New()` for a new aggregate. `Load` returns `ErrAggregateNotFound` when
-it does not exist.
+`Load` returns `ErrAggregateNotFound` when the aggregate does not exist.
 
-##### Saving events
+##### Appending events
 
-`Append` is the stream API under the repository. It writes all its events or none,
-with one `UPDATE` of the aggregate and batched `INSERT`s, as the versions after
-`expectedVersion` (0 for a new aggregate). `Save` does the same for events that
-already carry their aggregate id and version, and stays for compatibility.
+`Store.Append` is the stream API under the repository. It writes all its events or none,
+as the versions after `expectedVersion` (0 for a new aggregate):
 
 ```go
 err := store.Append(ctx, id, 4, events)
@@ -63,19 +93,18 @@ if errors.Is(err, eventsourcing.ErrConcurrencyConflict) {
 }
 ```
 
-Aggregate ids and event ids must be UUIDs. The store fills in `Id` (UUIDv7),
-`CreatedAt` and `SchemaVersion` (1) when they are not set. Timestamps are stored in
-UTC with a precision of one second; events are ordered by `version`.
+Aggregate ids and event ids must be UUIDs. The store fills in `ID` (UUIDv7), `CreatedAt`
+and `SchemaVersion` (1) when they are not set; events are ordered by `Version`.
 
 ##### Metadata and upcasting
 
-An event carries `CorrelationId`, `CausationId`, `SchemaVersion` and free-form
-`Metadata`, where the store adds the W3C `traceparent` of the write when there is a
-span. Old events are never rewritten; bring them up to date on load:
+An event carries `CorrelationID`, `CausationID`, `SchemaVersion` and free-form `Metadata`,
+where the store adds the W3C `traceparent` of the write when there is a span. Old events
+are never rewritten; bring them up to date on load:
 
 ```go
-upcast := func(ctx context.Context, event *v1.Event) error {
-	if event.GetType() == "deposited" && event.GetSchemaVersion() == 1 {
+upcast := func(event *eventsourcing.Event) error {
+	if event.Type == "item_added" && event.SchemaVersion == 1 {
 		// rewrite event.Payload to the current schema
 	}
 
@@ -87,31 +116,29 @@ orders, err := eventsourcing.NewRepository(store, "order", newOrder, eventsourci
 
 ##### Transactions
 
-When `ctx` carries a transaction (`uow.WithTx`), `Append`, `Save`, `Load`, `ReadStream`
-and `SaveSnapshot` run in it, and committing is up to the caller. This is how events
-and an [`outbox`](../outbox) message are written atomically. A conflict aborts that
-transaction, so roll it back before retrying.
+When `ctx` carries a transaction (`uow.WithTx`), `Append`, `ReadStream`, `LoadSnapshot` and
+`SaveSnapshot` run in it, and committing is up to the caller. This is how events and an
+[`outbox`](../outbox) message are written atomically. A conflict aborts that transaction,
+so roll it back before retrying.
 
 ##### Snapshots
 
-An aggregate implementing `Snapshotter` is restored from its snapshot. There are two
-ways to take them:
+An aggregate implementing `Snapshotter` is restored from its snapshot. There are two ways
+to take them:
 
-- `WithSnapshotEvery(n)` makes `Repository.Save` take one whenever the version
-  crosses a multiple of `n`. It never fails the save, and is skipped inside a
-  transaction.
-- A background job calls `GetAggregateWithoutSnapshot`, tuned with
-  `WithSnapshotBatchSize` and `WithSnapshotThreshold`, and `Repository.Snapshot` for
-  each aggregate it returns.
+- `WithSnapshotEvery(n)` makes `Repository.Save` take one whenever the version crosses a
+  multiple of `n`. It never fails the save, and is skipped inside a transaction.
+- A background job calls `AggregatesDueForSnapshot` and `Repository.Snapshot` for each
+  aggregate it returns.
 
-`SnapshotSchemaVersion` versions the format. `Load` ignores a snapshot of another
-version or one that fails to restore, and replays the events. `SaveSnapshot` keeps
-the latest schema version, and then the latest aggregate version.
+`SnapshotSchemaVersion` versions the format. `Load` ignores a snapshot of another version
+or one that fails to restore, and replays the events. `SaveSnapshot` keeps the latest
+schema version, and then the latest aggregate version.
 
 ##### Projections
 
-`ReadAll` reads the events of all aggregates in a stable order. Persist the `Cursor`
-of the last event handled:
+`ReadAll` reads the events of all aggregates in a stable order. Persist the `Cursor` of the
+last event handled:
 
 ```go
 events, err := store.ReadAll(ctx, cursor, 500)
@@ -120,24 +147,21 @@ if err != nil {
 }
 
 for _, event := range events {
-	// handle the event, then persist event.GetCursor()
+	// handle the event, then persist event.Cursor
 }
 ```
 
-Sequence values are taken before commit, so reading by position alone would skip a
-slow transaction. The cursor is a pair of transaction id and position, and an event
-becomes visible once every older transaction has ended: nothing lands behind the
-cursor, and one long-running transaction anywhere in the database delays the stream.
-Delivery is at-least-once when the cursor is persisted after handling.
+Sequence values are taken before commit, so reading by position alone would skip a slow
+transaction. The cursor is a pair of transaction id and position, and an event becomes
+visible once every older transaction has ended: nothing lands behind the cursor, and one
+long-running transaction anywhere in the database delays the stream. Delivery is
+at-least-once when the cursor is persisted after handling.
 
 ##### Migrations
 
-`New` applies the schema. With `WithoutMigrations` it does not, for applications
-that run without DDL privileges and apply `es_postgres.Migrations()` themselves.
-PostgreSQL 13 or newer is required.
-
-Migration `000006` rewrites `events` under an exclusive lock, to give existing rows a
-position. Plan a maintenance window for a large table.
+`postgres.New` applies the schema, in the `eventsourcing` database schema. With
+`WithoutMigrations` it does not, for applications that run without DDL privileges and apply
+`postgres.Migrations()` themselves. PostgreSQL 13 or newer is required.
 
 ##### Tests
 
@@ -146,10 +170,6 @@ The integration tests start PostgreSQL in a container:
 ```bash
 make test MODULE=eventsourcing TAGS=unit,database
 ```
-
-##### Tracing
-
-![Tracing](./docs/opentracing.png)
 
 ##### References
 

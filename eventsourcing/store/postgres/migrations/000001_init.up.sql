@@ -1,60 +1,41 @@
--- INITIALIZATION ======================================================================================================
+CREATE SCHEMA IF NOT EXISTS eventsourcing;
 
-CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+CREATE TABLE eventsourcing.aggregates (
+    id UUID PRIMARY KEY,
+    type TEXT NOT NULL,
+    version BIGINT NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
 
--- EVENTS TABLE ========================================================================================================
-CREATE TABLE events(
-    "aggregate_id" UUID NOT NULL,
-    "aggregate_type" TEXT NOT NULL,
-    "id" UUID NOT NULL,
-    "payload" jsonb NOT NULL,
-    "version" INTEGER NOT NULL,
-    "created_at" TIMESTAMP(0) WITHOUT TIME ZONE NOT NULL
+CREATE TABLE eventsourcing.events (
+    id UUID PRIMARY KEY,
+    aggregate_id UUID NOT NULL REFERENCES eventsourcing.aggregates (id),
+    aggregate_type TEXT NOT NULL,
+    version BIGINT NOT NULL,
+    type TEXT NOT NULL,
+    schema_version INTEGER NOT NULL,
+    payload JSONB NOT NULL,
+    correlation_id TEXT NOT NULL DEFAULT '',
+    causation_id TEXT NOT NULL DEFAULT '',
+    metadata JSONB NOT NULL DEFAULT '{}',
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    global_position BIGINT GENERATED ALWAYS AS IDENTITY,
+    transaction_id XID8 NOT NULL DEFAULT pg_current_xact_id(),
+    CONSTRAINT events_aggregate_version_key UNIQUE (aggregate_id, version),
+    CONSTRAINT events_global_stream_key UNIQUE (transaction_id, global_position)
 ) WITH (fillfactor = 100);
-ALTER TABLE
-    events ADD PRIMARY KEY("id");
 
-COMMENT ON COLUMN
-    events."aggregate_id" IS 'is used to detect recurring events/messages. It stores the ID of the message/event whose processing generated this event.';
+COMMENT ON TABLE eventsourcing.events IS 'Append-only: rows are never updated.';
+COMMENT ON COLUMN eventsourcing.events.global_position IS 'Unique, but commits may become visible out of this order. Read the global stream by (transaction_id, global_position).';
+COMMENT ON COLUMN eventsourcing.events.transaction_id IS 'The transaction that wrote the event. Readers stop at pg_snapshot_xmin so that no event commits behind them.';
 
-COMMENT ON COLUMN
-    events."payload" IS '{
-  event: "BALANCE_ADD"
-  payload: {amount: 5000}
-},
-{
-  event: "NEW_ORDER",
-  payload: {list: [
-    name: productNameA,
-    price: 1500
-  ]}
-}';
-
--- SNAPSHOTS TABLE =====================================================================================================
-CREATE TABLE snapshots(
-    "aggregate_id" UUID NOT NULL,
-    "aggregate_type" TEXT NOT NULL,
-    "aggregate_version" INTEGER NOT NULL,
-    "payload" jsonb NOT NULL,
-    "created_at" TIMESTAMP(0) WITHOUT TIME ZONE NOT NULL,
-    "updated_at" TIMESTAMP(0) WITHOUT TIME ZONE NOT NULL
-) WITH (fillfactor = 100);
-CREATE UNIQUE INDEX "snapshots_aggregate_id_uindex" ON
-    snapshots("aggregate_id");
-
--- AGGREGATE TABLE =====================================================================================================
-CREATE TABLE aggregates(
-    "id" UUID NOT NULL,
-    "type" TEXT NOT NULL,
-    "version" INTEGER NOT NULL,
-    "created_at" TIMESTAMP(0) WITHOUT TIME ZONE NOT NULL,
-    "updated_at" TIMESTAMP(0) WITHOUT TIME ZONE NOT NULL
-) WITH (fillfactor = 100);
-ALTER TABLE
-    aggregates ADD PRIMARY KEY("id");
-COMMENT ON COLUMN
-    aggregates."version" IS 'Each time the entity is changed, the column is updated.';
-ALTER TABLE
-    events ADD CONSTRAINT "events_aggregate_id_foreign" FOREIGN KEY("aggregate_id") REFERENCES aggregates("id");
-ALTER TABLE
-    snapshots ADD CONSTRAINT "snapshots_aggregate_id_foreign" FOREIGN KEY("aggregate_id") REFERENCES aggregates("id");
+CREATE TABLE eventsourcing.snapshots (
+    aggregate_id UUID PRIMARY KEY REFERENCES eventsourcing.aggregates (id),
+    aggregate_type TEXT NOT NULL,
+    version BIGINT NOT NULL,
+    schema_version INTEGER NOT NULL,
+    payload JSONB NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);

@@ -1,9 +1,10 @@
 //go:build database
 
-package es_postgres
+package postgres
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"testing"
 	"time"
@@ -18,11 +19,10 @@ import (
 	"go.opentelemetry.io/otel/trace"
 	"go.opentelemetry.io/otel/trace/noop"
 	"go.uber.org/goleak"
-	"google.golang.org/protobuf/types/known/timestamppb"
 
 	"github.com/shortlink-org/go-sdk/config"
-	db "github.com/shortlink-org/go-sdk/db/drivers/postgres"
-	eventsourcing "github.com/shortlink-org/go-sdk/eventsourcing/domain/eventsourcing/v1"
+	driver "github.com/shortlink-org/go-sdk/db/drivers/postgres"
+	"github.com/shortlink-org/go-sdk/eventsourcing"
 	"github.com/shortlink-org/go-sdk/uow"
 )
 
@@ -34,14 +34,17 @@ func TestMain(m *testing.M) {
 		goleak.IgnoreTopFunction("sync.runtime_Semacquire"))
 }
 
-func newEvent(aggregateID string, version int32) *eventsourcing.Event {
-	return &eventsourcing.Event{
-		AggregateId:   aggregateID,
-		AggregateType: "test-type",
-		Type:          fmt.Sprintf("test-event-%d", version),
-		Payload:       fmt.Sprintf(`{"version": %d}`, version),
-		Version:       version,
+func newEvent(eventType string) *eventsourcing.Event {
+	return &eventsourcing.Event{AggregateType: "test-type", Type: eventType, Payload: json.RawMessage(`{"test": "payload"}`)}
+}
+
+func newEvents(count int) []*eventsourcing.Event {
+	events := make([]*eventsourcing.Event, 0, count)
+	for i := range count {
+		events = append(events, newEvent(fmt.Sprintf("event-%d", i+1)))
 	}
+
+	return events
 }
 
 func TestPostgres(t *testing.T) {
@@ -49,7 +52,7 @@ func TestPostgres(t *testing.T) {
 
 	cfg, err := config.New()
 	require.NoError(t, err)
-	st := db.New(noop.NewTracerProvider(), metric.NewMeterProvider(), cfg)
+	st := driver.New(noop.NewTracerProvider(), metric.NewMeterProvider(), cfg)
 
 	c, err := testcontainers.Run(ctx, "postgres:latest",
 		testcontainers.WithEnv(map[string]string{
@@ -79,277 +82,145 @@ func TestPostgres(t *testing.T) {
 		return st.Init(ctx) == nil
 	}, 5*time.Minute, time.Second, "postgres init")
 
-	// new event sourcing store
-	eventSourcing, err := New(ctx, st)
-	if err != nil {
-		t.Fatalf("Could not create store: %s", err)
-	}
+	store, err := New(ctx, st)
+	require.NoError(t, err)
 
-	t.Run("TestEventSourcingSaveAndLoad", func(t *testing.T) {
+	conn, ok := st.GetConn().(*pgxpool.Pool)
+	require.True(t, ok)
+
+	t.Run("AppendAndReadStream", func(t *testing.T) {
 		id := uuid.NewV7().String()
-		event := newEvent(id, 1)
+		event := newEvent("created")
 
-		require.NoError(t, eventSourcing.Save(ctx, []*eventsourcing.Event{event}), "Could not save event")
+		require.NoError(t, store.Append(ctx, id, 0, []*eventsourcing.Event{event}))
+		require.NotEmpty(t, event.ID, "Append fills in the id")
+		require.False(t, event.CreatedAt.IsZero(), "Append fills in the time")
+		require.Equal(t, 1, event.SchemaVersion, "Append fills in the schema version")
 
-		_, events, err := eventSourcing.Load(ctx, id)
-		require.NoError(t, err, "Could not load events")
+		events, err := store.ReadStream(ctx, id, 0)
+		require.NoError(t, err)
 		require.Len(t, events, 1)
 
 		loaded := events[0]
-		require.Equal(t, event.GetAggregateId(), loaded.GetAggregateId())
-		require.Equal(t, event.GetAggregateType(), loaded.GetAggregateType())
-		require.Equal(t, event.GetType(), loaded.GetType())
-		require.JSONEq(t, event.GetPayload(), loaded.GetPayload())
-		require.Equal(t, event.GetVersion(), loaded.GetVersion())
+		require.Equal(t, event.ID, loaded.ID)
+		require.Equal(t, id, loaded.AggregateID)
+		require.Equal(t, "test-type", loaded.AggregateType)
+		require.Equal(t, "created", loaded.Type)
+		require.JSONEq(t, string(event.Payload), string(loaded.Payload))
+		require.EqualValues(t, 1, loaded.Version)
+		require.WithinDuration(t, event.CreatedAt, loaded.CreatedAt, time.Millisecond)
+		require.NotEmpty(t, loaded.Cursor)
 	})
 
-	t.Run("TestEventSourcingKeepsIDAndCreatedAt", func(t *testing.T) {
+	t.Run("ReadStreamReturnsNothingForAnUnknownAggregate", func(t *testing.T) {
+		events, err := store.ReadStream(ctx, uuid.NewV7().String(), 0)
+		require.NoError(t, err)
+		require.Empty(t, events)
+	})
+
+	t.Run("RejectsAnInvalidAggregateID", func(t *testing.T) {
+		_, err := store.ReadStream(ctx, "order-1", 0)
+		require.ErrorIs(t, err, eventsourcing.ErrInvalidAggregateID)
+
+		_, err = store.LoadSnapshot(ctx, "order-1")
+		require.ErrorIs(t, err, eventsourcing.ErrInvalidAggregateID)
+
+		require.ErrorIs(t, store.Append(ctx, "order-1", 0, newEvents(1)), eventsourcing.ErrInvalidAggregateID)
+	})
+
+	t.Run("AppendBeyondOneInsert", func(t *testing.T) {
 		id := uuid.NewV7().String()
 		createdAt := time.Date(2026, time.January, 2, 3, 4, 5, 0, time.UTC)
 
-		event := newEvent(id, 1)
-		event.Id = uuid.NewV7().String()
-		event.CreatedAt = timestamppb.New(createdAt)
-
-		generated := newEvent(id, 2)
-
-		require.NoError(t, eventSourcing.Save(ctx, []*eventsourcing.Event{event, generated}))
-		require.NotEmpty(t, generated.GetId(), "Save fills in the id")
-		require.NotNil(t, generated.GetCreatedAt(), "Save fills in the time")
-
-		_, events, err := eventSourcing.Load(ctx, id)
-		require.NoError(t, err)
-		require.Len(t, events, 2)
-		require.Equal(t, event.GetId(), events[0].GetId())
-		require.True(t, createdAt.Equal(events[0].GetCreatedAt().AsTime()))
-		require.Equal(t, generated.GetId(), events[1].GetId())
-	})
-
-	t.Run("TestEventSourcingLoadOrdersByVersion", func(t *testing.T) {
-		id := uuid.NewV7().String()
-		sameSecond := timestamppb.New(time.Date(2026, time.January, 2, 3, 4, 5, 0, time.UTC))
-
-		var batch []*eventsourcing.Event
-
-		for version := int32(1); version <= 50; version++ {
-			event := newEvent(id, version)
-			event.CreatedAt = sameSecond
-			batch = append(batch, event)
+		batch := newEvents(2500)
+		for _, event := range batch {
+			event.CreatedAt = createdAt
 		}
 
-		require.NoError(t, eventSourcing.Save(ctx, batch))
+		require.NoError(t, store.Append(ctx, id, 0, batch))
 
-		_, events, err := eventSourcing.Load(ctx, id)
+		events, err := store.ReadStream(ctx, id, 0)
 		require.NoError(t, err)
-		require.Len(t, events, 50)
+		require.Len(t, events, 2500)
 
 		for i, event := range events {
-			require.EqualValues(t, i+1, event.GetVersion())
+			require.EqualValues(t, i+1, event.Version, "version order, whatever the timestamps")
 		}
 	})
 
-	t.Run("TestEventSourcingLoadNoEvents", func(t *testing.T) {
-		snapshot, events, err := eventSourcing.Load(ctx, uuid.NewV7().String())
-		require.NoError(t, err)
-		require.Empty(t, events)
-		require.EqualValues(t, 0, snapshot.GetAggregateVersion())
-	})
-
-	t.Run("TestEventSourcingRejectsInvalidID", func(t *testing.T) {
-		_, _, err := eventSourcing.Load(ctx, "order-1")
-		require.ErrorIs(t, err, ErrInvalidAggregateID)
-
-		require.ErrorIs(t, eventSourcing.Save(ctx, []*eventsourcing.Event{newEvent("order-1", 1)}), ErrInvalidAggregateID)
-	})
-
-	t.Run("TestEventSourcingConflict", func(t *testing.T) {
-		t.Run("on the first event", func(t *testing.T) {
-			id := uuid.NewV7().String()
-
-			require.NoError(t, eventSourcing.Save(ctx, []*eventsourcing.Event{newEvent(id, 1)}))
-			require.ErrorIs(t, eventSourcing.Save(ctx, []*eventsourcing.Event{newEvent(id, 1)}), ErrConcurrencyConflict)
-		})
-
-		t.Run("on a later event", func(t *testing.T) {
-			id := uuid.NewV7().String()
-
-			require.NoError(t, eventSourcing.Save(ctx, []*eventsourcing.Event{newEvent(id, 1), newEvent(id, 2)}))
-			require.ErrorIs(t, eventSourcing.Save(ctx, []*eventsourcing.Event{newEvent(id, 2)}), ErrConcurrencyConflict)
-			require.ErrorIs(t, eventSourcing.Save(ctx, []*eventsourcing.Event{newEvent(id, 4)}), ErrConcurrencyConflict)
-		})
-	})
-
-	t.Run("TestEventSourcingSaveIsAtomic", func(t *testing.T) {
+	t.Run("Conflict", func(t *testing.T) {
 		id := uuid.NewV7().String()
 
-		require.NoError(t, eventSourcing.Save(ctx, []*eventsourcing.Event{newEvent(id, 1)}))
+		require.NoError(t, store.Append(ctx, id, 0, newEvents(2)))
 
-		broken := newEvent(id, 3)
-		broken.Payload = "not json"
-
-		require.Error(t, eventSourcing.Save(ctx, []*eventsourcing.Event{newEvent(id, 2), broken}))
-
-		_, events, err := eventSourcing.Load(ctx, id)
-		require.NoError(t, err)
-		require.Len(t, events, 1, "the failed batch must leave nothing behind")
-
-		// The aggregate must not be stuck: the retry succeeds.
-		require.NoError(t, eventSourcing.Save(ctx, []*eventsourcing.Event{newEvent(id, 2), newEvent(id, 3)}))
-
-		_, events, err = eventSourcing.Load(ctx, id)
-		require.NoError(t, err)
-		require.Len(t, events, 3)
+		require.ErrorIs(t, store.Append(ctx, id, 0, newEvents(1)), eventsourcing.ErrConcurrencyConflict, "the aggregate exists")
+		require.ErrorIs(t, store.Append(ctx, id, 1, newEvents(1)), eventsourcing.ErrConcurrencyConflict, "behind")
+		require.ErrorIs(t, store.Append(ctx, id, 3, newEvents(1)), eventsourcing.ErrConcurrencyConflict, "ahead")
+		require.NoError(t, store.Append(ctx, id, 2, newEvents(1)))
 	})
 
-	t.Run("TestEventSourcingFirstEventFailureLeavesNoAggregate", func(t *testing.T) {
-		id := uuid.NewV7().String()
+	t.Run("AppendIsAtomic", func(t *testing.T) {
+		used := newEvent("used")
+		require.NoError(t, store.Append(ctx, uuid.NewV7().String(), 0, []*eventsourcing.Event{used}))
 
-		broken := newEvent(id, 1)
-		broken.Payload = "not json"
+		duplicate := func() []*eventsourcing.Event {
+			return []*eventsourcing.Event{newEvent("fresh"), {
+				ID: used.ID, AggregateType: "test-type", Type: "duplicate", Payload: json.RawMessage(`{}`),
+			}}
+		}
 
-		require.Error(t, eventSourcing.Save(ctx, []*eventsourcing.Event{broken}))
-		require.NoError(t, eventSourcing.Save(ctx, []*eventsourcing.Event{newEvent(id, 1)}), "the retry must not hit the primary key")
+		t.Run("on a new aggregate", func(t *testing.T) {
+			id := uuid.NewV7().String()
+
+			require.ErrorIs(t, store.Append(ctx, id, 0, duplicate()), eventsourcing.ErrDuplicateEventID)
+
+			events, err := store.ReadStream(ctx, id, 0)
+			require.NoError(t, err)
+			require.Empty(t, events)
+
+			require.NoError(t, store.Append(ctx, id, 0, newEvents(2)), "the retry must not hit the primary key")
+		})
+
+		t.Run("on an existing aggregate", func(t *testing.T) {
+			id := uuid.NewV7().String()
+
+			require.NoError(t, store.Append(ctx, id, 0, newEvents(1)))
+			require.ErrorIs(t, store.Append(ctx, id, 1, duplicate()), eventsourcing.ErrDuplicateEventID)
+
+			events, err := store.ReadStream(ctx, id, 0)
+			require.NoError(t, err)
+			require.Len(t, events, 1, "the failed batch must leave nothing behind")
+
+			require.NoError(t, store.Append(ctx, id, 1, newEvents(2)), "the aggregate must not be stuck")
+		})
 	})
 
-	t.Run("TestEventSourcingUsesTransactionFromContext", func(t *testing.T) {
-		conn, ok := st.GetConn().(*pgxpool.Pool)
-		require.True(t, ok)
-
-		rolledBack := uuid.NewV7().String()
-		committed := uuid.NewV7().String()
+	t.Run("UsesTheTransactionFromContext", func(t *testing.T) {
+		rolledBack, committed := uuid.NewV7().String(), uuid.NewV7().String()
 
 		tx, err := conn.Begin(ctx)
 		require.NoError(t, err)
-		require.NoError(t, eventSourcing.Save(uow.WithTx(ctx, tx), []*eventsourcing.Event{newEvent(rolledBack, 1)}))
+		require.NoError(t, store.Append(uow.WithTx(ctx, tx), rolledBack, 0, newEvents(1)))
 
-		_, events, err := eventSourcing.Load(uow.WithTx(ctx, tx), rolledBack)
+		events, err := store.ReadStream(uow.WithTx(ctx, tx), rolledBack, 0)
 		require.NoError(t, err)
-		require.Len(t, events, 1, "Load must see the open transaction")
+		require.Len(t, events, 1, "ReadStream must see the open transaction")
 		require.NoError(t, tx.Rollback(ctx))
 
-		_, events, err = eventSourcing.Load(ctx, rolledBack)
+		events, err = store.ReadStream(ctx, rolledBack, 0)
 		require.NoError(t, err)
-		require.Empty(t, events, "the rollback of the caller must undo Save")
+		require.Empty(t, events, "the rollback of the caller must undo Append")
 
 		require.NoError(t, pgx.BeginFunc(ctx, conn, func(tx pgx.Tx) error {
-			return eventSourcing.Save(uow.WithTx(ctx, tx), []*eventsourcing.Event{newEvent(committed, 1)})
+			return store.Append(uow.WithTx(ctx, tx), committed, 0, newEvents(1))
 		}))
 
-		_, events, err = eventSourcing.Load(ctx, committed)
+		events, err = store.ReadStream(ctx, committed, 0)
 		require.NoError(t, err)
 		require.Len(t, events, 1)
 	})
 
-	t.Run("TestEventSourcingSnapshots", func(t *testing.T) {
-		id := uuid.NewV7().String()
-
-		var batch []*eventsourcing.Event
-		for version := int32(1); version <= 5; version++ {
-			batch = append(batch, newEvent(id, version))
-		}
-
-		require.NoError(t, eventSourcing.Save(ctx, batch))
-
-		snapshotAt := func(version int32) *eventsourcing.Snapshot {
-			return &eventsourcing.Snapshot{
-				AggregateId:      id,
-				AggregateType:    "test-type",
-				AggregateVersion: version,
-				Payload:          fmt.Sprintf(`{"version": %d}`, version),
-			}
-		}
-
-		require.NoError(t, eventSourcing.SaveSnapshot(ctx, snapshotAt(3)))
-
-		snapshot, events, err := eventSourcing.Load(ctx, id)
-		require.NoError(t, err)
-		require.EqualValues(t, 3, snapshot.GetAggregateVersion())
-		require.NotNil(t, snapshot.GetCreatedAt())
-		require.Len(t, events, 2, "only the events after the snapshot")
-		require.EqualValues(t, 4, events[0].GetVersion())
-
-		// An older snapshot must not replace a newer one.
-		require.NoError(t, eventSourcing.SaveSnapshot(ctx, snapshotAt(2)))
-
-		snapshot, _, err = eventSourcing.Load(ctx, id)
-		require.NoError(t, err)
-		require.EqualValues(t, 3, snapshot.GetAggregateVersion())
-
-		require.NoError(t, eventSourcing.SaveSnapshot(ctx, snapshotAt(5)))
-
-		snapshot, events, err = eventSourcing.Load(ctx, id)
-		require.NoError(t, err)
-		require.EqualValues(t, 5, snapshot.GetAggregateVersion())
-		require.Empty(t, events)
-	})
-
-	t.Run("TestEventSourcingGetAggregateWithoutSnapshot", func(t *testing.T) {
-		store, err := New(ctx, st, WithSnapshotBatchSize(1_000_000), WithSnapshotThreshold(3))
-		require.NoError(t, err)
-
-		contains := func(id string) bool {
-			aggregates, err := store.GetAggregateWithoutSnapshot(ctx)
-			require.NoError(t, err)
-
-			for _, aggregate := range aggregates {
-				if aggregate.GetId() == id {
-					return true
-				}
-			}
-
-			return false
-		}
-
-		id := uuid.NewV7().String()
-
-		require.NoError(t, store.Save(ctx, []*eventsourcing.Event{newEvent(id, 1), newEvent(id, 2)}))
-		require.False(t, contains(id), "below the threshold")
-
-		require.NoError(t, store.Save(ctx, []*eventsourcing.Event{newEvent(id, 3)}))
-		require.True(t, contains(id), "at the threshold")
-
-		require.NoError(t, store.SaveSnapshot(ctx, &eventsourcing.Snapshot{
-			AggregateId: id, AggregateType: "test-type", AggregateVersion: 3, Payload: `{}`,
-		}))
-		require.False(t, contains(id), "the snapshot resets the count")
-
-		limited, err := New(ctx, st, WithSnapshotBatchSize(1), WithSnapshotThreshold(1))
-		require.NoError(t, err)
-
-		aggregates, err := limited.GetAggregateWithoutSnapshot(ctx)
-		require.NoError(t, err)
-		require.Len(t, aggregates, 1)
-	})
-
-	t.Run("TestEventSourcingAppend", func(t *testing.T) {
-		id := uuid.NewV7().String()
-
-		var batch []*eventsourcing.Event
-		for range 2500 {
-			batch = append(batch, &eventsourcing.Event{AggregateType: "test-type", Type: "bulk", Payload: `{}`})
-		}
-
-		require.NoError(t, eventSourcing.Append(ctx, id, 0, batch), "more events than one INSERT holds")
-		require.EqualValues(t, 2500, batch[2499].GetVersion())
-
-		next := []*eventsourcing.Event{{AggregateType: "test-type", Type: "next", Payload: `{}`}}
-		require.ErrorIs(t, eventSourcing.Append(ctx, id, 2499, next), ErrConcurrencyConflict)
-
-		next[0].Version = 0
-		require.ErrorIs(t, eventSourcing.Append(ctx, id, 0, next), ErrConcurrencyConflict, "the aggregate exists")
-
-		next[0].Version = 0
-		require.NoError(t, eventSourcing.Append(ctx, id, 2500, next))
-
-		events, err := eventSourcing.ReadStream(ctx, id, 2499)
-		require.NoError(t, err)
-		require.Len(t, events, 2)
-		require.EqualValues(t, 2500, events[0].GetVersion())
-		require.Equal(t, "next", events[1].GetType())
-
-	})
-
-	t.Run("TestEventSourcingMetadata", func(t *testing.T) {
+	t.Run("Metadata", func(t *testing.T) {
 		id := uuid.NewV7().String()
 
 		traceID, err := trace.TraceIDFromHex("4bf92f3577b34da6a3ce929d0e0e4736")
@@ -361,31 +232,30 @@ func TestPostgres(t *testing.T) {
 			TraceID: traceID, SpanID: spanID, TraceFlags: trace.FlagsSampled,
 		}))
 
-		event := newEvent(id, 1)
+		event := newEvent("created")
 		event.SchemaVersion = 3
-		event.CorrelationId = "request-1"
-		event.CausationId = "command-1"
+		event.CorrelationID = "request-1"
+		event.CausationID = "command-1"
 		event.Metadata = map[string]string{"tenant": "acme"}
 
-		require.NoError(t, eventSourcing.Save(traced, []*eventsourcing.Event{event, newEvent(id, 2)}))
+		require.NoError(t, store.Append(traced, id, 0, []*eventsourcing.Event{event}))
 
-		events, err := eventSourcing.ReadStream(ctx, id, 0)
+		events, err := store.ReadStream(ctx, id, 0)
 		require.NoError(t, err)
-		require.Len(t, events, 2)
-		require.EqualValues(t, 3, events[0].GetSchemaVersion())
-		require.Equal(t, "request-1", events[0].GetCorrelationId())
-		require.Equal(t, "command-1", events[0].GetCausationId())
-		require.Equal(t, "acme", events[0].GetMetadata()["tenant"])
-		require.Contains(t, events[0].GetMetadata()["traceparent"], traceID.String())
-		require.EqualValues(t, 1, events[1].GetSchemaVersion(), "the default")
+		require.Len(t, events, 1)
+		require.Equal(t, 3, events[0].SchemaVersion)
+		require.Equal(t, "request-1", events[0].CorrelationID)
+		require.Equal(t, "command-1", events[0].CausationID)
+		require.Equal(t, "acme", events[0].Metadata["tenant"])
+		require.Contains(t, events[0].Metadata["traceparent"], traceID.String())
 	})
 
-	t.Run("TestEventSourcingReadAll", func(t *testing.T) {
+	t.Run("ReadAll", func(t *testing.T) {
 		readAfter := func(cursor string) ([]string, string) {
 			var ids []string
 
 			for {
-				events, err := eventSourcing.ReadAll(ctx, cursor, 100)
+				events, err := store.ReadAll(ctx, cursor, 500)
 				require.NoError(t, err)
 
 				if len(events) == 0 {
@@ -393,25 +263,22 @@ func TestPostgres(t *testing.T) {
 				}
 
 				for _, event := range events {
-					ids = append(ids, event.GetAggregateId())
+					ids = append(ids, event.AggregateID)
 				}
 
-				cursor = events[len(events)-1].GetCursor()
+				cursor = events[len(events)-1].Cursor
 			}
 		}
 
 		_, cursor := readAfter("")
-
-		conn, ok := st.GetConn().(*pgxpool.Pool)
-		require.True(t, ok)
 
 		slow, fast := uuid.NewV7().String(), uuid.NewV7().String()
 
 		// The slow transaction takes the lower position and commits last.
 		tx, err := conn.Begin(ctx)
 		require.NoError(t, err)
-		require.NoError(t, eventSourcing.Save(uow.WithTx(ctx, tx), []*eventsourcing.Event{newEvent(slow, 1)}))
-		require.NoError(t, eventSourcing.Save(ctx, []*eventsourcing.Event{newEvent(fast, 1)}))
+		require.NoError(t, store.Append(uow.WithTx(ctx, tx), slow, 0, newEvents(1)))
+		require.NoError(t, store.Append(ctx, fast, 0, newEvents(1)))
 
 		ids, afterInFlight := readAfter(cursor)
 		require.Empty(t, ids, "nothing may pass a transaction still in flight")
@@ -425,33 +292,80 @@ func TestPostgres(t *testing.T) {
 		ids, _ = readAfter(next)
 		require.Empty(t, ids)
 
-		_, err = eventSourcing.ReadAll(ctx, "garbage", 1)
-		require.ErrorIs(t, err, ErrInvalidCursor)
+		_, err = store.ReadAll(ctx, "garbage", 1)
+		require.ErrorIs(t, err, eventsourcing.ErrInvalidCursor)
 	})
 
-	t.Run("TestEventSourcingSnapshotSchemaVersion", func(t *testing.T) {
+	t.Run("Snapshots", func(t *testing.T) {
 		id := uuid.NewV7().String()
 
-		require.NoError(t, eventSourcing.Save(ctx, []*eventsourcing.Event{newEvent(id, 1), newEvent(id, 2)}))
+		require.NoError(t, store.Append(ctx, id, 0, newEvents(5)))
 
-		save := func(version, schemaVersion int32) {
-			require.NoError(t, eventSourcing.SaveSnapshot(ctx, &eventsourcing.Snapshot{
-				AggregateId: id, AggregateType: "test-type", AggregateVersion: version, SchemaVersion: schemaVersion, Payload: `{}`,
+		_, err := store.LoadSnapshot(ctx, id)
+		require.ErrorIs(t, err, eventsourcing.ErrSnapshotNotFound)
+
+		save := func(version int64, schemaVersion int) {
+			require.NoError(t, store.SaveSnapshot(ctx, &eventsourcing.Snapshot{
+				AggregateID: id, AggregateType: "test-type", Version: version, SchemaVersion: schemaVersion, Payload: json.RawMessage(`{}`),
 			}))
 		}
 
+		loadVersions := func() (int64, int) {
+			snapshot, err := store.LoadSnapshot(ctx, id)
+			require.NoError(t, err)
+			require.False(t, snapshot.CreatedAt.IsZero())
+
+			return snapshot.Version, snapshot.SchemaVersion
+		}
+
+		save(3, 0)
+		version, schemaVersion := loadVersions()
+		require.EqualValues(t, 3, version)
+		require.Equal(t, 1, schemaVersion, "the default")
+
 		save(2, 1)
+		version, _ = loadVersions()
+		require.EqualValues(t, 3, version, "an older snapshot must not replace a newer one")
+
 		save(1, 2)
+		version, schemaVersion = loadVersions()
+		require.EqualValues(t, 1, version, "a later schema replaces even a later version")
+		require.Equal(t, 2, schemaVersion)
 
-		snapshot, err := eventSourcing.LoadSnapshot(ctx, id)
+		save(5, 1)
+		_, schemaVersion = loadVersions()
+		require.Equal(t, 2, schemaVersion, "an older schema must not come back")
+	})
+
+	t.Run("AggregatesDueForSnapshot", func(t *testing.T) {
+		contains := func(id string) bool {
+			aggregates, err := store.AggregatesDueForSnapshot(ctx, 3, 1_000_000)
+			require.NoError(t, err)
+
+			for _, aggregate := range aggregates {
+				if aggregate.ID == id {
+					return true
+				}
+			}
+
+			return false
+		}
+
+		id := uuid.NewV7().String()
+
+		require.NoError(t, store.Append(ctx, id, 0, newEvents(2)))
+		require.False(t, contains(id), "below the threshold")
+
+		require.NoError(t, store.Append(ctx, id, 2, newEvents(1)))
+		require.True(t, contains(id), "at the threshold")
+
+		require.NoError(t, store.SaveSnapshot(ctx, &eventsourcing.Snapshot{
+			AggregateID: id, AggregateType: "test-type", Version: 3, Payload: json.RawMessage(`{}`),
+		}))
+		require.False(t, contains(id), "the snapshot resets the count")
+
+		aggregates, err := store.AggregatesDueForSnapshot(ctx, 1, 1)
 		require.NoError(t, err)
-		require.EqualValues(t, 2, snapshot.GetSchemaVersion(), "a later schema replaces even a later aggregate version")
-		require.EqualValues(t, 1, snapshot.GetAggregateVersion())
-
-		save(2, 1)
-
-		snapshot, err = eventSourcing.LoadSnapshot(ctx, id)
-		require.NoError(t, err)
-		require.EqualValues(t, 2, snapshot.GetSchemaVersion(), "an older schema must not come back")
+		require.Len(t, aggregates, 1)
 	})
 }

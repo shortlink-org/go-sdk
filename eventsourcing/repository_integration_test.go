@@ -18,24 +18,23 @@ import (
 	"github.com/shortlink-org/go-sdk/config"
 	db "github.com/shortlink-org/go-sdk/db/drivers/postgres"
 	"github.com/shortlink-org/go-sdk/eventsourcing"
-	v1 "github.com/shortlink-org/go-sdk/eventsourcing/domain/eventsourcing/v1"
-	es_postgres "github.com/shortlink-org/go-sdk/eventsourcing/store/postgres"
+	"github.com/shortlink-org/go-sdk/eventsourcing/store/postgres"
 )
 
 // ledger is an aggregate with snapshots.
 type ledger struct {
-	v1.BaseAggregate
+	eventsourcing.Root
 
 	Balance  int `json:"balance"`
 	restored bool
 }
 
-func (l *ledger) ApplyChange(_ context.Context, event *v1.Event) error {
+func (l *ledger) Apply(event *eventsourcing.Event) error {
 	var payload struct {
 		Amount int `json:"amount"`
 	}
 
-	err := json.Unmarshal([]byte(event.GetPayload()), &payload)
+	err := json.Unmarshal(event.Payload, &payload)
 	if err != nil {
 		return err
 	}
@@ -45,31 +44,26 @@ func (l *ledger) ApplyChange(_ context.Context, event *v1.Event) error {
 	return nil
 }
 
-func (*ledger) HandleCommand(context.Context, *v1.BaseCommand) error {
-	return nil
-}
-
-func (*ledger) SnapshotSchemaVersion() int32 {
+func (*ledger) SnapshotSchemaVersion() int {
 	return 1
 }
 
-func (l *ledger) MarshalSnapshot() (string, error) {
-	raw, err := json.Marshal(l)
-
-	return string(raw), err
+func (l *ledger) MarshalSnapshot() (json.RawMessage, error) {
+	return json.Marshal(l)
 }
 
-func (l *ledger) RestoreSnapshot(payload string) error {
+func (l *ledger) RestoreSnapshot(payload json.RawMessage) error {
 	l.restored = true
 
-	return json.Unmarshal([]byte(payload), l)
+	return json.Unmarshal(payload, l)
 }
 
 func (l *ledger) deposit(t *testing.T, amount int) {
 	t.Helper()
 
-	event := &v1.Event{Type: "deposited", Payload: fmt.Sprintf(`{"amount": %d}`, amount)}
-	require.NoError(t, l.ApplyChangeHelper(t.Context(), l, event, true))
+	event, err := eventsourcing.NewEvent("deposited", map[string]int{"amount": amount})
+	require.NoError(t, err)
+	require.NoError(t, eventsourcing.Raise(l, event))
 }
 
 func TestRepositoryOnPostgres(t *testing.T) {
@@ -109,7 +103,7 @@ func TestRepositoryOnPostgres(t *testing.T) {
 		return st.Init(ctx) == nil
 	}, 5*time.Minute, time.Second, "postgres init")
 
-	store, err := es_postgres.New(ctx, st)
+	store, err := postgres.New(ctx, st)
 	require.NoError(t, err)
 
 	repository, err := eventsourcing.NewRepository(store, "ledger", func() *ledger { return &ledger{} }, eventsourcing.WithSnapshotEvery(2))
@@ -121,11 +115,11 @@ func TestRepositoryOnPostgres(t *testing.T) {
 	aggregate.deposit(t, 30)
 	require.NoError(t, repository.Save(ctx, aggregate))
 
-	loaded, err := repository.Load(ctx, aggregate.GetId())
+	loaded, err := repository.Load(ctx, aggregate.ID())
 	require.NoError(t, err)
 	require.True(t, loaded.restored, "the save crossed the snapshot policy")
 	require.Equal(t, 60, loaded.Balance)
-	require.EqualValues(t, 3, loaded.GetVersion())
+	require.EqualValues(t, 3, loaded.Version())
 
 	loaded.deposit(t, 1)
 	require.NoError(t, repository.Save(ctx, loaded))
@@ -133,10 +127,10 @@ func TestRepositoryOnPostgres(t *testing.T) {
 	aggregate.deposit(t, 1)
 	require.ErrorIs(t, repository.Save(ctx, aggregate), eventsourcing.ErrConcurrencyConflict)
 
-	reloaded, err := repository.Load(ctx, aggregate.GetId())
+	reloaded, err := repository.Load(ctx, aggregate.ID())
 	require.NoError(t, err)
 	require.Equal(t, 61, reloaded.Balance)
-	require.EqualValues(t, 4, reloaded.GetVersion())
+	require.EqualValues(t, 4, reloaded.Version())
 
 	events, err := store.ReadAll(ctx, "", 0)
 	require.NoError(t, err)
