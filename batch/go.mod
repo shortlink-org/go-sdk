@@ -3,7 +3,7 @@ module github.com/shortlink-org/go-sdk/batch
 go 1.27.2
 
 require (
-	github.com/shortlink-org/go-sdk/config v0.0.0-20260914110947-2237285eb582
+	github.com/shortlink-org/go-sdk/config v0.0.0-20261030183028-cc22c7468d78
 	github.com/stretchr/testify v1.12.1
 	go.uber.org/goleak v1.3.0
 	golang.org/x/sync v0.24.0

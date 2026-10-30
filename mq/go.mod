@@ -9,8 +9,8 @@ require (
 	github.com/nats-io/nats.go v1.54.0
 	github.com/rabbitmq/amqp091-go v1.15.0
 	github.com/redis/rueidis v1.0.79
-	github.com/shortlink-org/go-sdk/config v0.0.0-20260914110947-2237285eb582
-	github.com/shortlink-org/go-sdk/db v0.0.0-20260914110947-2237285eb582
+	github.com/shortlink-org/go-sdk/config v0.0.0-20261030183028-cc22c7468d78
+	github.com/shortlink-org/go-sdk/db v0.0.0-20261030183028-cc22c7468d78
 	github.com/stretchr/testify v1.12.1
 	github.com/testcontainers/testcontainers-go v0.44.0
 	github.com/testcontainers/testcontainers-go/modules/kafka v0.44.0
