@@ -11,7 +11,7 @@ replace (
 
 require (
 	github.com/ThreeDotsLabs/watermill v1.5.3
-	github.com/jackc/pgx/v5 v5.11.0
+	github.com/jackc/pgx/v5 v5.12.0
 	github.com/shortlink-org/go-sdk/config v0.0.0-20260914110947-2237285eb582
 	github.com/shortlink-org/go-sdk/db v0.0.0-20260914110947-2237285eb582
 	github.com/shortlink-org/go-sdk/uow v0.0.0-00010101000000-000000000000
@@ -55,7 +55,7 @@ require (
 	github.com/jackc/pgerrcode v0.0.0-20250907135507-afb5586c32a6 // indirect
 	github.com/jackc/pgpassfile v1.0.0 // indirect
 	github.com/jackc/pgservicefile v0.0.0-20240606120523-5a60cdf6a761 // indirect
-	github.com/jackc/puddle/v2 v2.2.2 // indirect
+	github.com/jackc/puddle/v2 v2.2.3 // indirect
 	github.com/johejo/golang-migrate-extra v0.0.0-20211005021153-c17dd75f8b4a // indirect
 	github.com/klauspost/compress v1.20.3 // indirect
 	github.com/launchdarkly/eventsource v1.14.0 // indirect
