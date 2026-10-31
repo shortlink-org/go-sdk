@@ -10,7 +10,7 @@ replace (
 require (
 	github.com/ThreeDotsLabs/watermill v1.5.3
 	github.com/ThreeDotsLabs/watermill-sql/v4 v4.1.5
-	github.com/jackc/pgx/v5 v5.11.0
+	github.com/jackc/pgx/v5 v5.12.0
 	github.com/shortlink-org/go-sdk/uow v0.0.0-00010101000000-000000000000
 	github.com/shortlink-org/go-sdk/watermill v0.0.0-00010101000000-000000000000
 	github.com/sony/gobreaker v1.0.0
@@ -54,7 +54,7 @@ require (
 	github.com/hashicorp/golang-lru/v2 v2.0.7 // indirect
 	github.com/jackc/pgpassfile v1.0.0 // indirect
 	github.com/jackc/pgservicefile v0.0.0-20240606120523-5a60cdf6a761 // indirect
-	github.com/jackc/puddle/v2 v2.2.2 // indirect
+	github.com/jackc/puddle/v2 v2.2.3 // indirect
 	github.com/klauspost/compress v1.20.1 // indirect
 	github.com/launchdarkly/eventsource v1.14.0 // indirect
 	github.com/lib/pq v1.12.3 // indirect
