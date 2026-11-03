@@ -19,7 +19,7 @@ require (
 	github.com/lib/pq v1.12.3
 	github.com/mattn/go-sqlite3 v1.14.52
 	github.com/moby/moby/api v1.56.1
-	github.com/neo4j/neo4j-go-driver/v6 v6.3.0
+	github.com/neo4j/neo4j-go-driver/v6 v6.4.0
 	github.com/redis/rueidis v1.0.79
 	github.com/redis/rueidis/rueidisotel v1.0.79
 	github.com/shortlink-org/go-sdk/config v0.0.0-20260914110947-2237285eb582
